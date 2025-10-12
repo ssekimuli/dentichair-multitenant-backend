@@ -16,288 +16,191 @@ class OdontogramSeeder extends Seeder
         $patients = Patient::all();
 
         foreach ($patients as $patient) {
-            $this->createDentalRecords($patient);
-            $this->createPeriodontalRecords($patient);
+            $this->createIndividualDentalRecords($patient);
             $this->createTreatmentPlans($patient);
-            $this->createPatientImages($patient);
         }
     }
 
-    private function createDentalRecords($patient)
+    private function createIndividualDentalRecords($patient)
     {
-        $dentalData = [
-            '1' => [ // John Doe
-                18 => ['Healthy', ''],
-                17 => ['Filling', 'Amalgam filling from 2015.'],
-                16 => ['Caries', 'Distal caries, requires attention.'],
-                26 => ['Crown', 'Porcelain crown placed in 2020.'],
-                36 => ['Missing', 'Extracted in 2010.'],
-                48 => ['Fracture', 'Mesial-occlusal fracture.'],
+        // Each patient gets their own set of dental records, one tooth at a time
+        $patientDentalData = [
+            '1' => [ // John Doe - Complete dental chart
+                ['tooth_id' => 1, 'condition' => 'Missing', 'notes' => 'Impacted and surgically removed in 2018.'],
+                ['tooth_id' => 2, 'condition' => 'Crown', 'notes' => 'Porcelain crown placed due to large fracture.'],
+                ['tooth_id' => 3, 'condition' => 'Filling', 'notes' => 'Large MOD amalgam filling.'],
+                ['tooth_id' => 4, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 5, 'condition' => 'Filling', 'notes' => 'Occlusal composite.'],
+                ['tooth_id' => 6, 'condition' => 'Crown', 'notes' => 'Full coverage crown on root canal treated tooth.'],
+                ['tooth_id' => 7, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 8, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 9, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 10, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 11, 'condition' => 'Filling', 'notes' => 'Lingual composite.'],
+                ['tooth_id' => 12, 'condition' => 'Caries', 'notes' => 'Mesial caries detected on X-ray.'],
+                ['tooth_id' => 13, 'condition' => 'Filling', 'notes' => 'Occlusal amalgam.'],
+                ['tooth_id' => 14, 'condition' => 'Crown', 'notes' => 'Zirconia crown placed 2 years ago.'],
+                ['tooth_id' => 15, 'condition' => 'Filling', 'notes' => 'MOD composite.'],
+                ['tooth_id' => 16, 'condition' => 'Missing', 'notes' => 'Prophylactically removed.'],
+                ['tooth_id' => 17, 'condition' => 'Missing', 'notes' => 'Prophylactically removed.'],
+                ['tooth_id' => 18, 'condition' => 'Filling', 'notes' => 'Occlusal amalgam.'],
+                ['tooth_id' => 19, 'condition' => 'Crown', 'notes' => 'Root canal treated with PFM crown.'],
+                ['tooth_id' => 20, 'condition' => 'Caries', 'notes' => 'Recurrent caries at crown margin.'],
+                ['tooth_id' => 21, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 22, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 23, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 24, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 25, 'condition' => 'Fracture', 'notes' => 'Chipped incisal edge.'],
+                ['tooth_id' => 26, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 27, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 28, 'condition' => 'Filling', 'notes' => 'Buccal pit composite.'],
+                ['tooth_id' => 29, 'condition' => 'Filling', 'notes' => 'MOD amalgam.'],
+                ['tooth_id' => 30, 'condition' => 'Caries', 'notes' => 'Deep occlusal caries, requires RCT evaluation.'],
+                ['tooth_id' => 31, 'condition' => 'Filling', 'notes' => 'DO composite.'],
+                ['tooth_id' => 32, 'condition' => 'Missing', 'notes' => 'Impacted and surgically removed in 2018.'],
             ],
-            '2' => [ // Jane Smith
-                8 => ['Healthy', 'No issues'],
-                9 => ['Healthy', 'No issues'],
-                24 => ['Healthy', 'No issues'],
-                25 => ['Healthy', 'No issues'],
+            '2' => [ // Jane Smith - Orthodontic patient
+                ['tooth_id' => 8, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 9, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 24, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 25, 'condition' => 'Healthy', 'notes' => ''],
+                ['tooth_id' => 7, 'condition' => 'Filling', 'notes' => 'Small distal composite.'],
+                ['tooth_id' => 10, 'condition' => 'Filling', 'notes' => 'Small mesial composite.'],
             ],
-            '3' => [ // Peter Jones
-                3 => ['Missing', 'Extracted due to caries'],
-                14 => ['Caries', 'Occlusal caries'],
-                19 => ['Filling', 'Composite filling'],
-                30 => ['Crown', 'Full coverage crown'],
+            '3' => [ // Peter Jones - Multiple extractions
+                ['tooth_id' => 3, 'condition' => 'Missing', 'notes' => 'Extracted due to caries.'],
+                ['tooth_id' => 14, 'condition' => 'Missing', 'notes' => 'Extracted due to periodontal disease.'],
+                ['tooth_id' => 19, 'condition' => 'Missing', 'notes' => 'Extracted due to fracture.'],
+                ['tooth_id' => 30, 'condition' => 'Missing', 'notes' => 'Extracted due to periodontal disease.'],
+                ['tooth_id' => 2, 'condition' => 'Crown', 'notes' => 'PFM crown.'],
+                ['tooth_id' => 31, 'condition' => 'Crown', 'notes' => 'Full gold crown.'],
             ],
-            '4' => [ // Mike Williams
-                6 => ['Filling', 'Small occlusal filling'],
-                11 => ['Filling', 'Mesial composite'],
-                22 => ['Healthy', 'No issues'],
-                27 => ['Healthy', 'No issues'],
+            '4' => [ // Mike Williams - Minimal work
+                ['tooth_id' => 6, 'condition' => 'Filling', 'notes' => 'Small occlusal filling.'],
+                ['tooth_id' => 11, 'condition' => 'Filling', 'notes' => 'Mesial composite.'],
+                ['tooth_id' => 29, 'condition' => 'Filling', 'notes' => 'Occlusal composite.'],
+                ['tooth_id' => 30, 'condition' => 'Filling', 'notes' => 'DO amalgam.'],
             ],
-            '5' => [ // Sarah Brown
-                2 => ['Caries', 'Distal caries'],
-                15 => ['Filling', 'Amalgam filling'],
-                18 => ['Healthy', 'No issues'],
-                31 => ['Crown', 'Zirconia crown'],
+            '5' => [ // Sarah Brown - Anterior issues
+                ['tooth_id' => 7, 'condition' => 'Fracture', 'notes' => 'Incisal edge fracture.'],
+                ['tooth_id' => 8, 'condition' => 'Fracture', 'notes' => 'Mesial incisal fracture.'],
+                ['tooth_id' => 9, 'condition' => 'Fracture', 'notes' => 'Distal incisal fracture.'],
+                ['tooth_id' => 10, 'condition' => 'Fracture', 'notes' => 'Incisal edge fracture.'],
+                ['tooth_id' => 25, 'condition' => 'Fracture', 'notes' => 'Chipped incisal edge.'],
+                ['tooth_id' => 26, 'condition' => 'Fracture', 'notes' => 'Chipped incisal edge.'],
             ]
         ];
 
-        if (isset($dentalData[$patient->id])) {
-            foreach ($dentalData[$patient->id] as $toothId => $record) {
-                DentalRecord::create([
+        if (isset($patientDentalData[$patient->id])) {
+            foreach ($patientDentalData[$patient->id] as $toothData) {
+                // This simulates the API call: PUT /api/patients/{id}/dental-records
+                DentalRecord::updateOrCreate(
+                    [
+                        'patient_id' => $patient->id,
+                        'tooth_id' => $toothData['tooth_id'],
+                    ],
+                    [
+                        'condition' => $toothData['condition'],
+                        'notes' => $toothData['notes'],
+                    ]
+                );
+            }
+        }
+
+        // For teeth not specified, set them as Healthy by default
+        $this->setDefaultHealthyTeeth($patient, $patientDentalData[$patient->id] ?? []);
+    }
+
+    private function setDefaultHealthyTeeth($patient, $existingRecords)
+    {
+        $allTeeth = range(1, 32);
+        $existingToothIds = array_column($existingRecords, 'tooth_id');
+        
+        $teethToCreate = array_diff($allTeeth, $existingToothIds);
+        
+        foreach ($teethToCreate as $toothId) {
+            DentalRecord::updateOrCreate(
+                [
                     'patient_id' => $patient->id,
                     'tooth_id' => $toothId,
-                    'condition' => $record[0],
-                    'notes' => $record[1],
-                ]);
-            }
+                ],
+                [
+                    'condition' => 'Healthy',
+                    'notes' => '',
+                ]
+            );
         }
     }
 
-    private function createPeriodontalRecords($patient)
-    {
-        $periodontalData = [
-            '1' => [ // John Doe - Tooth 16
-                [
-                    'tooth_id' => 16,
-                    'pockets' => [
-                        'distobuccal' => 3,
-                        'buccal' => 2,
-                        'mesiobuccal' => 3,
-                        'distolingual' => 3,
-                        'lingual' => 2,
-                        'mesiolingual' => 2
-                    ],
-                    'recession' => 1,
-                    'mobility' => '0',
-                    'furcation' => null,
-                    'conditions' => [
-                        'bleeding' => true,
-                        'calculus' => false,
-                        'plaque' => true
-                    ]
-                ],
-                // John Doe - Tooth 36
-                [
-                    'tooth_id' => 36,
-                    'pockets' => [
-                        'distobuccal' => 4,
-                        'buccal' => 3,
-                        'mesiobuccal' => 4,
-                        'distolingual' => 4,
-                        'lingual' => 3,
-                        'mesiolingual' => 3
-                    ],
-                    'recession' => 2,
-                    'mobility' => '1',
-                    'furcation' => 'I',
-                    'conditions' => [
-                        'bleeding' => true,
-                        'calculus' => true,
-                        'plaque' => true
-                    ]
-                ]
-            ],
-            '3' => [ // Peter Jones - Tooth 14
-                [
-                    'tooth_id' => 14,
-                    'pockets' => [
-                        'distobuccal' => 5,
-                        'buccal' => 4,
-                        'mesiobuccal' => 5,
-                        'distolingual' => 4,
-                        'lingual' => 3,
-                        'mesiolingual' => 4
-                    ],
-                    'recession' => 2,
-                    'mobility' => '1',
-                    'furcation' => 'II',
-                    'conditions' => [
-                        'bleeding' => true,
-                        'calculus' => true,
-                        'plaque' => true
-                    ]
-                ],
-                // Peter Jones - Tooth 19
-                [
-                    'tooth_id' => 19,
-                    'pockets' => [
-                        'distobuccal' => 3,
-                        'buccal' => 3,
-                        'mesiobuccal' => 4,
-                        'distolingual' => 3,
-                        'lingual' => 2,
-                        'mesiolingual' => 3
-                    ],
-                    'recession' => 1,
-                    'mobility' => '0',
-                    'furcation' => null,
-                    'conditions' => [
-                        'bleeding' => false,
-                        'calculus' => true,
-                        'plaque' => false
-                    ]
-                ]
-            ]
-        ];
-
-        if (isset($periodontalData[$patient->id])) {
-            foreach ($periodontalData[$patient->id] as $recordData) {
-                PeriodontalRecord::create([
-                    'patient_id' => $patient->id,
-                    'tooth_id' => $recordData['tooth_id'],
-                    'pockets' => $recordData['pockets'],
-                    'recession' => $recordData['recession'],
-                    'mobility' => $recordData['mobility'],
-                    'furcation' => $recordData['furcation'],
-                    'conditions' => $recordData['conditions'],
-                ]);
-            }
-        }
-    }
+    
 
     private function createTreatmentPlans($patient)
     {
         $treatmentData = [
-            '1' => [ // John Doe
+            '1' => [ // John Doe - Needs multiple treatments
                 [
-                    'id' => 't1',
-                    'procedure' => 'Filling for #16',
-                    'tooth' => 16,
-                    'status' => 'Completed',
+                    'id' => 't1-' . $patient->id,
+                    'procedure' => 'Filling for #12',
+                    'tooth' => 12,
+                    'status' => 'Proposed',
                     'cost' => 250,
-                    'date' => '2024-05-10',
-                    'invoice_id' => 'inv1'
+                    'date' => '2024-08-01',
+                    'invoice_id' => null
                 ],
                 [
-                    'id' => 't2', 
-                    'procedure' => 'Crown for #48',
-                    'tooth' => 48,
+                    'id' => 't2-' . $patient->id,
+                    'procedure' => 'Root Canal Treatment for #30',
+                    'tooth' => 30,
+                    'status' => 'Proposed',
+                    'cost' => 1500,
+                    'date' => '2024-08-15',
+                    'invoice_id' => null
+                ],
+                [
+                    'id' => 't3-' . $patient->id,
+                    'procedure' => 'Crown for #25',
+                    'tooth' => 25,
                     'status' => 'Proposed',
                     'cost' => 1200,
-                    'date' => '2024-06-01',
-                    'invoice_id' => null
-                ],
-                [
-                    'id' => 't3',
-                    'procedure' => 'Regular Checkup',
-                    'tooth' => null,
-                    'status' => 'Completed',
-                    'cost' => 75,
-                    'date' => '2024-03-01',
-                    'invoice_id' => 'inv4'
-                ],
-                [
-                    'id' => 't6',
-                    'procedure' => 'Teeth Whitening',
-                    'tooth' => null,
-                    'status' => 'Completed',
-                    'cost' => 450,
-                    'date' => '2024-07-20',
+                    'date' => '2024-09-01',
                     'invoice_id' => null
                 ]
             ],
-            '2' => [ // Jane Smith
+            '2' => [ // Jane Smith - Orthodontic follow-up
                 [
-                    'id' => 't4',
-                    'procedure' => 'Cleaning',
+                    'id' => 't4-' . $patient->id,
+                    'procedure' => 'Orthodontic Adjustment',
                     'tooth' => null,
-                    'status' => 'Completed',
-                    'cost' => 150,
-                    'date' => '2024-04-22',
-                    'invoice_id' => 'inv2'
+                    'status' => 'Proposed',
+                    'cost' => 200,
+                    'date' => '2024-08-10',
+                    'invoice_id' => null
                 ]
             ],
-            '4' => [ // Mike Williams
+            '5' => [ // Sarah Brown - Cosmetic work
                 [
-                    'id' => 't5',
-                    'procedure' => 'Filling',
+                    'id' => 't5-' . $patient->id,
+                    'procedure' => 'Composite Bonding for Anterior Teeth',
                     'tooth' => null,
-                    'status' => 'Completed',
-                    'cost' => 300,
-                    'date' => '2024-07-15',
-                    'invoice_id' => 'inv3'
+                    'status' => 'Proposed',
+                    'cost' => 1200,
+                    'date' => '2024-08-20',
+                    'invoice_id' => null
                 ]
             ]
         ];
 
         if (isset($treatmentData[$patient->id])) {
             foreach ($treatmentData[$patient->id] as $treatment) {
-                TreatmentPlan::create([
-                    'patient_id' => $patient->id, // Add this line
-                    'id' => $treatment['id'],
-                    'procedure' => $treatment['procedure'],
-                    'tooth' => $treatment['tooth'],
-                    'status' => $treatment['status'],
-                    'cost' => $treatment['cost'],
-                    'date' => $treatment['date'],
-                    'invoice_id' => $treatment['invoice_id'],
-                ]);
+                TreatmentPlan::updateOrCreate(
+                    [
+                        'patient_id' => $patient->id,
+                        'id' => $treatment['id'],
+                    ],
+                    $treatment
+                );
             }
         }
     }
 
-    private function createPatientImages($patient)
-    {
-        $imageData = [
-            '1' => [ // John Doe
-                [
-                    'url' => 'https://picsum.photos/seed/xray1/800/600',
-                    'description' => 'Initial panoramic X-ray',
-                    'date' => '2023-01-15'
-                ],
-                [
-                    'url' => 'https://picsum.photos/seed/xray2/800/600',
-                    'description' => 'Bitewing - Right Side',
-                    'date' => '2023-01-15'
-                ],
-                [
-                    'url' => 'https://picsum.photos/seed/xray3/800/600',
-                    'description' => 'Periapical - Tooth #16',
-                    'date' => '2024-05-08'
-                ],
-                [
-                    'url' => 'https://picsum.photos/seed/xray4/800/600',
-                    'description' => 'Post-treatment - Tooth #16',
-                    'date' => '2024-05-10'
-                ]
-            ],
-            '2' => [ // Jane Smith
-                [
-                    'url' => 'https://picsum.photos/seed/xray7/800/600',
-                    'description' => 'Annual Bitewing',
-                    'date' => '2024-04-22'
-                ]
-            ]
-        ];
-
-        if (isset($imageData[$patient->id])) {
-            foreach ($imageData[$patient->id] as $image) {
-                PatientImage::create([
-                    'patient_id' => $patient->id,
-                    'url' => $image['url'],
-                    'description' => $image['description'],
-                    'date' => $image['date'],
-                ]);
-            }
-        }
-    }
 }

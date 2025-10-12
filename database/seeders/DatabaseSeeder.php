@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             TreatmentSeeder::class,
             EmployeeSeeder::class,
             PatientSeeder::class,
+            PeriodontalSeeder::class,
             OdontogramSeeder::class,
             AppointmentSeeder::class,
             InvoiceSeeder::class,

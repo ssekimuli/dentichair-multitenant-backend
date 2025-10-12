@@ -10,8 +10,8 @@ class InventoryItem extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'name', 'supplier', 'stock', 'reorder_level', 

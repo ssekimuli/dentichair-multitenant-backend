@@ -117,7 +117,7 @@ endpoints:
         name: hire_date
         description: 'Must be a valid date.'
         required: true
-        example: '2025-10-12T17:10:55'
+        example: '2025-10-12T19:18:48'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -139,7 +139,7 @@ endpoints:
       email: zbailey@example.net
       role: architecto
       salary: 4326.41688
-      hire_date: '2025-10-12T17:10:55'
+      hire_date: '2025-10-12T19:18:48'
       branch_id: architecto
     fileParameters: []
     responses: []
@@ -227,7 +227,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: Active
+        example: 'On Leave'
         type: string
         enumValues:
           - Active
@@ -249,7 +249,7 @@ endpoints:
         name: hire_date
         description: 'Must be a valid date.'
         required: false
-        example: '2025-10-12T17:10:55'
+        example: '2025-10-12T19:18:48'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -269,9 +269,9 @@ endpoints:
       name: architecto
       avatar: architecto
       role: architecto
-      status: Active
+      status: 'On Leave'
       salary: 4326.41688
-      hire_date: '2025-10-12T17:10:55'
+      hire_date: '2025-10-12T19:18:48'
     fileParameters: []
     responses: []
     responseFields: []
@@ -448,7 +448,7 @@ endpoints:
         name: pay_date
         description: 'Must be a valid date.'
         required: true
-        example: '2025-10-12T17:10:55'
+        example: '2025-10-12T19:18:48'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -471,7 +471,7 @@ endpoints:
       gross_pay: 4326.41688
       deductions: 4326.41688
       net_pay: 4326.41688
-      pay_date: '2025-10-12T17:10:55'
+      pay_date: '2025-10-12T19:18:48'
       branch_id: architecto
     fileParameters: []
     responses: []
@@ -567,7 +567,7 @@ endpoints:
         name: date
         description: 'Must be a valid date.'
         required: true
-        example: '2025-10-12T17:10:55'
+        example: '2025-10-12T19:18:48'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -577,7 +577,7 @@ endpoints:
         name: status
         description: ''
         required: true
-        example: Absent
+        example: Present
         type: string
         enumValues:
           - Present
@@ -619,8 +619,8 @@ endpoints:
     cleanBodyParameters:
       employee_id: architecto
       employee_name: architecto
-      date: '2025-10-12T17:10:55'
-      status: Absent
+      date: '2025-10-12T19:18:48'
+      status: Present
       check_in: architecto
       check_out: architecto
       branch_id: architecto
@@ -824,7 +824,7 @@ endpoints:
         name: status
         description: ''
         required: true
-        example: Received
+        example: Cancelled
         type: string
         enumValues:
           - Sent
@@ -835,7 +835,7 @@ endpoints:
         nullable: false
         custom: []
     cleanBodyParameters:
-      status: Received
+      status: Cancelled
     fileParameters: []
     responses: []
     responseFields: []
@@ -921,7 +921,7 @@ endpoints:
         name: status
         description: ''
         required: true
-        example: Pending
+        example: Rejected
         type: string
         enumValues:
           - Pending
@@ -931,7 +931,7 @@ endpoints:
         nullable: false
         custom: []
     cleanBodyParameters:
-      status: Pending
+      status: Rejected
     fileParameters: []
     responses: []
     responseFields: []

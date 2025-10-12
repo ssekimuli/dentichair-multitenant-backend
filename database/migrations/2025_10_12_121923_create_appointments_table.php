@@ -9,7 +9,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('employees', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->id();
             $table->string('name');
             $table->string('avatar')->nullable();
             $table->string('email')->unique();
@@ -18,23 +18,23 @@ return new class extends Migration
             $table->decimal('salary', 10, 2);
             $table->date('hire_date');
             $table->string('password');
-            $table->string('branch_id');
+            $table->foreignId('branch_id'); // Changed to foreignId
             $table->timestamps();
 
             $table->foreign('branch_id')->references('id')->on('branches');
         });
 
         Schema::create('appointments', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->id();
             $table->string('patient_name');
-            $table->string('patient_id');
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->string('doctor_name');
-            $table->string('doctor_id');
+            $table->foreignId('doctor_id'); // Changed to foreignId
             $table->string('treatment');
             $table->enum('status', ['Scheduled', 'Completed', 'Cancelled', 'Waiting']);
             $table->date('date');
             $table->string('time');
-            $table->string('branch_id');
+            $table->foreignId('branch_id'); // Changed to foreignId
             $table->string('token_number');
             $table->timestamps();
 
@@ -44,15 +44,15 @@ return new class extends Migration
         });
 
         Schema::create('invoices', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->id();
             $table->string('patient_name');
-            $table->string('patient_id');
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->decimal('amount', 10, 2);
             $table->decimal('paid_amount', 10, 2)->default(0);
             $table->enum('status', ['Pending', 'Paid', 'Overdue']);
             $table->date('issue_date');
             $table->date('due_date');
-            $table->string('branch_id');
+            $table->foreignId('branch_id'); // Changed to foreignId
             $table->string('payment_method')->nullable();
             $table->timestamps();
 
@@ -62,7 +62,7 @@ return new class extends Migration
 
         Schema::create('invoice_treatments', function (Blueprint $table) {
             $table->id();
-            $table->string('invoice_id');
+            $table->foreignId('invoice_id'); // Changed to foreignId
             $table->string('procedure');
             $table->decimal('cost', 10, 2);
             $table->timestamps();
@@ -72,7 +72,7 @@ return new class extends Migration
 
         Schema::create('invoice_other_charges', function (Blueprint $table) {
             $table->id();
-            $table->string('invoice_id');
+            $table->foreignId('invoice_id'); // Changed to foreignId
             $table->string('description');
             $table->decimal('amount', 10, 2);
             $table->timestamps();
@@ -81,8 +81,8 @@ return new class extends Migration
         });
 
         Schema::create('payment_transactions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('invoice_id');
+            $table->id();
+            $table->foreignId('invoice_id'); // Changed to foreignId
             $table->date('date');
             $table->decimal('amount', 10, 2);
             $table->string('method');

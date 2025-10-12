@@ -9,8 +9,8 @@ class RolePermission extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = ['id', 'name', 'permissions'];
 

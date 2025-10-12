@@ -179,7 +179,6 @@ class PeriodontalSeeder extends Seeder
         $treatmentData = [
             '1' => [ // John Doe
                 [
-                    'id' => 't1',
                     'procedure' => 'Filling for #16',
                     'tooth' => 16,
                     'status' => 'Completed',
@@ -188,7 +187,6 @@ class PeriodontalSeeder extends Seeder
                     'invoice_id' => 'inv1'
                 ],
                 [
-                    'id' => 't2', 
                     'procedure' => 'Crown for #48',
                     'tooth' => 48,
                     'status' => 'Proposed',
@@ -197,7 +195,6 @@ class PeriodontalSeeder extends Seeder
                     'invoice_id' => null
                 ],
                 [
-                    'id' => 't3',
                     'procedure' => 'Regular Checkup',
                     'tooth' => null,
                     'status' => 'Completed',
@@ -206,7 +203,6 @@ class PeriodontalSeeder extends Seeder
                     'invoice_id' => 'inv4'
                 ],
                 [
-                    'id' => 't6',
                     'procedure' => 'Teeth Whitening',
                     'tooth' => null,
                     'status' => 'Completed',
@@ -217,7 +213,6 @@ class PeriodontalSeeder extends Seeder
             ],
             '2' => [ // Jane Smith
                 [
-                    'id' => 't4',
                     'procedure' => 'Cleaning',
                     'tooth' => null,
                     'status' => 'Completed',
@@ -228,7 +223,6 @@ class PeriodontalSeeder extends Seeder
             ],
             '4' => [ // Mike Williams
                 [
-                    'id' => 't5',
                     'procedure' => 'Filling',
                     'tooth' => null,
                     'status' => 'Completed',
@@ -242,8 +236,7 @@ class PeriodontalSeeder extends Seeder
         if (isset($treatmentData[$patient->id])) {
             foreach ($treatmentData[$patient->id] as $treatment) {
                 TreatmentPlan::create([
-                    'patient_id' => $patient->id, // Add this line
-                    'id' => $treatment['id'],
+                    'patient_id' => $patient->id,
                     'procedure' => $treatment['procedure'],
                     'tooth' => $treatment['tooth'],
                     'status' => $treatment['status'],

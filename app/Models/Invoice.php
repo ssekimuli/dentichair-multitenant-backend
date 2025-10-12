@@ -11,11 +11,11 @@ class Invoice extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
+        'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
         'issue_date', 'due_date', 'branch_id', 'payment_method'
     ];
 

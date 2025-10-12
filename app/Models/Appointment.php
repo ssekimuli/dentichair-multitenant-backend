@@ -10,8 +10,8 @@ class Appointment extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'patient_name', 'patient_id', 'doctor_name', 'doctor_id',

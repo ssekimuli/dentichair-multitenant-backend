@@ -10,8 +10,8 @@ class Branch extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = ['id', 'name', 'address'];
 

@@ -417,7 +417,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"email\": \"zbailey@example.net\",
     \"role\": \"architecto\",
     \"salary\": 4326.41688,
-    \"hire_date\": \"2025-10-12T17:10:55\",
+    \"hire_date\": \"2025-10-12T19:18:48\",
     \"branch_id\": \"architecto\"
 }"
 </code></pre></div>
@@ -439,7 +439,7 @@ let body = {
     "email": "zbailey@example.net",
     "role": "architecto",
     "salary": 4326.41688,
-    "hire_date": "2025-10-12T17:10:55",
+    "hire_date": "2025-10-12T19:18:48",
     "branch_id": "architecto"
 };
 
@@ -584,10 +584,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="hire_date"                data-endpoint="POSTapi-employees"
-               value="2025-10-12T17:10:55"
+               value="2025-10-12T19:18:48"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T17:10:55</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
@@ -622,9 +622,9 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"name\": \"architecto\",
     \"avatar\": \"architecto\",
     \"role\": \"architecto\",
-    \"status\": \"Active\",
+    \"status\": \"On Leave\",
     \"salary\": 4326.41688,
-    \"hire_date\": \"2025-10-12T17:10:55\"
+    \"hire_date\": \"2025-10-12T19:18:48\"
 }"
 </code></pre></div>
 
@@ -643,9 +643,9 @@ let body = {
     "name": "architecto",
     "avatar": "architecto",
     "role": "architecto",
-    "status": "Active",
+    "status": "On Leave",
     "salary": 4326.41688,
-    "hire_date": "2025-10-12T17:10:55"
+    "hire_date": "2025-10-12T19:18:48"
 };
 
 fetch(url, {
@@ -794,10 +794,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PUTapi-employees--id-"
-               value="Active"
+               value="On Leave"
                data-component="body">
     <br>
-<p>Example: <code>Active</code></p>
+<p>Example: <code>On Leave</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Active</code></li> <li><code>On Leave</code></li></ul>
         </div>
@@ -818,10 +818,10 @@ Must be one of:
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="hire_date"                data-endpoint="PUTapi-employees--id-"
-               value="2025-10-12T17:10:55"
+               value="2025-10-12T19:18:48"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T17:10:55</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
@@ -1103,7 +1103,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"gross_pay\": 4326.41688,
     \"deductions\": 4326.41688,
     \"net_pay\": 4326.41688,
-    \"pay_date\": \"2025-10-12T17:10:55\",
+    \"pay_date\": \"2025-10-12T19:18:48\",
     \"branch_id\": \"architecto\"
 }"
 </code></pre></div>
@@ -1126,7 +1126,7 @@ let body = {
     "gross_pay": 4326.41688,
     "deductions": 4326.41688,
     "net_pay": 4326.41688,
-    "pay_date": "2025-10-12T17:10:55",
+    "pay_date": "2025-10-12T19:18:48",
     "branch_id": "architecto"
 };
 
@@ -1282,10 +1282,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="pay_date"                data-endpoint="POSTapi-management-payrolls"
-               value="2025-10-12T17:10:55"
+               value="2025-10-12T19:18:48"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T17:10:55</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
@@ -1443,8 +1443,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --data "{
     \"employee_id\": \"architecto\",
     \"employee_name\": \"architecto\",
-    \"date\": \"2025-10-12T17:10:55\",
-    \"status\": \"Absent\",
+    \"date\": \"2025-10-12T19:18:48\",
+    \"status\": \"Present\",
     \"check_in\": \"architecto\",
     \"check_out\": \"architecto\",
     \"branch_id\": \"architecto\"
@@ -1465,8 +1465,8 @@ const headers = {
 let body = {
     "employee_id": "architecto",
     "employee_name": "architecto",
-    "date": "2025-10-12T17:10:55",
-    "status": "Absent",
+    "date": "2025-10-12T19:18:48",
+    "status": "Present",
     "check_in": "architecto",
     "check_out": "architecto",
     "branch_id": "architecto"
@@ -1580,10 +1580,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="date"                data-endpoint="POSTapi-management-attendance"
-               value="2025-10-12T17:10:55"
+               value="2025-10-12T19:18:48"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T17:10:55</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
@@ -1591,10 +1591,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="POSTapi-management-attendance"
-               value="Absent"
+               value="Present"
                data-component="body">
     <br>
-<p>Example: <code>Absent</code></p>
+<p>Example: <code>Present</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Present</code></li> <li><code>Absent</code></li> <li><code>On Leave</code></li></ul>
         </div>
@@ -2065,7 +2065,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"Received\"
+    \"status\": \"Cancelled\"
 }"
 </code></pre></div>
 
@@ -2081,7 +2081,7 @@ const headers = {
 };
 
 let body = {
-    "status": "Received"
+    "status": "Cancelled"
 };
 
 fetch(url, {
@@ -2182,10 +2182,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-management-lab-orders--id--status"
-               value="Received"
+               value="Cancelled"
                data-component="body">
     <br>
-<p>Example: <code>Received</code></p>
+<p>Example: <code>Cancelled</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Sent</code></li> <li><code>Received</code></li> <li><code>Completed</code></li> <li><code>Cancelled</code></li></ul>
         </div>
@@ -2332,7 +2332,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"Pending\"
+    \"status\": \"Rejected\"
 }"
 </code></pre></div>
 
@@ -2348,7 +2348,7 @@ const headers = {
 };
 
 let body = {
-    "status": "Pending"
+    "status": "Rejected"
 };
 
 fetch(url, {
@@ -2449,10 +2449,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-management-leave-requests--id-"
-               value="Pending"
+               value="Rejected"
                data-component="body">
     <br>
-<p>Example: <code>Pending</code></p>
+<p>Example: <code>Rejected</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Pending</code></li> <li><code>Approved</code></li> <li><code>Rejected</code></li></ul>
         </div>
@@ -6701,7 +6701,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"avatar\": \"architecto\",
     \"email\": \"john.updated@example.com\",
     \"date_of_birth\": \"1985-03-15\",
-    \"last_visit\": \"2025-10-12T17:10:55\",
+    \"last_visit\": \"2025-10-12T19:18:47\",
     \"status\": \"Inactive\",
     \"branch_id\": \"b2\",
     \"history\": \"Updated medical history\",
@@ -6727,7 +6727,7 @@ let body = {
     "avatar": "architecto",
     "email": "john.updated@example.com",
     "date_of_birth": "1985-03-15",
-    "last_visit": "2025-10-12T17:10:55",
+    "last_visit": "2025-10-12T19:18:47",
     "status": "Inactive",
     "branch_id": "b2",
     "history": "Updated medical history",
@@ -6904,10 +6904,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="last_visit"                data-endpoint="PUTapi-patients--id-"
-               value="2025-10-12T17:10:55"
+               value="2025-10-12T19:18:47"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T17:10:55</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T19:18:47</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;

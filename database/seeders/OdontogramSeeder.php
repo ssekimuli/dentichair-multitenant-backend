@@ -132,14 +132,11 @@ class OdontogramSeeder extends Seeder
         }
     }
 
-    
-
     private function createTreatmentPlans($patient)
     {
         $treatmentData = [
             '1' => [ // John Doe - Needs multiple treatments
                 [
-                    'id' => 't1-' . $patient->id,
                     'procedure' => 'Filling for #12',
                     'tooth' => 12,
                     'status' => 'Proposed',
@@ -148,7 +145,6 @@ class OdontogramSeeder extends Seeder
                     'invoice_id' => null
                 ],
                 [
-                    'id' => 't2-' . $patient->id,
                     'procedure' => 'Root Canal Treatment for #30',
                     'tooth' => 30,
                     'status' => 'Proposed',
@@ -157,7 +153,6 @@ class OdontogramSeeder extends Seeder
                     'invoice_id' => null
                 ],
                 [
-                    'id' => 't3-' . $patient->id,
                     'procedure' => 'Crown for #25',
                     'tooth' => 25,
                     'status' => 'Proposed',
@@ -168,7 +163,6 @@ class OdontogramSeeder extends Seeder
             ],
             '2' => [ // Jane Smith - Orthodontic follow-up
                 [
-                    'id' => 't4-' . $patient->id,
                     'procedure' => 'Orthodontic Adjustment',
                     'tooth' => null,
                     'status' => 'Proposed',
@@ -179,7 +173,6 @@ class OdontogramSeeder extends Seeder
             ],
             '5' => [ // Sarah Brown - Cosmetic work
                 [
-                    'id' => 't5-' . $patient->id,
                     'procedure' => 'Composite Bonding for Anterior Teeth',
                     'tooth' => null,
                     'status' => 'Proposed',
@@ -195,12 +188,17 @@ class OdontogramSeeder extends Seeder
                 TreatmentPlan::updateOrCreate(
                     [
                         'patient_id' => $patient->id,
-                        'id' => $treatment['id'],
+                        'procedure' => $treatment['procedure'],
+                        'tooth' => $treatment['tooth'],
                     ],
-                    $treatment
+                    [
+                        'status' => $treatment['status'],
+                        'cost' => $treatment['cost'],
+                        'date' => $treatment['date'],
+                        'invoice_id' => $treatment['invoice_id'],
+                    ]
                 );
             }
         }
     }
-
 }

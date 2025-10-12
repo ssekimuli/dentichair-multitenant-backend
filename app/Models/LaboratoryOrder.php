@@ -10,8 +10,8 @@ class LaboratoryOrder extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'patient_id', 'patient_name', 'lab', 'item', 'tooth',

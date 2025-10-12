@@ -10,8 +10,8 @@ class Expense extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'branch_id', 'date', 'category', 'description', 'amount'

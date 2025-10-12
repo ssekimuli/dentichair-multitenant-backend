@@ -86,9 +86,9 @@ class ManagementSeeder extends Seeder
     private function createStaffAdvances()
     {
         $advances = [
-            ['id' => 1, 'employee_id' => 3, 'employee_name' => 'Allison Cameron', 'amount' => 500, 'date' => '2024-07-01', 'reason' => 'Emergency', 'status' => 'Approved', 'branch_id' => 2], // Changed: 'adv1' → 1, 'emp3' → 3, 'b2' → 2
-            ['id' => 2, 'employee_id' => 5, 'employee_name' => 'Dr. Eric Foreman', 'amount' => 1000, 'date' => '2024-07-10', 'reason' => 'Travel expenses', 'status' => 'Pending', 'branch_id' => 2], // Changed: 'adv2' → 2, 'emp5' → 5, 'b2' → 2
-            ['id' => 3, 'employee_id' => 2, 'employee_name' => 'James Wilson', 'amount' => 200, 'date' => '2024-06-20', 'reason' => 'Personal', 'status' => 'Rejected', 'branch_id' => 1], // Changed: 'adv3' → 3, 'emp2' → 2, 'b1' → 1
+            ['id' => 1, 'employee_id' => 3, 'employee_name' => 'Allison Cameron', 'amount' => 500, 'date' => '2024-07-01', 'reason' => 'Emergency', 'status' => 'Approved', 'branch_id' => 2],
+            ['id' => 2, 'employee_id' => 5, 'employee_name' => 'Dr. Eric Foreman', 'amount' => 1000, 'date' => '2024-07-10', 'reason' => 'Travel expenses', 'status' => 'Pending', 'branch_id' => 2],
+            ['id' => 3, 'employee_id' => 2, 'employee_name' => 'James Wilson', 'amount' => 200, 'date' => '2024-06-20', 'reason' => 'Personal', 'status' => 'Rejected', 'branch_id' => 1],
         ];
 
         foreach ($advances as $advance) {
@@ -99,11 +99,11 @@ class ManagementSeeder extends Seeder
     private function createExpenses()
     {
         $expenses = [
-            ['id' => 1, 'branch_id' => 1, 'date' => '2024-06-01', 'category' => 'Rent', 'description' => 'June Rent - Downtown Clinic', 'amount' => 5000], // Changed: 'exp1' → 1, 'b1' → 1
-            ['id' => 2, 'branch_id' => 1, 'date' => '2024-06-05', 'category' => 'Utilities', 'description' => 'Electricity Bill', 'amount' => 450], // Changed: 'exp2' → 2, 'b1' → 1
-            ['id' => 3, 'branch_id' => 1, 'date' => '2024-06-10', 'category' => 'Supplies', 'description' => 'Order from Dental Supplies Co.', 'amount' => 1250], // Changed: 'exp3' → 3, 'b1' → 1
-            ['id' => 4, 'branch_id' => 2, 'date' => '2024-06-01', 'category' => 'Rent', 'description' => 'June Rent - Uptown Dental', 'amount' => 6500], // Changed: 'exp4' → 4, 'b2' → 2
-            ['id' => 5, 'branch_id' => 2, 'date' => '2024-06-06', 'category' => 'Utilities', 'description' => 'Water & Gas Bill', 'amount' => 300], // Changed: 'exp5' → 5, 'b2' → 2
+            ['id' => 1, 'branch_id' => 1, 'date' => '2024-06-01', 'category' => 'Rent', 'description' => 'June Rent - Downtown Clinic', 'amount' => 5000],
+            ['id' => 2, 'branch_id' => 1, 'date' => '2024-06-05', 'category' => 'Utilities', 'description' => 'Electricity Bill', 'amount' => 450],
+            ['id' => 3, 'branch_id' => 1, 'date' => '2024-06-10', 'category' => 'Supplies', 'description' => 'Order from Dental Supplies Co.', 'amount' => 1250],
+            ['id' => 4, 'branch_id' => 2, 'date' => '2024-06-01', 'category' => 'Rent', 'description' => 'June Rent - Uptown Dental', 'amount' => 6500],
+            ['id' => 5, 'branch_id' => 2, 'date' => '2024-06-06', 'category' => 'Utilities', 'description' => 'Water & Gas Bill', 'amount' => 300],
         ];
 
         foreach ($expenses as $expense) {
@@ -114,18 +114,18 @@ class ManagementSeeder extends Seeder
     private function createChartData()
     {
         $chartData = [
-            ['month' => 'January', 'revenue' => 18600, 'branch_id' => 1], // Changed: 'b1' → 1
-            ['month' => 'February', 'revenue' => 30500, 'branch_id' => 1], // Changed: 'b1' → 1
-            ['month' => 'March', 'revenue' => 23700, 'branch_id' => 1], // Changed: 'b1' → 1
-            ['month' => 'April', 'revenue' => 27800, 'branch_id' => 1], // Changed: 'b1' → 1
-            ['month' => 'May', 'revenue' => 45231, 'branch_id' => 1], // Changed: 'b1' → 1
-            ['month' => 'June', 'revenue' => 34900, 'branch_id' => 1], // Changed: 'b1' → 1
-            ['month' => 'January', 'revenue' => 15000, 'branch_id' => 2], // Changed: 'b2' → 2
-            ['month' => 'February', 'revenue' => 28000, 'branch_id' => 2], // Changed: 'b2' → 2
-            ['month' => 'March', 'revenue' => 21000, 'branch_id' => 2], // Changed: 'b2' → 2
-            ['month' => 'April', 'revenue' => 25000, 'branch_id' => 2], // Changed: 'b2' → 2
-            ['month' => 'May', 'revenue' => 41000, 'branch_id' => 2], // Changed: 'b2' → 2
-            ['month' => 'June', 'revenue' => 32000, 'branch_id' => 2], // Changed: 'b2' → 2
+            ['month' => 'January', 'revenue' => 18600, 'branch_id' => 1],
+            ['month' => 'February', 'revenue' => 30500, 'branch_id' => 1],
+            ['month' => 'March', 'revenue' => 23700, 'branch_id' => 1],
+            ['month' => 'April', 'revenue' => 27800, 'branch_id' => 1],
+            ['month' => 'May', 'revenue' => 45231, 'branch_id' => 1],
+            ['month' => 'June', 'revenue' => 34900, 'branch_id' => 1],
+            ['month' => 'January', 'revenue' => 15000, 'branch_id' => 2],
+            ['month' => 'February', 'revenue' => 28000, 'branch_id' => 2],
+            ['month' => 'March', 'revenue' => 21000, 'branch_id' => 2],
+            ['month' => 'April', 'revenue' => 25000, 'branch_id' => 2],
+            ['month' => 'May', 'revenue' => 41000, 'branch_id' => 2],
+            ['month' => 'June', 'revenue' => 32000, 'branch_id' => 2],
         ];
 
         foreach ($chartData as $data) {
@@ -136,13 +136,34 @@ class ManagementSeeder extends Seeder
     private function createRoles()
     {
         $roles = [
-            ['id' => 'Super Admin', 'name' => 'Super Admin', 'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'patients:delete', 'charting:read', 'charting:update', 'appointments:read', 'appointments:create', 'appointments:update', 'appointments:delete', 'billing:read', 'billing:create', 'billing:update', 'billing:delete', 'accounting:read', 'accounting:create', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'hrm:read', 'hrm:create', 'hrm:update', 'hrm:delete', 'branches:read', 'branches:create', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']],
-            ['id' => 'Account', 'name' => 'Accountant', 'permissions' => ['dashboard:read', 'billing:read', 'billing:create', 'billing:update', 'billing:delete', 'accounting:read', 'accounting:create', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']],
-            ['id' => 'HR', 'name' => 'HR Manager', 'permissions' => ['dashboard:read', 'hrm:read', 'hrm:create', 'hrm:update', 'hrm:delete', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']],
-            ['id' => 'Dentist', 'name' => 'Dentist', 'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'charting:read', 'charting:update', 'appointments:read', 'appointments:create', 'appointments:update', 'billing:read', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'profile:read', 'profile:update']],
-            ['id' => 'Hygienist', 'name' => 'Hygienist', 'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'charting:update', 'appointments:read', 'profile:read', 'profile:update']],
-            ['id' => 'Receptionist', 'name' => 'Receptionist', 'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'appointments:read', 'appointments:create', 'appointments:update', 'appointments:delete', 'billing:read', 'billing:create', 'billing:update', 'inventory:read', 'profile:read', 'profile:update']],
-            ['id' => 'Assistant', 'name' => 'Dental Assistant', 'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'appointments:read', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'profile:read', 'profile:update']]
+            [
+                'name' => 'Super Admin', 
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'patients:delete', 'charting:read', 'charting:update', 'appointments:read', 'appointments:create', 'appointments:update', 'appointments:delete', 'billing:read', 'billing:create', 'billing:update', 'billing:delete', 'accounting:read', 'accounting:create', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'hrm:read', 'hrm:create', 'hrm:update', 'hrm:delete', 'branches:read', 'branches:create', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']
+            ],
+            [
+                'name' => 'Accountant', 
+                'permissions' => ['dashboard:read', 'billing:read', 'billing:create', 'billing:update', 'billing:delete', 'accounting:read', 'accounting:create', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']
+            ],
+            [
+                'name' => 'HR Manager', 
+                'permissions' => ['dashboard:read', 'hrm:read', 'hrm:create', 'hrm:update', 'hrm:delete', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']
+            ],
+            [
+                'name' => 'Dentist', 
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'charting:read', 'charting:update', 'appointments:read', 'appointments:create', 'appointments:update', 'billing:read', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'profile:read', 'profile:update']
+            ],
+            [
+                'name' => 'Hygienist', 
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'charting:update', 'appointments:read', 'profile:read', 'profile:update']
+            ],
+            [
+                'name' => 'Receptionist', 
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'appointments:read', 'appointments:create', 'appointments:update', 'appointments:delete', 'billing:read', 'billing:create', 'billing:update', 'inventory:read', 'profile:read', 'profile:update']
+            ],
+            [
+                'name' => 'Dental Assistant', 
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'appointments:read', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'profile:read', 'profile:update']
+            ]
         ];
 
         foreach ($roles as $role) {

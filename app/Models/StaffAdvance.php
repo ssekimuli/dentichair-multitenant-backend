@@ -10,8 +10,8 @@ class StaffAdvance extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'employee_id', 'employee_name', 'amount', 'date',

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('branches', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->id(); // This creates a bigInteger auto-increment primary key
             $table->string('name');
             $table->string('address');
             $table->timestamps();
@@ -23,14 +23,14 @@ return new class extends Migration
         });
 
         Schema::create('patients', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->id();
             $table->string('name');
             $table->string('avatar')->nullable();
             $table->string('email');
             $table->date('date_of_birth');
             $table->date('last_visit')->nullable();
             $table->enum('status', ['Active', 'Inactive'])->default('Active');
-            $table->string('branch_id');
+            $table->foreignId('branch_id'); // Changed to foreignId which creates a bigInteger
             $table->text('history')->nullable();
             $table->json('occlusal_records')->nullable();
             $table->timestamps();
@@ -40,7 +40,7 @@ return new class extends Migration
 
         Schema::create('dental_records', function (Blueprint $table) {
             $table->id();
-            $table->string('patient_id');
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->integer('tooth_id');
             $table->string('condition');
             $table->text('notes')->nullable();
@@ -50,8 +50,8 @@ return new class extends Migration
         });
 
         Schema::create('treatment_plans', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('patient_id');
+            $table->id();
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->string('procedure');
             $table->integer('tooth')->nullable();
             $table->enum('status', ['Proposed', 'Completed'])->default('Proposed');
@@ -65,7 +65,7 @@ return new class extends Migration
 
         Schema::create('patient_images', function (Blueprint $table) {
             $table->id();
-            $table->string('patient_id');
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->string('url');
             $table->string('description');
             $table->date('date');
@@ -76,7 +76,7 @@ return new class extends Migration
 
         Schema::create('periodontal_records', function (Blueprint $table) {
             $table->id();
-            $table->string('patient_id');
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->integer('tooth_id');
             $table->json('pockets');
             $table->integer('recession');
@@ -89,8 +89,8 @@ return new class extends Migration
         });
 
         Schema::create('soft_tissue_records', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('patient_id');
+            $table->id();
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->date('date');
             $table->string('location');
             $table->string('type');
@@ -101,8 +101,8 @@ return new class extends Migration
         });
 
         Schema::create('orthodontic_records', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('patient_id');
+            $table->id();
+            $table->foreignId('patient_id'); // Changed to foreignId
             $table->date('date');
             $table->string('appliance');
             $table->string('wire_size')->nullable();

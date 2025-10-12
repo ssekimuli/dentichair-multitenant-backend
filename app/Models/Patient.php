@@ -11,8 +11,8 @@ class Patient extends Model
 {
     use HasFactory;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'name', 'avatar', 'email', 'date_of_birth', 'last_visit', 

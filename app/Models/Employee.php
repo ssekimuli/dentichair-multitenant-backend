@@ -12,8 +12,8 @@ class Employee extends Model
 {
       use HasFactory, HasApiTokens;
 
-    protected $keyType = 'string';
-    public $incrementing = false;
+    // protected $keyType = 'string';
+    // public $incrementing = false;
 
     protected $fillable = [
         'id', 'name', 'avatar', 'email', 'role', 'status', 

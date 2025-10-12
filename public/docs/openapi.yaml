@@ -88,7 +88,7 @@ paths:
                 hire_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T16:56:49'
+                  example: '2025-10-12T17:10:55'
                   nullable: false
                 branch_id:
                   type: string
@@ -155,7 +155,7 @@ paths:
                 hire_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T16:56:49'
+                  example: '2025-10-12T17:10:55'
                   nullable: false
                 branch_id:
                   type: string
@@ -251,7 +251,7 @@ paths:
                 pay_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T16:56:49'
+                  example: '2025-10-12T17:10:55'
                   nullable: false
                 branch_id:
                   type: string
@@ -318,12 +318,12 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T16:56:49'
+                  example: '2025-10-12T17:10:55'
                   nullable: false
                 status:
                   type: string
                   description: ''
-                  example: 'On Leave'
+                  example: Absent
                   nullable: false
                   enum:
                     - Present
@@ -517,7 +517,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Approved
+                  example: Pending
                   nullable: false
                   enum:
                     - Pending
@@ -576,7 +576,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Rejected
+                  example: Approved
                   nullable: false
                   enum:
                     - Pending
@@ -3201,7 +3201,7 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T16:56:48'
+                  example: '2025-10-12T17:10:55'
                   nullable: true
                 status:
                   type: string

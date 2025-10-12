@@ -17,7 +17,10 @@ class Employee extends Model
 
     protected $fillable = [
         'id', 'name', 'avatar', 'email', 'role', 'status', 
-        'salary', 'hire_date', 'branch_id'
+        'salary', 'hire_date', 'branch_id','password'
+    ];
+    protected $hidden = [
+        'password',
     ];
 
     protected $casts = [

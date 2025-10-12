@@ -17,6 +17,7 @@ return new class extends Migration
             $table->enum('status', ['Active', 'On Leave'])->default('Active');
             $table->decimal('salary', 10, 2);
             $table->date('hire_date');
+            $table->string('password');
             $table->string('branch_id');
             $table->timestamps();
 

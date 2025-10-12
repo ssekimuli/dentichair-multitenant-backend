@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Validation\ValidationException;
+
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -51,6 +53,7 @@ class AuthController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+
     public function login(Request $request)
     {
         $request->validate([
@@ -60,24 +63,24 @@ class AuthController extends Controller
 
         $employee = Employee::where('email', $request->email)->first();
 
-        // For prototype, accept any login if password is "password"
-        if ($employee && $request->password === 'password') {
-            // Create a new token for the user
-            $token = $employee->createToken('auth-token')->plainTextToken;
-            
-            return response()->json([
-                'token' => $token,
-                'user' => [
-                    'role' => $employee->role,
-                    'branchId' => $employee->branch_id,
-                    'email' => $employee->email,
-                    'name' => $employee->name,
-                    'avatar' => $employee->avatar,
-                ]
+        if (!$employee || !Hash::check($request->password, $employee->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
-        return response()->json(['error' => 'Invalid credentials'], 401);
+        $token = $employee->createToken('api-token')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => [
+                'role' => $employee->role,
+                'branchId' => $employee->branch_id,
+                'email' => $employee->email,
+                'name' => $employee->name,
+                'avatar' => $employee->avatar,
+            ]
+        ]);
     }
 
     /**
@@ -149,7 +152,7 @@ class AuthController extends Controller
 
         // Generate 6-digit OTP
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        
+
         // Store OTP in cache with 10 minutes expiration
         $cacheKey = 'password_reset_' . $identifier;
         Cache::put($cacheKey, [
@@ -160,14 +163,14 @@ class AuthController extends Controller
 
         // Send OTP based on method
         $response = [];
-        
+
         if ($method === 'email') {
             $this->sendOtpEmail($employee->email, $otp, $employee->name);
-            
+
             // Mask email for response
             $emailParts = explode('@', $employee->email);
             $maskedEmail = substr($emailParts[0], 0, 1) . '***@' . $emailParts[1];
-            
+
             $response = [
                 'message' => 'OTP sent successfully to your email',
                 'method' => 'email',
@@ -175,11 +178,11 @@ class AuthController extends Controller
             ];
         } elseif ($method === 'sms') {
             $this->sendOtpSms($employee->phone, $otp);
-            
+
             // Mask phone for response
             $phone = $employee->phone;
             $maskedPhone = substr($phone, 0, 2) . '******' . substr($phone, -2);
-            
+
             $response = [
                 'message' => 'OTP sent successfully to your phone',
                 'method' => 'sms',
@@ -374,7 +377,7 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $employee = $request->user();
-        
+
         return response()->json([
             'user' => [
                 'role' => $employee->role,
@@ -459,7 +462,7 @@ class AuthController extends Controller
     public function getProfileData(Request $request)
     {
         $employee = $request->user();
-        
+
         $employeePayrolls = $employee->payrolls;
         $totalPaid = $employeePayrolls->sum('net_pay');
 
@@ -500,9 +503,9 @@ class AuthController extends Controller
     {
         // For prototype, we'll log the OTP instead of actually sending email
         // In production, integrate with your email service (Mailgun, SendGrid, etc.)
-        
+
         // \Log::info("OTP sent to {$email}: {$otp} for user {$name}");
-        
+
         // Example of actual email sending (uncomment in production):
         /*
         Mail::send('emails.password-reset', ['otp' => $otp, 'name' => $name], function ($message) use ($email) {
@@ -523,9 +526,9 @@ class AuthController extends Controller
     {
         // For prototype, we'll log the OTP instead of actually sending SMS
         // In production, integrate with your SMS gateway (Twilio, etc.)
-        
+
         // \Log::info("OTP sent to {$phone}: {$otp}");
-        
+
         // Example of actual SMS sending (uncomment in production):
         /*
         // Integration with Twilio or other SMS service

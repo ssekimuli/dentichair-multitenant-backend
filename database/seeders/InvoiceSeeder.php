@@ -14,29 +14,29 @@ class InvoiceSeeder extends Seeder
     {
         $invoices = [
             [
-                'id' => 'inv1', 'patient_id' => '1', 'patient_name' => 'John Doe', 'amount' => 250, 'paid_amount' => 100, 
-                'status' => 'Pending', 'issue_date' => '2024-05-10', 'due_date' => '2024-06-10', 'branch_id' => 'b1',
+                'id' => 1, 'patient_id' => 1, 'patient_name' => 'John Doe', 'amount' => 250, 'paid_amount' => 100, 
+                'status' => 'Pending', 'issue_date' => '2024-05-10', 'due_date' => '2024-06-10', 'branch_id' => 1, // Changed to 1
                 'treatments' => [['Filling for #16', 250]],
                 'other_charges' => [],
                 'transactions' => [['txn1', '2024-05-12', 100, 'Insurance']]
             ],
             [
-                'id' => 'inv2', 'patient_id' => '2', 'patient_name' => 'Jane Smith', 'amount' => 150, 'paid_amount' => 150, 
-                'status' => 'Paid', 'issue_date' => '2024-04-22', 'due_date' => '2024-05-22', 'branch_id' => 'b2',
+                'id' => 2, 'patient_id' => 2, 'patient_name' => 'Jane Smith', 'amount' => 150, 'paid_amount' => 150, 
+                'status' => 'Paid', 'issue_date' => '2024-04-22', 'due_date' => '2024-05-22', 'branch_id' => 2, // Changed to 2
                 'treatments' => [['Cleaning', 150]],
                 'other_charges' => [],
                 'transactions' => [['txn2', '2024-04-22', 150, 'Credit Card']]
             ],
             [
-                'id' => 'inv3', 'patient_id' => '4', 'patient_name' => 'Mike Williams', 'amount' => 300, 'paid_amount' => 300, 
-                'status' => 'Paid', 'issue_date' => '2024-07-15', 'due_date' => '2024-08-15', 'branch_id' => 'b2',
+                'id' => 3, 'patient_id' => 4, 'patient_name' => 'Mike Williams', 'amount' => 300, 'paid_amount' => 300, 
+                'status' => 'Paid', 'issue_date' => '2024-07-15', 'due_date' => '2024-08-15', 'branch_id' => 2, // Changed to 2
                 'treatments' => [['Filling', 300]],
                 'other_charges' => [],
                 'transactions' => [['txn3', '2024-07-15', 300, 'Cash']]
             ],
             [
-                'id' => 'inv4', 'patient_id' => '1', 'patient_name' => 'John Doe', 'amount' => 95, 'paid_amount' => 0, 
-                'status' => 'Overdue', 'issue_date' => '2024-03-01', 'due_date' => '2024-04-01', 'branch_id' => 'b1',
+                'id' => 4, 'patient_id' => 1, 'patient_name' => 'John Doe', 'amount' => 95, 'paid_amount' => 0, 
+                'status' => 'Overdue', 'issue_date' => '2024-03-01', 'due_date' => '2024-04-01', 'branch_id' => 1, // Changed to 1
                 'treatments' => [['Regular Checkup', 75]],
                 'other_charges' => [['Late Fee', 20]],
                 'transactions' => []

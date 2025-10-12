@@ -10,9 +10,9 @@ class BranchSeeder extends Seeder
     public function run()
     {
         $branches = [
-            ['id' => 'b1', 'name' => 'Downtown Clinic', 'address' => '123 Main St, Cityville'],
-            ['id' => 'b2', 'name' => 'Uptown Dental', 'address' => '456 Oak Ave, Townburg'],
-            ['id' => 'b3', 'name' => 'Westside Dental Center', 'address' => '789 Pine Rd, Westside'],
+            ['id' => 1, 'name' => 'Downtown Clinic', 'address' => '123 Main St, Cityville'],
+            ['id' => 2, 'name' => 'Uptown Dental', 'address' => '456 Oak Ave, Townburg'],
+            ['id' => 3, 'name' => 'Westside Dental Center', 'address' => '789 Pine Rd, Westside'],
         ];
 
         foreach ($branches as $branch) {

@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "8bda5d0a-dda2-4e7f-ac98-7ff3b8364a97",
+        "_postman_id": "2ae1095a-f5ef-4cef-823f-e91dc08fffa1",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -89,7 +89,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"email\":\"zbailey@example.net\",\"role\":\"architecto\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T16:56:49\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"email\":\"zbailey@example.net\",\"role\":\"architecto\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T17:10:55\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -128,7 +128,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"role\":\"architecto\",\"status\":\"Active\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T16:56:49\"}"
+                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"role\":\"architecto\",\"status\":\"Active\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T17:10:55\"}"
                         },
                         "description": "",
                         "auth": {
@@ -243,7 +243,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-12T16:56:49\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-12T17:10:55\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -322,7 +322,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-12T16:56:49\",\"status\":\"On Leave\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-12T17:10:55\",\"status\":\"Absent\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -583,7 +583,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Approved\"}"
+                            "raw": "{\"status\":\"Pending\"}"
                         },
                         "description": "",
                         "auth": {
@@ -670,7 +670,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Rejected\"}"
+                            "raw": "{\"status\":\"Approved\"}"
                         },
                         "description": "",
                         "auth": {
@@ -1637,7 +1637,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-12T16:56:48\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-12T17:10:55\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
                         },
                         "description": "Update an existing patient's information."
                     },

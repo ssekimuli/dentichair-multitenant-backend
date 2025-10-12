@@ -9,8 +9,69 @@ use App\Models\PaymentTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * @group Invoices & Billing
+ * 
+ * Endpoints for managing patient invoices, payments, and billing operations.
+ * Includes invoice creation, payment processing, and financial tracking.
+ */
 class InvoiceController extends Controller
 {
+    /**
+     * Get All Invoices
+     * 
+     * Retrieve a list of invoices with optional filtering by branch or status.
+     * Returns complete invoice details including treatments, charges, and payment transactions.
+     * 
+     * @authenticated
+     * 
+     * @queryParam branch_id string Filter invoices by branch ID. Example: b1
+     * @queryParam status string Filter invoices by status. Example: Paid
+     * 
+     * @response 200 {
+     *   "data": [
+     *     {
+     *       "id": "inv1",
+     *       "patient_name": "John Doe",
+     *       "patient_id": "1",
+     *       "amount": 250.00,
+     *       "paid_amount": 100.00,
+     *       "status": "Pending",
+     *       "issue_date": "2024-05-10",
+     *       "due_date": "2024-06-10",
+     *       "branch_id": "b1",
+     *       "payment_method": "Insurance",
+     *       "treatments": [
+     *         {
+     *           "procedure": "Filling for #16",
+     *           "cost": 250.00
+     *         }
+     *       ],
+     *       "other_charges": [],
+     *       "transactions": [
+     *         {
+     *           "id": "txn1",
+     *           "date": "2024-05-12",
+     *           "amount": 100.00,
+     *           "method": "Insurance"
+     *         }
+     *       ],
+     *       "patient": {
+     *         "id": "1",
+     *         "name": "John Doe",
+     *         "email": "john.doe@example.com"
+     *       },
+     *       "branch": {
+     *         "id": "b1",
+     *         "name": "Downtown Clinic"
+     *       }
+     *     }
+     *   ]
+     * }
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions']);
@@ -28,6 +89,63 @@ class InvoiceController extends Controller
         return response()->json($invoices);
     }
 
+    /**
+     * Get Invoice by ID
+     * 
+     * Retrieve detailed information for a specific invoice including all treatments,
+     * additional charges, and payment history.
+     * 
+     * @authenticated
+     * 
+     * @urlParam id string required The invoice ID. Example: inv1
+     * 
+     * @response 200 {
+     *   "id": "inv1",
+     *   "patient_name": "John Doe",
+     *   "patient_id": "1",
+     *   "amount": 250.00,
+     *   "paid_amount": 100.00,
+     *   "status": "Pending",
+     *   "issue_date": "2024-05-10",
+     *   "due_date": "2024-06-10",
+     *   "branch_id": "b1",
+     *   "payment_method": "Insurance",
+     *   "treatments": [
+     *     {
+     *       "procedure": "Filling for #16",
+     *       "cost": 250.00
+     *     }
+     *   ],
+     *   "other_charges": [
+     *     {
+     *       "description": "Late Fee",
+     *       "amount": 20.00
+     *     }
+     *   ],
+     *   "transactions": [
+     *     {
+     *       "id": "txn1",
+     *       "date": "2024-05-12",
+     *       "amount": 100.00,
+     *       "method": "Insurance"
+     *     }
+     *   ],
+     *   "patient": {
+     *     "id": "1",
+     *     "name": "John Doe"
+     *   },
+     *   "branch": {
+     *     "id": "b1",
+     *     "name": "Downtown Clinic"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Invoice not found"
+     * }
+     * 
+     * @param string $id Invoice ID
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $invoice = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])->find($id);
@@ -39,6 +157,68 @@ class InvoiceController extends Controller
         return response()->json($invoice);
     }
 
+    /**
+     * Create Invoice
+     * 
+     * Create a new invoice for a patient with treatments and optional additional charges.
+     * Automatically sets initial status to "Pending" and paid amount to 0.
+     * 
+     * @authenticated
+     * 
+     * @bodyParam patient_name string required Patient's full name. Example: John Doe
+     * @bodyParam patient_id string required Patient's ID. Example: 1
+     * @bodyParam amount number required Total invoice amount. Example: 250.00
+     * @bodyParam issue_date date required Invoice issue date (YYYY-MM-DD). Example: 2024-05-10
+     * @bodyParam due_date date required Invoice due date (YYYY-MM-DD). Example: 2024-06-10
+     * @bodyParam branch_id string required Branch ID. Example: b1
+     * @bodyParam treatments array required Array of treatment procedures
+     * @bodyParam treatments.*.procedure string required Treatment procedure description. Example: Filling for #16
+     * @bodyParam treatments.*.cost number required Treatment cost. Example: 250.00
+     * @bodyParam other_charges array Optional array of additional charges
+     * @bodyParam other_charges.*.description string required Charge description. Example: Late Fee
+     * @bodyParam other_charges.*.amount number required Charge amount. Example: 20.00
+     * 
+     * @response 201 {
+     *   "id": "inv5",
+     *   "patient_name": "John Doe",
+     *   "patient_id": "1",
+     *   "amount": 270.00,
+     *   "paid_amount": 0.00,
+     *   "status": "Pending",
+     *   "issue_date": "2024-05-10",
+     *   "due_date": "2024-06-10",
+     *   "branch_id": "b1",
+     *   "payment_method": null,
+     *   "treatments": [
+     *     {
+     *       "procedure": "Filling for #16",
+     *       "cost": 250.00
+     *     }
+     *   ],
+     *   "other_charges": [
+     *     {
+     *       "description": "Late Fee",
+     *       "amount": 20.00
+     *     }
+     *   ],
+     *   "transactions": []
+     * }
+     * @response 422 {
+     *   "message": "The given data was invalid.",
+     *   "errors": {
+     *     "patient_name": ["The patient name field is required."],
+     *     "patient_id": ["The patient id field is required."],
+     *     "amount": ["The amount field is required."],
+     *     "issue_date": ["The issue date field is required."],
+     *     "due_date": ["The due date field is required."],
+     *     "branch_id": ["The branch id field is required."],
+     *     "treatments": ["The treatments field is required."]
+     *   }
+     * }
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -76,6 +256,60 @@ class InvoiceController extends Controller
         return response()->json($invoice->load(['treatments', 'otherCharges']), 201);
     }
 
+    /**
+     * Update Invoice
+     * 
+     * Update an existing invoice's details. Can update basic information but not treatments or charges.
+     * For adding treatments or charges, create a new invoice instead.
+     * 
+     * @authenticated
+     * 
+     * @urlParam id string required The invoice ID. Example: inv1
+     * @bodyParam patient_name string Patient's full name. Example: John Doe Updated
+     * @bodyParam patient_id string Patient's ID. Example: 1
+     * @bodyParam amount number Total invoice amount. Example: 300.00
+     * @bodyParam paid_amount number Amount already paid. Example: 150.00
+     * @bodyParam status string Invoice status. Example: Paid
+     * @bodyParam issue_date date Invoice issue date. Example: 2024-05-10
+     * @bodyParam due_date date Invoice due date. Example: 2024-06-10
+     * @bodyParam branch_id string Branch ID. Example: b1
+     * @bodyParam payment_method string Payment method used. Example: Credit Card
+     * 
+     * @response 200 {
+     *   "id": "inv1",
+     *   "patient_name": "John Doe Updated",
+     *   "patient_id": "1",
+     *   "amount": 300.00,
+     *   "paid_amount": 150.00,
+     *   "status": "Paid",
+     *   "issue_date": "2024-05-10",
+     *   "due_date": "2024-06-10",
+     *   "branch_id": "b1",
+     *   "payment_method": "Credit Card",
+     *   "treatments": [
+     *     {
+     *       "procedure": "Filling for #16",
+     *       "cost": 250.00
+     *     }
+     *   ],
+     *   "other_charges": [],
+     *   "transactions": [
+     *     {
+     *       "id": "txn1",
+     *       "date": "2024-05-12",
+     *       "amount": 100.00,
+     *       "method": "Insurance"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Invoice not found"
+     * }
+     * 
+     * @param Request $request
+     * @param string $id Invoice ID
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $invoice = Invoice::find($id);
@@ -101,6 +335,60 @@ class InvoiceController extends Controller
         return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions']));
     }
 
+    /**
+     * Add Payment to Invoice
+     * 
+     * Process a payment for an invoice. Creates a payment transaction and updates
+     * the invoice's paid amount and status automatically.
+     * If paid amount reaches or exceeds total amount, status changes to "Paid".
+     * 
+     * @authenticated
+     * 
+     * @urlParam id string required The invoice ID. Example: inv1
+     * @bodyParam amount number required Payment amount. Example: 150.00
+     * @bodyParam method string required Payment method. Example: Credit Card
+     * 
+     * @response 200 {
+     *   "id": "inv1",
+     *   "patient_name": "John Doe",
+     *   "patient_id": "1",
+     *   "amount": 250.00,
+     *   "paid_amount": 250.00,
+     *   "status": "Paid",
+     *   "issue_date": "2024-05-10",
+     *   "due_date": "2024-06-10",
+     *   "branch_id": "b1",
+     *   "payment_method": "Credit Card",
+     *   "treatments": [
+     *     {
+     *       "procedure": "Filling for #16",
+     *       "cost": 250.00
+     *     }
+     *   ],
+     *   "other_charges": [],
+     *   "transactions": [
+     *     {
+     *       "id": "txn1",
+     *       "date": "2024-05-12",
+     *       "amount": 100.00,
+     *       "method": "Insurance"
+     *     },
+     *     {
+     *       "id": "txn2",
+     *       "date": "2024-07-15",
+     *       "amount": 150.00,
+     *       "method": "Credit Card"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Invoice not found"
+     * }
+     * 
+     * @param Request $request
+     * @param string $id Invoice ID
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function addPayment(Request $request, $id)
     {
         $invoice = Invoice::find($id);
@@ -130,6 +418,26 @@ class InvoiceController extends Controller
         return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions']));
     }
 
+    /**
+     * Delete Invoice
+     * 
+     * Permanently delete an invoice and all associated treatments, charges, and transactions.
+     * Use with caution as this action cannot be undone.
+     * 
+     * @authenticated
+     * 
+     * @urlParam id string required The invoice ID. Example: inv1
+     * 
+     * @response 200 {
+     *   "success": true
+     * }
+     * @response 404 {
+     *   "error": "Invoice not found"
+     * }
+     * 
+     * @param string $id Invoice ID
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         $invoice = Invoice::find($id);

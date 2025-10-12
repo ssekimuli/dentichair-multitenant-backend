@@ -15,7 +15,9 @@ Route::post('/login', [AuthController::class, 'login']);
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
-    Route::get('/profile/{userEmail}', [AuthController::class, 'getProfileData']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/profile', [AuthController::class, 'getProfileData']);
 
     // Patients
     Route::apiResource('patients', PatientController::class);

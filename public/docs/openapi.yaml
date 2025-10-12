@@ -22,6 +22,9 @@ tags:
   -
     name: Patients
     description: "\nEndpoints for managing patient records, dental charting, and treatment planning.\nIncludes comprehensive dental record management with odontogram support."
+  -
+    name: 'Roles & Permissions Management'
+    description: "\nEndpoints for managing user roles and permissions in the Dental Management System.\nSuper Admin access required for most operations."
 paths:
   /api/employees:
     get:
@@ -88,7 +91,7 @@ paths:
                 hire_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T19:18:48'
+                  example: '2025-10-12T21:22:06'
                   nullable: false
                 branch_id:
                   type: string
@@ -142,7 +145,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: 'On Leave'
+                  example: Active
                   nullable: false
                   enum:
                     - Active
@@ -155,7 +158,7 @@ paths:
                 hire_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T19:18:48'
+                  example: '2025-10-12T21:22:06'
                   nullable: false
                 branch_id:
                   type: string
@@ -251,7 +254,7 @@ paths:
                 pay_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T19:18:48'
+                  example: '2025-10-12T21:22:06'
                   nullable: false
                 branch_id:
                   type: string
@@ -318,7 +321,7 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T19:18:48'
+                  example: '2025-10-12T21:22:06'
                   nullable: false
                 status:
                   type: string
@@ -457,7 +460,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Cancelled
+                  example: Sent
                   nullable: false
                   enum:
                     - Sent
@@ -517,7 +520,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Rejected
+                  example: Approved
                   nullable: false
                   enum:
                     - Pending
@@ -576,7 +579,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Approved
+                  example: Rejected
                   nullable: false
                   enum:
                     - Pending
@@ -3201,7 +3204,7 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T19:18:47'
+                  example: '2025-10-12T21:22:06'
                   nullable: true
                 status:
                   type: string
@@ -3965,3 +3968,420 @@ paths:
         required: true
         schema:
           type: string
+  /api/settings/roles:
+    get:
+      summary: 'Get All Roles and Permissions'
+      operationId: getAllRolesAndPermissions
+      description: "Retrieve a comprehensive list of all defined roles and their assigned permissions.\nIntended for the 'Roles & Permissions' settings page."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  data:
+                    -
+                      id: 1
+                      name: 'Super Admin'
+                      permissions:
+                        - 'dashboard:read'
+                        - 'queue:read'
+                        - 'patients:read'
+                        - 'patients:create'
+                        - 'patients:update'
+                        - 'patients:delete'
+                        - 'settings:manage'
+                    -
+                      id: 2
+                      name: Dentist
+                      permissions:
+                        - 'dashboard:read'
+                        - 'queue:read'
+                        - 'patients:read'
+                        - 'charting:read'
+                        - 'charting:update'
+                properties:
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        name: 'Super Admin'
+                        permissions:
+                          - 'dashboard:read'
+                          - 'queue:read'
+                          - 'patients:read'
+                          - 'patients:create'
+                          - 'patients:update'
+                          - 'patients:delete'
+                          - 'settings:manage'
+                      -
+                        id: 2
+                        name: Dentist
+                        permissions:
+                          - 'dashboard:read'
+                          - 'queue:read'
+                          - 'patients:read'
+                          - 'charting:read'
+                          - 'charting:update'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        name:
+                          type: string
+                          example: 'Super Admin'
+                        permissions:
+                          type: array
+                          example:
+                            - 'dashboard:read'
+                            - 'queue:read'
+                            - 'patients:read'
+                            - 'patients:create'
+                            - 'patients:update'
+                            - 'patients:delete'
+                            - 'settings:manage'
+                          items:
+                            type: string
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+        403:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Unauthorized. Super Admin access required.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Unauthorized. Super Admin access required.'
+      tags:
+        - 'Roles & Permissions Management'
+  '/api/settings/roles/{role_id}':
+    put:
+      summary: 'Update Permissions for a Role'
+      operationId: updatePermissionsForARole
+      description: "Update the permissions for a specific role. The provided permissions array\nwill completely replace the existing permissions for that role."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Permissions updated successfully'
+                  data:
+                    id: 1
+                    name: 'Super Admin'
+                    permissions:
+                      - 'dashboard:read'
+                      - 'patients:read'
+                      - 'patients:create'
+                properties:
+                  message:
+                    type: string
+                    example: 'Permissions updated successfully'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: 'Super Admin'
+                      permissions:
+                        type: array
+                        example:
+                          - 'dashboard:read'
+                          - 'patients:read'
+                          - 'patients:create'
+                        items:
+                          type: string
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+        403:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Unauthorized. Super Admin access required.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Unauthorized. Super Admin access required.'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Role not found'
+                properties:
+                  message:
+                    type: string
+                    example: 'Role not found'
+        422:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'The given data was invalid.'
+                  errors:
+                    permissions:
+                      - 'The permissions field is required.'
+                properties:
+                  message:
+                    type: string
+                    example: 'The given data was invalid.'
+                  errors:
+                    type: object
+                    properties:
+                      permissions:
+                        type: array
+                        example:
+                          - 'The permissions field is required.'
+                        items:
+                          type: string
+      tags:
+        - 'Roles & Permissions Management'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permissions:
+                  type: array
+                  description: 'Array of permission strings.'
+                  example:
+                    - 'dashboard:read'
+                    - 'patients:read'
+                  items:
+                    type: string
+              required:
+                - permissions
+    get:
+      summary: 'Get Role by ID'
+      operationId: getRoleByID
+      description: 'Retrieve detailed information about a specific role including all permissions.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  data:
+                    id: 1
+                    name: 'Super Admin'
+                    permissions:
+                      - 'dashboard:read'
+                      - 'queue:read'
+                      - 'patients:read'
+                      - 'patients:create'
+                      - 'patients:update'
+                      - 'patients:delete'
+                      - 'settings:manage'
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: 'Super Admin'
+                      permissions:
+                        type: array
+                        example:
+                          - 'dashboard:read'
+                          - 'queue:read'
+                          - 'patients:read'
+                          - 'patients:create'
+                          - 'patients:update'
+                          - 'patients:delete'
+                          - 'settings:manage'
+                        items:
+                          type: string
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+        403:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Unauthorized. Super Admin access required.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Unauthorized. Super Admin access required.'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Role not found'
+                properties:
+                  message:
+                    type: string
+                    example: 'Role not found'
+      tags:
+        - 'Roles & Permissions Management'
+    parameters:
+      -
+        in: path
+        name: role_id
+        description: 'The ID of the role to update.'
+        example: 1
+        required: true
+        schema:
+          type: integer
+  /api/roles:
+    get:
+      summary: 'Get Simple List of Roles'
+      operationId: getSimpleListOfRoles
+      description: "Retrieve a lightweight list of all roles containing only their ID and name.\nUseful for populating UI dropdowns when creating or editing employees."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  data:
+                    -
+                      id: 1
+                      name: 'Super Admin'
+                    -
+                      id: 2
+                      name: Accountant
+                    -
+                      id: 3
+                      name: 'HR Manager'
+                    -
+                      id: 4
+                      name: Dentist
+                    -
+                      id: 5
+                      name: Hygienist
+                    -
+                      id: 6
+                      name: Receptionist
+                    -
+                      id: 7
+                      name: 'Dental Assistant'
+                properties:
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        name: 'Super Admin'
+                      -
+                        id: 2
+                        name: Accountant
+                      -
+                        id: 3
+                        name: 'HR Manager'
+                      -
+                        id: 4
+                        name: Dentist
+                      -
+                        id: 5
+                        name: Hygienist
+                      -
+                        id: 6
+                        name: Receptionist
+                      -
+                        id: 7
+                        name: 'Dental Assistant'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        name:
+                          type: string
+                          example: 'Super Admin'
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+        403:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Unauthorized. Super Admin or HR access required.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Unauthorized. Super Admin or HR access required.'
+      tags:
+        - 'Roles & Permissions Management'

@@ -241,6 +241,25 @@
                             </li>
                                                                         </ul>
                             </ul>
+                    <ul id="tocify-header-roles-permissions-management" class="tocify-header">
+                <li class="tocify-item level-1" data-unique="roles-permissions-management">
+                    <a href="#roles-permissions-management">Roles & Permissions Management</a>
+                </li>
+                                    <ul id="tocify-subheader-roles-permissions-management" class="tocify-subheader">
+                                                    <li class="tocify-item level-2" data-unique="roles-permissions-management-GETapi-settings-roles">
+                                <a href="#roles-permissions-management-GETapi-settings-roles">Get All Roles and Permissions</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="roles-permissions-management-PUTapi-settings-roles--role_id-">
+                                <a href="#roles-permissions-management-PUTapi-settings-roles--role_id-">Update Permissions for a Role</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="roles-permissions-management-GETapi-settings-roles--role_id-">
+                                <a href="#roles-permissions-management-GETapi-settings-roles--role_id-">Get Role by ID</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="roles-permissions-management-GETapi-roles">
+                                <a href="#roles-permissions-management-GETapi-roles">Get Simple List of Roles</a>
+                            </li>
+                                                                        </ul>
+                            </ul>
             </div>
 
     <ul class="toc-footer" id="toc-footer">
@@ -417,7 +436,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"email\": \"zbailey@example.net\",
     \"role\": \"architecto\",
     \"salary\": 4326.41688,
-    \"hire_date\": \"2025-10-12T19:18:48\",
+    \"hire_date\": \"2025-10-12T21:22:06\",
     \"branch_id\": \"architecto\"
 }"
 </code></pre></div>
@@ -439,7 +458,7 @@ let body = {
     "email": "zbailey@example.net",
     "role": "architecto",
     "salary": 4326.41688,
-    "hire_date": "2025-10-12T19:18:48",
+    "hire_date": "2025-10-12T21:22:06",
     "branch_id": "architecto"
 };
 
@@ -584,10 +603,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="hire_date"                data-endpoint="POSTapi-employees"
-               value="2025-10-12T19:18:48"
+               value="2025-10-12T21:22:06"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T21:22:06</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
@@ -622,9 +641,9 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"name\": \"architecto\",
     \"avatar\": \"architecto\",
     \"role\": \"architecto\",
-    \"status\": \"On Leave\",
+    \"status\": \"Active\",
     \"salary\": 4326.41688,
-    \"hire_date\": \"2025-10-12T19:18:48\"
+    \"hire_date\": \"2025-10-12T21:22:06\"
 }"
 </code></pre></div>
 
@@ -643,9 +662,9 @@ let body = {
     "name": "architecto",
     "avatar": "architecto",
     "role": "architecto",
-    "status": "On Leave",
+    "status": "Active",
     "salary": 4326.41688,
-    "hire_date": "2025-10-12T19:18:48"
+    "hire_date": "2025-10-12T21:22:06"
 };
 
 fetch(url, {
@@ -794,10 +813,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PUTapi-employees--id-"
-               value="On Leave"
+               value="Active"
                data-component="body">
     <br>
-<p>Example: <code>On Leave</code></p>
+<p>Example: <code>Active</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Active</code></li> <li><code>On Leave</code></li></ul>
         </div>
@@ -818,10 +837,10 @@ Must be one of:
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="hire_date"                data-endpoint="PUTapi-employees--id-"
-               value="2025-10-12T19:18:48"
+               value="2025-10-12T21:22:06"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T21:22:06</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
@@ -1103,7 +1122,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"gross_pay\": 4326.41688,
     \"deductions\": 4326.41688,
     \"net_pay\": 4326.41688,
-    \"pay_date\": \"2025-10-12T19:18:48\",
+    \"pay_date\": \"2025-10-12T21:22:06\",
     \"branch_id\": \"architecto\"
 }"
 </code></pre></div>
@@ -1126,7 +1145,7 @@ let body = {
     "gross_pay": 4326.41688,
     "deductions": 4326.41688,
     "net_pay": 4326.41688,
-    "pay_date": "2025-10-12T19:18:48",
+    "pay_date": "2025-10-12T21:22:06",
     "branch_id": "architecto"
 };
 
@@ -1282,10 +1301,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="pay_date"                data-endpoint="POSTapi-management-payrolls"
-               value="2025-10-12T19:18:48"
+               value="2025-10-12T21:22:06"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T21:22:06</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
@@ -1443,7 +1462,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --data "{
     \"employee_id\": \"architecto\",
     \"employee_name\": \"architecto\",
-    \"date\": \"2025-10-12T19:18:48\",
+    \"date\": \"2025-10-12T21:22:06\",
     \"status\": \"Present\",
     \"check_in\": \"architecto\",
     \"check_out\": \"architecto\",
@@ -1465,7 +1484,7 @@ const headers = {
 let body = {
     "employee_id": "architecto",
     "employee_name": "architecto",
-    "date": "2025-10-12T19:18:48",
+    "date": "2025-10-12T21:22:06",
     "status": "Present",
     "check_in": "architecto",
     "check_out": "architecto",
@@ -1580,10 +1599,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="date"                data-endpoint="POSTapi-management-attendance"
-               value="2025-10-12T19:18:48"
+               value="2025-10-12T21:22:06"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T19:18:48</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T21:22:06</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
@@ -2065,7 +2084,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"Cancelled\"
+    \"status\": \"Sent\"
 }"
 </code></pre></div>
 
@@ -2081,7 +2100,7 @@ const headers = {
 };
 
 let body = {
-    "status": "Cancelled"
+    "status": "Sent"
 };
 
 fetch(url, {
@@ -2182,10 +2201,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-management-lab-orders--id--status"
-               value="Cancelled"
+               value="Sent"
                data-component="body">
     <br>
-<p>Example: <code>Cancelled</code></p>
+<p>Example: <code>Sent</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Sent</code></li> <li><code>Received</code></li> <li><code>Completed</code></li> <li><code>Cancelled</code></li></ul>
         </div>
@@ -2332,7 +2351,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"Rejected\"
+    \"status\": \"Approved\"
 }"
 </code></pre></div>
 
@@ -2348,7 +2367,7 @@ const headers = {
 };
 
 let body = {
-    "status": "Rejected"
+    "status": "Approved"
 };
 
 fetch(url, {
@@ -2449,10 +2468,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-management-leave-requests--id-"
-               value="Rejected"
+               value="Approved"
                data-component="body">
     <br>
-<p>Example: <code>Rejected</code></p>
+<p>Example: <code>Approved</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Pending</code></li> <li><code>Approved</code></li> <li><code>Rejected</code></li></ul>
         </div>
@@ -2599,7 +2618,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"Approved\"
+    \"status\": \"Rejected\"
 }"
 </code></pre></div>
 
@@ -2615,7 +2634,7 @@ const headers = {
 };
 
 let body = {
-    "status": "Approved"
+    "status": "Rejected"
 };
 
 fetch(url, {
@@ -2716,10 +2735,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-management-staff-advances--id-"
-               value="Approved"
+               value="Rejected"
                data-component="body">
     <br>
-<p>Example: <code>Approved</code></p>
+<p>Example: <code>Rejected</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>Pending</code></li> <li><code>Approved</code></li> <li><code>Rejected</code></li></ul>
         </div>
@@ -6701,7 +6720,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"avatar\": \"architecto\",
     \"email\": \"john.updated@example.com\",
     \"date_of_birth\": \"1985-03-15\",
-    \"last_visit\": \"2025-10-12T19:18:47\",
+    \"last_visit\": \"2025-10-12T21:22:06\",
     \"status\": \"Inactive\",
     \"branch_id\": \"b2\",
     \"history\": \"Updated medical history\",
@@ -6727,7 +6746,7 @@ let body = {
     "avatar": "architecto",
     "email": "john.updated@example.com",
     "date_of_birth": "1985-03-15",
-    "last_visit": "2025-10-12T19:18:47",
+    "last_visit": "2025-10-12T21:22:06",
     "status": "Inactive",
     "branch_id": "b2",
     "history": "Updated medical history",
@@ -6904,10 +6923,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="last_visit"                data-endpoint="PUTapi-patients--id-"
-               value="2025-10-12T19:18:47"
+               value="2025-10-12T21:22:06"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-12T19:18:47</code></p>
+<p>Must be a valid date. Example: <code>2025-10-12T21:22:06</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
@@ -8613,6 +8632,718 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <p>Treatment notes. Example: <code>Good progress with alignment</code></p>
         </div>
         </form>
+
+                <h1 id="roles-permissions-management">Roles & Permissions Management</h1>
+
+    <p>Endpoints for managing user roles and permissions in the Dental Management System.
+Super Admin access required for most operations.</p>
+
+                                <h2 id="roles-permissions-management-GETapi-settings-roles">Get All Roles and Permissions</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Retrieve a comprehensive list of all defined roles and their assigned permissions.
+Intended for the 'Roles &amp; Permissions' settings page.</p>
+
+<span id="example-requests-GETapi-settings-roles">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/settings/roles" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/settings/roles"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-settings-roles">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;data&quot;: [
+        {
+            &quot;id&quot;: 1,
+            &quot;name&quot;: &quot;Super Admin&quot;,
+            &quot;permissions&quot;: [
+                &quot;dashboard:read&quot;,
+                &quot;queue:read&quot;,
+                &quot;patients:read&quot;,
+                &quot;patients:create&quot;,
+                &quot;patients:update&quot;,
+                &quot;patients:delete&quot;,
+                &quot;settings:manage&quot;
+            ]
+        },
+        {
+            &quot;id&quot;: 2,
+            &quot;name&quot;: &quot;Dentist&quot;,
+            &quot;permissions&quot;: [
+                &quot;dashboard:read&quot;,
+                &quot;queue:read&quot;,
+                &quot;patients:read&quot;,
+                &quot;charting:read&quot;,
+                &quot;charting:update&quot;
+            ]
+        }
+    ]
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (403):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthorized. Super Admin access required.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-settings-roles" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-settings-roles"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-settings-roles"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-settings-roles" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-settings-roles">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-settings-roles" data-method="GET"
+      data-path="api/settings/roles"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-settings-roles', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-settings-roles"
+                    onclick="tryItOut('GETapi-settings-roles');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-settings-roles"
+                    onclick="cancelTryOut('GETapi-settings-roles');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-settings-roles"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/settings/roles</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-settings-roles"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-settings-roles"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
+
+                    <h2 id="roles-permissions-management-PUTapi-settings-roles--role_id-">Update Permissions for a Role</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Update the permissions for a specific role. The provided permissions array
+will completely replace the existing permissions for that role.</p>
+
+<span id="example-requests-PUTapi-settings-roles--role_id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PUT \
+    "http://localhost/api/settings/roles/1" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"permissions\": [
+        \"dashboard:read\",
+        \"patients:read\"
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/settings/roles/1"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "permissions": [
+        "dashboard:read",
+        "patients:read"
+    ]
+};
+
+fetch(url, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PUTapi-settings-roles--role_id-">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Permissions updated successfully&quot;,
+    &quot;data&quot;: {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Super Admin&quot;,
+        &quot;permissions&quot;: [
+            &quot;dashboard:read&quot;,
+            &quot;patients:read&quot;,
+            &quot;patients:create&quot;
+        ]
+    }
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (403):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthorized. Super Admin access required.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (404):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Role not found&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (422):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;The given data was invalid.&quot;,
+    &quot;errors&quot;: {
+        &quot;permissions&quot;: [
+            &quot;The permissions field is required.&quot;
+        ]
+    }
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-PUTapi-settings-roles--role_id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PUTapi-settings-roles--role_id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PUTapi-settings-roles--role_id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PUTapi-settings-roles--role_id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PUTapi-settings-roles--role_id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PUTapi-settings-roles--role_id-" data-method="PUT"
+      data-path="api/settings/roles/{role_id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PUTapi-settings-roles--role_id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PUTapi-settings-roles--role_id-"
+                    onclick="tryItOut('PUTapi-settings-roles--role_id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PUTapi-settings-roles--role_id-"
+                    onclick="cancelTryOut('PUTapi-settings-roles--role_id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PUTapi-settings-roles--role_id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-darkblue">PUT</small>
+            <b><code>api/settings/roles/{role_id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PUTapi-settings-roles--role_id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PUTapi-settings-roles--role_id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>role_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="role_id"                data-endpoint="PUTapi-settings-roles--role_id-"
+               value="1"
+               data-component="url">
+    <br>
+<p>The ID of the role to update. Example: <code>1</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>permissions</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="permissions[0]"                data-endpoint="PUTapi-settings-roles--role_id-"
+               data-component="body">
+        <input type="text" style="display: none"
+               name="permissions[1]"                data-endpoint="PUTapi-settings-roles--role_id-"
+               data-component="body">
+    <br>
+<p>Array of permission strings.</p>
+        </div>
+        </form>
+
+                    <h2 id="roles-permissions-management-GETapi-settings-roles--role_id-">Get Role by ID</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Retrieve detailed information about a specific role including all permissions.</p>
+
+<span id="example-requests-GETapi-settings-roles--role_id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/settings/roles/1" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/settings/roles/1"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-settings-roles--role_id-">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;data&quot;: {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Super Admin&quot;,
+        &quot;permissions&quot;: [
+            &quot;dashboard:read&quot;,
+            &quot;queue:read&quot;,
+            &quot;patients:read&quot;,
+            &quot;patients:create&quot;,
+            &quot;patients:update&quot;,
+            &quot;patients:delete&quot;,
+            &quot;settings:manage&quot;
+        ]
+    }
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (403):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthorized. Super Admin access required.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (404):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Role not found&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-settings-roles--role_id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-settings-roles--role_id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-settings-roles--role_id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-settings-roles--role_id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-settings-roles--role_id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-settings-roles--role_id-" data-method="GET"
+      data-path="api/settings/roles/{role_id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-settings-roles--role_id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-settings-roles--role_id-"
+                    onclick="tryItOut('GETapi-settings-roles--role_id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-settings-roles--role_id-"
+                    onclick="cancelTryOut('GETapi-settings-roles--role_id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-settings-roles--role_id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/settings/roles/{role_id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-settings-roles--role_id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-settings-roles--role_id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>role_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="role_id"                data-endpoint="GETapi-settings-roles--role_id-"
+               value="1"
+               data-component="url">
+    <br>
+<p>The ID of the role to retrieve. Example: <code>1</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="roles-permissions-management-GETapi-roles">Get Simple List of Roles</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Retrieve a lightweight list of all roles containing only their ID and name.
+Useful for populating UI dropdowns when creating or editing employees.</p>
+
+<span id="example-requests-GETapi-roles">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/roles" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/roles"
+);
+
+const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-roles">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;data&quot;: [
+        {
+            &quot;id&quot;: 1,
+            &quot;name&quot;: &quot;Super Admin&quot;
+        },
+        {
+            &quot;id&quot;: 2,
+            &quot;name&quot;: &quot;Accountant&quot;
+        },
+        {
+            &quot;id&quot;: 3,
+            &quot;name&quot;: &quot;HR Manager&quot;
+        },
+        {
+            &quot;id&quot;: 4,
+            &quot;name&quot;: &quot;Dentist&quot;
+        },
+        {
+            &quot;id&quot;: 5,
+            &quot;name&quot;: &quot;Hygienist&quot;
+        },
+        {
+            &quot;id&quot;: 6,
+            &quot;name&quot;: &quot;Receptionist&quot;
+        },
+        {
+            &quot;id&quot;: 7,
+            &quot;name&quot;: &quot;Dental Assistant&quot;
+        }
+    ]
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+            <blockquote>
+            <p>Example response (403):</p>
+        </blockquote>
+                <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthorized. Super Admin or HR access required.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-roles" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-roles"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-roles"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-roles" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-roles">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-roles" data-method="GET"
+      data-path="api/roles"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-roles', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-roles"
+                    onclick="tryItOut('GETapi-roles');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-roles"
+                    onclick="cancelTryOut('GETapi-roles');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-roles"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/roles</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-roles"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-roles"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
 
             
 

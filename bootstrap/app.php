@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
+
+        $middleware->alias([
+        'permission' => \App\Http\Middleware\CheckPermission::class,
+        // ... other middleware
+    ]);
         
         // If you need global CORS for all routes
         $middleware->validateCsrfTokens(except: [

@@ -1,0 +1,398 @@
+name: 'Roles & Permissions Management'
+description: |-
+
+  Endpoints for managing user roles and permissions in the Dental Management System.
+  Super Admin access required for most operations.
+endpoints:
+  -
+    httpMethods:
+      - GET
+    uri: api/settings/roles
+    metadata:
+      groupName: 'Roles & Permissions Management'
+      groupDescription: |-
+
+        Endpoints for managing user roles and permissions in the Dental Management System.
+        Super Admin access required for most operations.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get All Roles and Permissions'
+      description: |-
+        Retrieve a comprehensive list of all defined roles and their assigned permissions.
+        Intended for the 'Roles & Permissions' settings page.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "data": [
+              {
+                "id": 1,
+                "name": "Super Admin",
+                "permissions": [
+                  "dashboard:read",
+                  "queue:read",
+                  "patients:read",
+                  "patients:create",
+                  "patients:update",
+                  "patients:delete",
+                  "settings:manage"
+                ]
+              },
+              {
+                "id": 2,
+                "name": "Dentist",
+                "permissions": [
+                  "dashboard:read",
+                  "queue:read",
+                  "patients:read",
+                  "charting:read",
+                  "charting:update"
+                ]
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 403
+        content: |-
+          {
+            "message": "Unauthorized. Super Admin access required."
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PUT
+    uri: 'api/settings/roles/{role_id}'
+    metadata:
+      groupName: 'Roles & Permissions Management'
+      groupDescription: |-
+
+        Endpoints for managing user roles and permissions in the Dental Management System.
+        Super Admin access required for most operations.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Permissions for a Role'
+      description: |-
+        Update the permissions for a specific role. The provided permissions array
+        will completely replace the existing permissions for that role.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      role_id:
+        name: role_id
+        description: 'The ID of the role to update.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      role_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      permissions:
+        name: permissions
+        description: 'Array of permission strings.'
+        required: true
+        example:
+          - 'dashboard:read'
+          - 'patients:read'
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      permissions:
+        - 'dashboard:read'
+        - 'patients:read'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Permissions updated successfully",
+            "data": {
+              "id": 1,
+              "name": "Super Admin",
+              "permissions": [
+                "dashboard:read",
+                "patients:read",
+                "patients:create"
+              ]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 403
+        content: |-
+          {
+            "message": "Unauthorized. Super Admin access required."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "message": "Role not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 422
+        content: |-
+          {
+            "message": "The given data was invalid.",
+            "errors": {
+              "permissions": ["The permissions field is required."]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/settings/roles/{role_id}'
+    metadata:
+      groupName: 'Roles & Permissions Management'
+      groupDescription: |-
+
+        Endpoints for managing user roles and permissions in the Dental Management System.
+        Super Admin access required for most operations.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Role by ID'
+      description: 'Retrieve detailed information about a specific role including all permissions.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      role_id:
+        name: role_id
+        description: 'The ID of the role to retrieve.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      role_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "data": {
+              "id": 1,
+              "name": "Super Admin",
+              "permissions": [
+                "dashboard:read",
+                "queue:read",
+                "patients:read",
+                "patients:create",
+                "patients:update",
+                "patients:delete",
+                "settings:manage"
+              ]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 403
+        content: |-
+          {
+            "message": "Unauthorized. Super Admin access required."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "message": "Role not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: api/roles
+    metadata:
+      groupName: 'Roles & Permissions Management'
+      groupDescription: |-
+
+        Endpoints for managing user roles and permissions in the Dental Management System.
+        Super Admin access required for most operations.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Simple List of Roles'
+      description: |-
+        Retrieve a lightweight list of all roles containing only their ID and name.
+        Useful for populating UI dropdowns when creating or editing employees.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "data": [
+              {
+                "id": 1,
+                "name": "Super Admin"
+              },
+              {
+                "id": 2,
+                "name": "Accountant"
+              },
+              {
+                "id": 3,
+                "name": "HR Manager"
+              },
+              {
+                "id": 4,
+                "name": "Dentist"
+              },
+              {
+                "id": 5,
+                "name": "Hygienist"
+              },
+              {
+                "id": 6,
+                "name": "Receptionist"
+              },
+              {
+                "id": 7,
+                "name": "Dental Assistant"
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 403
+        content: |-
+          {
+            "message": "Unauthorized. Super Admin or HR access required."
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []

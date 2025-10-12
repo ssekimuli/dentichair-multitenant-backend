@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "9fc17585-6f7c-4487-8fe7-e222e882537f",
+        "_postman_id": "aa829d42-69b4-46d9-a509-5f975604f07a",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -89,7 +89,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"email\":\"zbailey@example.net\",\"role\":\"architecto\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T19:18:48\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"email\":\"zbailey@example.net\",\"role\":\"architecto\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T21:22:06\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -128,7 +128,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"role\":\"architecto\",\"status\":\"On Leave\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T19:18:48\"}"
+                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"role\":\"architecto\",\"status\":\"Active\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T21:22:06\"}"
                         },
                         "description": "",
                         "auth": {
@@ -243,7 +243,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-12T19:18:48\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-12T21:22:06\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -322,7 +322,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-12T19:18:48\",\"status\":\"Present\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-12T21:22:06\",\"status\":\"Present\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -496,7 +496,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Cancelled\"}"
+                            "raw": "{\"status\":\"Sent\"}"
                         },
                         "description": "",
                         "auth": {
@@ -583,7 +583,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Rejected\"}"
+                            "raw": "{\"status\":\"Approved\"}"
                         },
                         "description": "",
                         "auth": {
@@ -670,7 +670,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Approved\"}"
+                            "raw": "{\"status\":\"Rejected\"}"
                         },
                         "description": "",
                         "auth": {
@@ -1637,7 +1637,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-12T19:18:47\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-12T21:22:06\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
                         },
                         "description": "Update an existing patient's information."
                     },
@@ -2011,6 +2011,225 @@
                             "header": [],
                             "code": 200,
                             "body": "{\n  \"id\": \"1\",\n  \"name\": \"John Doe\",\n  \"orthodontic_records\": [\n    {\n      \"appliance\": \"Braces\",\n      \"wire_size\": \".016 Nickel Titanium\",\n      \"bracket_changes\": [\"14\", \"24\"],\n      \"notes\": \"Good progress with alignment\",\n      \"date\": \"2024-07-15\"\n    }\n  ]\n}",
+                            "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Roles & Permissions Management",
+            "description": "\nEndpoints for managing user roles and permissions in the Dental Management System.\nSuper Admin access required for most operations.",
+            "item": [
+                {
+                    "name": "Get All Roles and Permissions",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/settings\/roles",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/settings\/roles"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve a comprehensive list of all defined roles and their assigned permissions.\nIntended for the 'Roles & Permissions' settings page."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Super Admin\",\n      \"permissions\": [\n        \"dashboard:read\",\n        \"queue:read\",\n        \"patients:read\",\n        \"patients:create\",\n        \"patients:update\",\n        \"patients:delete\",\n        \"settings:manage\"\n      ]\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Dentist\",\n      \"permissions\": [\n        \"dashboard:read\",\n        \"queue:read\",\n        \"patients:read\",\n        \"charting:read\",\n        \"charting:update\"\n      ]\n    }\n  ]\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 401,
+                            "body": "{\n  \"message\": \"Unauthenticated.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 403,
+                            "body": "{\n  \"message\": \"Unauthorized. Super Admin access required.\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Permissions for a Role",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/settings\/roles\/:role_id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/settings\/roles\/:role_id",
+                            "variable": [
+                                {
+                                    "id": "role_id",
+                                    "key": "role_id",
+                                    "value": "1",
+                                    "description": "The ID of the role to update."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"permissions\":[\"dashboard:read\",\"patients:read\"]}"
+                        },
+                        "description": "Update the permissions for a specific role. The provided permissions array\nwill completely replace the existing permissions for that role."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Permissions updated successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Super Admin\",\n    \"permissions\": [\n      \"dashboard:read\",\n      \"patients:read\",\n      \"patients:create\"\n    ]\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 401,
+                            "body": "{\n  \"message\": \"Unauthenticated.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 403,
+                            "body": "{\n  \"message\": \"Unauthorized. Super Admin access required.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"message\": \"Role not found\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 422,
+                            "body": "{\n  \"message\": \"The given data was invalid.\",\n  \"errors\": {\n    \"permissions\": [\"The permissions field is required.\"]\n  }\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Role by ID",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/settings\/roles\/:role_id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/settings\/roles\/:role_id",
+                            "variable": [
+                                {
+                                    "id": "role_id",
+                                    "key": "role_id",
+                                    "value": "1",
+                                    "description": "The ID of the role to retrieve."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve detailed information about a specific role including all permissions."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Super Admin\",\n    \"permissions\": [\n      \"dashboard:read\",\n      \"queue:read\",\n      \"patients:read\",\n      \"patients:create\",\n      \"patients:update\",\n      \"patients:delete\",\n      \"settings:manage\"\n    ]\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 401,
+                            "body": "{\n  \"message\": \"Unauthenticated.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 403,
+                            "body": "{\n  \"message\": \"Unauthorized. Super Admin access required.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"message\": \"Role not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Simple List of Roles",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/roles",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/roles"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve a lightweight list of all roles containing only their ID and name.\nUseful for populating UI dropdowns when creating or editing employees."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Super Admin\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Accountant\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"HR Manager\"\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dentist\"\n    },\n    {\n      \"id\": 5,\n      \"name\": \"Hygienist\"\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Receptionist\"\n    },\n    {\n      \"id\": 7,\n      \"name\": \"Dental Assistant\"\n    }\n  ]\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 401,
+                            "body": "{\n  \"message\": \"Unauthenticated.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 403,
+                            "body": "{\n  \"message\": \"Unauthorized. Super Admin or HR access required.\"\n}",
                             "name": ""
                         }
                     ]

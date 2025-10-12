@@ -57,4 +57,26 @@ class Employee extends Model
     {
         return $this->hasMany(StaffAdvance::class);
     }
+
+    public function hasRole(string $roleName): bool
+    {
+        return $this->role === $roleName;
+    }
+
+    /**
+     * Check if employee has specific permission
+     *
+     * @param string $permission
+     * @return bool
+     */
+    public function hasPermission(string $permission): bool
+    {
+        $rolePermission = RolePermission::where('name', $this->role)->first();
+        
+        if (!$rolePermission) {
+            return false;
+        }
+
+        return in_array($permission, $rolePermission->permissions);
+    }
 }

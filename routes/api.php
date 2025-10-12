@@ -6,6 +6,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ManagementController;
+use App\Http\Controllers\RolePermissionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,4 +73,16 @@ Route::middleware('auth:sanctum')->group(function () {
         // Chart Data
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);
     });
+
+    // Get all roles with permissions (Super Admin only)
+    Route::get('/settings/roles', [RolePermissionController::class, 'getAllRolesWithPermissions']);
+    
+    // Update role permissions (Super Admin only)
+    Route::put('/settings/roles/{role_id}', [RolePermissionController::class, 'updateRolePermissions']);
+    
+    // Get role by ID (Super Admin only)
+    Route::get('/settings/roles/{role_id}', [RolePermissionController::class, 'getRoleById']);
+    
+    // Get simple roles list (Super Admin & HR)
+    Route::get('/roles', [RolePermissionController::class, 'getRolesList']);
 });

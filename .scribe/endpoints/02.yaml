@@ -1,0 +1,634 @@
+name: Appointments
+description: |-
+
+  Endpoints for managing patient appointments, scheduling, and appointment status.
+  Includes queue management and appointment tracking features.
+endpoints:
+  -
+    httpMethods:
+      - GET
+    uri: api/appointments
+    metadata:
+      groupName: Appointments
+      groupDescription: |-
+
+        Endpoints for managing patient appointments, scheduling, and appointment status.
+        Includes queue management and appointment tracking features.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get All Appointments'
+      description: |-
+        Retrieve a list of appointments with optional filtering by branch, date, or status.
+        Returns complete appointment details including patient, doctor, and branch information.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Filter appointments by branch ID.'
+        required: false
+        example: b1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'Filter appointments by specific date (YYYY-MM-DD).'
+        required: false
+        example: '2024-07-20'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      status:
+        name: status
+        description: 'Filter appointments by status.'
+        required: false
+        example: Scheduled
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: b1
+      date: '2024-07-20'
+      status: Scheduled
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "data": [
+              {
+                "id": "a1",
+                "patient_name": "John Doe",
+                "patient_id": "1",
+                "doctor_name": "Dr. Lisa Cuddy",
+                "doctor_id": "emp1",
+                "treatment": "Check-up",
+                "status": "Scheduled",
+                "date": "2024-07-20",
+                "time": "10:00 AM",
+                "branch_id": "b1",
+                "token_number": "JDLC1",
+                "patient": {
+                  "id": "1",
+                  "name": "John Doe",
+                  "email": "john.doe@example.com"
+                },
+                "doctor": {
+                  "id": "emp1",
+                  "name": "Dr. Lisa Cuddy",
+                  "role": "Dentist"
+                },
+                "branch": {
+                  "id": "b1",
+                  "name": "Downtown Clinic"
+                }
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - POST
+    uri: api/appointments
+    metadata:
+      groupName: Appointments
+      groupDescription: |-
+
+        Endpoints for managing patient appointments, scheduling, and appointment status.
+        Includes queue management and appointment tracking features.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Create Appointment'
+      description: |-
+        Schedule a new appointment for a patient. Automatically generates a unique token number
+        and sets initial status to "Scheduled".
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      patient_name:
+        name: patient_name
+        description: "Patient's full name."
+        required: true
+        example: 'John Doe'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      patient_id:
+        name: patient_id
+        description: "Patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      doctor_name:
+        name: doctor_name
+        description: "Doctor's full name."
+        required: true
+        example: 'Dr. Lisa Cuddy'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      doctor_id:
+        name: doctor_id
+        description: "Doctor's employee ID."
+        required: true
+        example: emp1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      treatment:
+        name: treatment
+        description: 'Treatment or procedure description.'
+        required: true
+        example: 'Dental Checkup'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'Appointment date (YYYY-MM-DD).'
+        required: true
+        example: '2024-07-20'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      time:
+        name: time
+        description: 'Appointment time.'
+        required: true
+        example: '10:00 AM'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      branch_id:
+        name: branch_id
+        description: 'Branch ID.'
+        required: true
+        example: b1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      patient_name: 'John Doe'
+      patient_id: '1'
+      doctor_name: 'Dr. Lisa Cuddy'
+      doctor_id: emp1
+      treatment: 'Dental Checkup'
+      date: '2024-07-20'
+      time: '10:00 AM'
+      branch_id: b1
+    fileParameters: []
+    responses:
+      -
+        status: 201
+        content: |-
+          {
+            "id": "apt7",
+            "patient_name": "John Doe",
+            "patient_id": "1",
+            "doctor_name": "Dr. Lisa Cuddy",
+            "doctor_id": "emp1",
+            "treatment": "Dental Checkup",
+            "status": "Scheduled",
+            "date": "2024-07-20",
+            "time": "10:00 AM",
+            "branch_id": "b1",
+            "token_number": "TABC123",
+            "patient": {
+              "id": "1",
+              "name": "John Doe"
+            },
+            "doctor": {
+              "id": "emp1",
+              "name": "Dr. Lisa Cuddy"
+            },
+            "branch": {
+              "id": "b1",
+              "name": "Downtown Clinic"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 422
+        content: |-
+          {
+            "message": "The given data was invalid.",
+            "errors": {
+              "patient_name": ["The patient name field is required."],
+              "patient_id": ["The patient id field is required."],
+              "doctor_name": ["The doctor name field is required."],
+              "treatment": ["The treatment field is required."],
+              "date": ["The date field is required."],
+              "time": ["The time field is required."],
+              "branch_id": ["The branch id field is required."]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PUT
+      - PATCH
+    uri: 'api/appointments/{id}'
+    metadata:
+      groupName: Appointments
+      groupDescription: |-
+
+        Endpoints for managing patient appointments, scheduling, and appointment status.
+        Includes queue management and appointment tracking features.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Appointment'
+      description: "Update an existing appointment's details. Can update any field except the ID."
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        name: id
+        description: 'The appointment ID.'
+        required: true
+        example: a1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      id: a1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      patient_name:
+        name: patient_name
+        description: "Patient's full name."
+        required: false
+        example: 'John Doe Updated'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      patient_id:
+        name: patient_id
+        description: "Patient's ID."
+        required: false
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      doctor_name:
+        name: doctor_name
+        description: "Doctor's full name."
+        required: false
+        example: 'Dr. Mike Chen'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      doctor_id:
+        name: doctor_id
+        description: "Doctor's employee ID."
+        required: false
+        example: emp2
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      treatment:
+        name: treatment
+        description: 'Treatment or procedure description.'
+        required: false
+        example: 'Teeth Cleaning'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      status:
+        name: status
+        description: 'Appointment status.'
+        required: false
+        example: Completed
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'Appointment date (YYYY-MM-DD).'
+        required: false
+        example: '2024-07-21'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      time:
+        name: time
+        description: 'Appointment time.'
+        required: false
+        example: '11:00 AM'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      branch_id:
+        name: branch_id
+        description: 'Branch ID.'
+        required: false
+        example: b1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      patient_name: 'John Doe Updated'
+      patient_id: '1'
+      doctor_name: 'Dr. Mike Chen'
+      doctor_id: emp2
+      treatment: 'Teeth Cleaning'
+      status: Completed
+      date: '2024-07-21'
+      time: '11:00 AM'
+      branch_id: b1
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "id": "a1",
+            "patient_name": "John Doe Updated",
+            "patient_id": "1",
+            "doctor_name": "Dr. Mike Chen",
+            "doctor_id": "emp2",
+            "treatment": "Teeth Cleaning",
+            "status": "Completed",
+            "date": "2024-07-21",
+            "time": "11:00 AM",
+            "branch_id": "b1",
+            "token_number": "JDLC1",
+            "patient": {
+              "id": "1",
+              "name": "John Doe"
+            },
+            "doctor": {
+              "id": "emp2",
+              "name": "Dr. Mike Chen"
+            },
+            "branch": {
+              "id": "b1",
+              "name": "Downtown Clinic"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Appointment not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/appointments/{id}'
+    metadata:
+      groupName: Appointments
+      groupDescription: |-
+
+        Endpoints for managing patient appointments, scheduling, and appointment status.
+        Includes queue management and appointment tracking features.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Appointment'
+      description: 'Permanently cancel and remove an appointment from the system.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        name: id
+        description: 'The appointment ID.'
+        required: true
+        example: a1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      id: a1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "success": true
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Appointment not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PATCH
+    uri: 'api/appointments/{id}/status'
+    metadata:
+      groupName: Appointments
+      groupDescription: |-
+
+        Endpoints for managing patient appointments, scheduling, and appointment status.
+        Includes queue management and appointment tracking features.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Appointment Status'
+      description: |-
+        Update only the status of an appointment. Useful for queue management
+        (e.g., moving from "Scheduled" to "Waiting" to "Completed").
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        name: id
+        description: 'The appointment ID.'
+        required: true
+        example: a1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      id: a1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      status:
+        name: status
+        description: 'New appointment status.'
+        required: true
+        example: Completed
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      status: Completed
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "id": "a1",
+            "patient_name": "John Doe",
+            "patient_id": "1",
+            "doctor_name": "Dr. Lisa Cuddy",
+            "doctor_id": "emp1",
+            "treatment": "Check-up",
+            "status": "Completed",
+            "date": "2024-07-20",
+            "time": "10:00 AM",
+            "branch_id": "b1",
+            "token_number": "JDLC1"
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Appointment not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 422
+        content: |-
+          {
+            "message": "The given data was invalid.",
+            "errors": {
+              "status": [
+                "The status field is required.",
+                "The selected status is invalid."
+              ]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []

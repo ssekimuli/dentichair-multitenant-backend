@@ -1,0 +1,322 @@
+name: Authentication
+description: |-
+
+  Endpoints for user authentication and profile management in the Dental Management System.
+  This API handles user login with token-based authentication and retrieval of profile data.
+endpoints:
+  -
+    httpMethods:
+      - POST
+    uri: api/login
+    metadata:
+      groupName: Authentication
+      groupDescription: |-
+
+        Endpoints for user authentication and profile management in the Dental Management System.
+        This API handles user login with token-based authentication and retrieval of profile data.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'User Login'
+      description: |-
+        Authenticate a user using email and password and return an access token.
+        For this prototype system, any valid email with password "password" will be accepted.
+      authenticated: false
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      email:
+        name: email
+        description: "The user's email address."
+        required: true
+        example: lisa.cuddy@example.com
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      password:
+        name: password
+        description: 'The user''s password. Must be "password" for prototype.'
+        required: true
+        example: password
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      email: lisa.cuddy@example.com
+      password: password
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "token": "1|a1b2c3d4e5f6g7h8i9j0",
+            "user": {
+              "role": "Super Admin",
+              "branchId": "b1",
+              "email": "lisa.cuddy@example.com",
+              "name": "Dr. Lisa Cuddy",
+              "avatar": "https://picsum.photos/seed/emp1/200/200"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "error": "Invalid credentials"
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 422
+        content: |-
+          {
+            "message": "The given data was invalid.",
+            "errors": {
+              "email": ["The email field is required."],
+              "password": ["The password field is required."]
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - POST
+    uri: api/logout
+    metadata:
+      groupName: Authentication
+      groupDescription: |-
+
+        Endpoints for user authentication and profile management in the Dental Management System.
+        This API handles user login with token-based authentication and retrieval of profile data.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'User Logout'
+      description: |-
+        Revoke the current access token to log the user out.
+        Requires Bearer token authentication.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Successfully logged out"
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: api/user
+    metadata:
+      groupName: Authentication
+      groupDescription: |-
+
+        Endpoints for user authentication and profile management in the Dental Management System.
+        This API handles user login with token-based authentication and retrieval of profile data.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Current User'
+      description: |-
+        Get the authenticated user's information using their token.
+        Requires Bearer token authentication.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "user": {
+              "role": "Super Admin",
+              "branchId": "b1",
+              "email": "lisa.cuddy@example.com",
+              "name": "Dr. Lisa Cuddy",
+              "avatar": "https://picsum.photos/seed/emp1/200/200"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: api/profile
+    metadata:
+      groupName: Authentication
+      groupDescription: |-
+
+        Endpoints for user authentication and profile management in the Dental Management System.
+        This API handles user login with token-based authentication and retrieval of profile data.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Profile Data'
+      description: |-
+        Retrieve comprehensive profile information for the authenticated user including:
+        - Employee details
+        - Attendance statistics
+        - Appointment statistics
+        - Payroll history
+        - Recent appointments
+
+        Requires Bearer token authentication.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "employee": {
+              "id": "emp1",
+              "name": "Dr. Lisa Cuddy",
+              "avatar": "https://picsum.photos/seed/emp1/200/200",
+              "email": "lisa.cuddy@example.com",
+              "role": "Super Admin",
+              "status": "Active",
+              "salary": 150000,
+              "hire_date": "2020-01-15",
+              "branch_id": "b1",
+              "created_at": "2024-01-01T00:00:00.000000Z",
+              "updated_at": "2024-01-01T00:00:00.000000Z"
+            },
+            "stats": {
+              "totalPaid": 15000,
+              "presentDays": 20,
+              "absentDays": 2,
+              "onLeaveDays": 1,
+              "totalAppointments": 45,
+              "uniquePatients": 30,
+              "recentAppointments": [
+                {
+                  "id": "a1",
+                  "patient_name": "John Doe",
+                  "treatment": "Check-up",
+                  "status": "Completed",
+                  "date": "2024-07-20",
+                  "time": "10:00 AM"
+                }
+              ]
+            },
+            "payrolls": [
+              {
+                "id": "pay1",
+                "employee_id": "emp1",
+                "employee_name": "Dr. Lisa Cuddy",
+                "pay_period": "2024-06-01 to 2024-06-15",
+                "gross_pay": 6250,
+                "deductions": 1200,
+                "net_pay": 5050,
+                "pay_date": "2024-06-15",
+                "status": "Paid",
+                "branch_id": "b1",
+                "created_at": "2024-01-01T00:00:00.000000Z",
+                "updated_at": "2024-01-01T00:00:00.000000Z"
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 401
+        content: |-
+          {
+            "message": "Unauthenticated."
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []

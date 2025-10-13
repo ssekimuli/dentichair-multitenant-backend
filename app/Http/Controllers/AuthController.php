@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\RolePermission;
 use Illuminate\Http\Request;
@@ -591,5 +592,49 @@ class AuthController extends Controller
             ]
         );
         */
+    }
+
+    /**
+     * Get all branches
+     *
+     * Retrieve a list of all dental branches available in the system.
+     *
+     * @group Branch Management
+     *
+     * @response 200 scenario="Success" [
+     *   {
+     *     "id": 1,
+     *     "name": "Downtown Clinic",
+     *     "address": "123 Main St, Cityville",
+     *     "created_at": "2025-10-13T12:00:00.000000Z",
+     *     "updated_at": "2025-10-13T12:00:00.000000Z"
+     *   },
+     *   {
+     *     "id": 2,
+     *     "name": "Uptown Dental",
+     *     "address": "456 Oak Ave, Townburg",
+     *     "created_at": "2025-10-13T12:00:00.000000Z",
+     *     "updated_at": "2025-10-13T12:00:00.000000Z"
+     *   }
+     * ]
+     *
+     * @response 500 scenario="Server Error" {
+     *   "message": "Something went wrong while fetching branches."
+     * }
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function allBranch()
+    {
+        try {
+
+            $branches = Branch::all();
+            return response()->json($branches);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Something went wrong while fetching branches.'
+            ], 500);
+        }
     }
 }

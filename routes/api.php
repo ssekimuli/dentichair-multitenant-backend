@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/profile', [AuthController::class, 'getProfileData']);
+    Route::get('/all-branch', [AuthController::class, 'allBranch']);
 
     // Patients
     Route::apiResource('patients', PatientController::class);

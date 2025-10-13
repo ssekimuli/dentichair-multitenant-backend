@@ -392,7 +392,7 @@ endpoints:
         name: last_visit
         description: 'Must be a valid date.'
         required: false
-        example: '2025-10-12T21:22:06'
+        example: '2025-10-13T10:37:07'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -444,7 +444,7 @@ endpoints:
       avatar: architecto
       email: john.updated@example.com
       date_of_birth: '1985-03-15'
-      last_visit: '2025-10-12T21:22:06'
+      last_visit: '2025-10-13T10:37:07'
       status: Inactive
       branch_id: b2
       history: 'Updated medical history'

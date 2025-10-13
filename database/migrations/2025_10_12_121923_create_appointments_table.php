@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('avatar')->nullable();
             $table->string('email')->unique();
             $table->string('role');
+            $table->unsignedBigInteger('role_id');
             $table->enum('status', ['Active', 'On Leave'])->default('Active');
             $table->decimal('salary', 10, 2);
             $table->date('hire_date');

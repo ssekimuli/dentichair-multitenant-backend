@@ -19,9 +19,7 @@ endpoints:
       subgroup: ''
       subgroupDescription: ''
       title: 'User Login'
-      description: |-
-        Authenticate a user using email and password and return an access token.
-        For this prototype system, any valid email with password "password" will be accepted.
+      description: 'Authenticate a user using email and password and return an access token with role, permissions, and branch info.'
       authenticated: false
       deprecated: false
       custom: []
@@ -45,7 +43,7 @@ endpoints:
         custom: []
       password:
         name: password
-        description: 'The user''s password. Must be "password" for prototype.'
+        description: "The user's password."
         required: true
         example: password
         type: string
@@ -65,32 +63,18 @@ endpoints:
             "token": "1|a1b2c3d4e5f6g7h8i9j0",
             "user": {
               "role": "Super Admin",
+              "permissions": [
+                "users.create",
+                "users.edit",
+                "users.delete",
+                "appointments.manage",
+                "reports.view"
+              ],
               "branchId": "b1",
+              "branchName": "Main Branch",
               "email": "lisa.cuddy@example.com",
               "name": "Dr. Lisa Cuddy",
               "avatar": "https://picsum.photos/seed/emp1/200/200"
-            }
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 401
-        content: |-
-          {
-            "error": "Invalid credentials"
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 422
-        content: |-
-          {
-            "message": "The given data was invalid.",
-            "errors": {
-              "email": ["The email field is required."],
-              "password": ["The password field is required."]
             }
           }
         headers: []
@@ -231,7 +215,7 @@ endpoints:
       title: 'Get Profile Data'
       description: |-
         Retrieve comprehensive profile information for the authenticated user including:
-        - Employee details
+        - Employee details with branch name and permissions
         - Attendance statistics
         - Appointment statistics
         - Payroll history
@@ -266,6 +250,13 @@ endpoints:
               "salary": 150000,
               "hire_date": "2020-01-15",
               "branch_id": "b1",
+              "branch_name": "Main Branch",
+              "permissions": [
+                "users.create",
+                "users.edit",
+                "users.delete",
+                "appointments.manage"
+              ],
               "created_at": "2024-01-01T00:00:00.000000Z",
               "updated_at": "2024-01-01T00:00:00.000000Z"
             },
@@ -303,15 +294,6 @@ endpoints:
                 "updated_at": "2024-01-01T00:00:00.000000Z"
               }
             ]
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 401
-        content: |-
-          {
-            "message": "Unauthenticated."
           }
         headers: []
         description: ''

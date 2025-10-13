@@ -17,6 +17,9 @@ tags:
     name: Authentication
     description: "\nEndpoints for user authentication and profile management in the Dental Management System.\nThis API handles user login with token-based authentication and retrieval of profile data."
   -
+    name: Employees
+    description: "\nEndpoints for managing employee records, roles, and staff information.\nIncludes role-based access control and employee management."
+  -
     name: 'Invoices & Billing'
     description: "\nEndpoints for managing patient invoices, payments, and billing operations.\nIncludes invoice creation, payment processing, and financial tracking."
   -
@@ -26,164 +29,6 @@ tags:
     name: 'Roles & Permissions Management'
     description: "\nEndpoints for managing user roles and permissions in the Dental Management System.\nSuper Admin access required for most operations."
 paths:
-  /api/employees:
-    get:
-      summary: ''
-      operationId: getApiEmployees
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-    post:
-      summary: ''
-      operationId: postApiEmployees
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                avatar:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: true
-                email:
-                  type: string
-                  description: 'Must be a valid email address.'
-                  example: zbailey@example.net
-                  nullable: false
-                role:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                salary:
-                  type: number
-                  description: ''
-                  example: 4326.41688
-                  nullable: false
-                hire_date:
-                  type: string
-                  description: 'Must be a valid date.'
-                  example: '2025-10-12T21:22:06'
-                  nullable: false
-                branch_id:
-                  type: string
-                  description: 'The <code>id</code> of an existing record in the branches table.'
-                  example: architecto
-                  nullable: false
-              required:
-                - name
-                - email
-                - role
-                - salary
-                - hire_date
-                - branch_id
-      security: []
-  '/api/employees/{id}':
-    put:
-      summary: ''
-      operationId: putApiEmployeesId
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                avatar:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: true
-                email:
-                  type: string
-                  description: ''
-                  example: null
-                  nullable: false
-                role:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                status:
-                  type: string
-                  description: ''
-                  example: Active
-                  nullable: false
-                  enum:
-                    - Active
-                    - 'On Leave'
-                salary:
-                  type: number
-                  description: ''
-                  example: 4326.41688
-                  nullable: false
-                hire_date:
-                  type: string
-                  description: 'Must be a valid date.'
-                  example: '2025-10-12T21:22:06'
-                  nullable: false
-                branch_id:
-                  type: string
-                  description: 'The <code>id</code> of an existing record in the branches table.'
-                  example: null
-                  nullable: false
-      security: []
-    delete:
-      summary: ''
-      operationId: deleteApiEmployeesId
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      security: []
-    parameters:
-      -
-        in: path
-        name: id
-        description: 'The ID of the employee.'
-        example: architecto
-        required: true
-        schema:
-          type: string
   /api/management/payrolls:
     get:
       summary: ''
@@ -254,7 +99,7 @@ paths:
                 pay_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T21:22:06'
+                  example: '2025-10-13T10:37:07'
                   nullable: false
                 branch_id:
                   type: string
@@ -321,12 +166,12 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T21:22:06'
+                  example: '2025-10-13T10:37:07'
                   nullable: false
                 status:
                   type: string
                   description: ''
-                  example: Present
+                  example: Absent
                   nullable: false
                   enum:
                     - Present
@@ -460,7 +305,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Sent
+                  example: Received
                   nullable: false
                   enum:
                     - Sent
@@ -520,7 +365,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Approved
+                  example: Pending
                   nullable: false
                   enum:
                     - Pending
@@ -579,7 +424,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Rejected
+                  example: Approved
                   nullable: false
                   enum:
                     - Pending
@@ -1362,7 +1207,7 @@ paths:
     post:
       summary: 'User Login'
       operationId: userLogin
-      description: "Authenticate a user using email and password and return an access token.\nFor this prototype system, any valid email with password \"password\" will be accepted."
+      description: 'Authenticate a user using email and password and return an access token with role, permissions, and branch info.'
       parameters: []
       responses:
         200:
@@ -1375,7 +1220,14 @@ paths:
                   token: 1|a1b2c3d4e5f6g7h8i9j0
                   user:
                     role: 'Super Admin'
+                    permissions:
+                      - users.create
+                      - users.edit
+                      - users.delete
+                      - appointments.manage
+                      - reports.view
                     branchId: b1
+                    branchName: 'Main Branch'
                     email: lisa.cuddy@example.com
                     name: 'Dr. Lisa Cuddy'
                     avatar: 'https://picsum.photos/seed/emp1/200/200'
@@ -1389,9 +1241,22 @@ paths:
                       role:
                         type: string
                         example: 'Super Admin'
+                      permissions:
+                        type: array
+                        example:
+                          - users.create
+                          - users.edit
+                          - users.delete
+                          - appointments.manage
+                          - reports.view
+                        items:
+                          type: string
                       branchId:
                         type: string
                         example: b1
+                      branchName:
+                        type: string
+                        example: 'Main Branch'
                       email:
                         type: string
                         example: lisa.cuddy@example.com
@@ -1401,50 +1266,6 @@ paths:
                       avatar:
                         type: string
                         example: 'https://picsum.photos/seed/emp1/200/200'
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  error: 'Invalid credentials'
-                properties:
-                  error:
-                    type: string
-                    example: 'Invalid credentials'
-        422:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: 'The given data was invalid.'
-                  errors:
-                    email:
-                      - 'The email field is required.'
-                    password:
-                      - 'The password field is required.'
-                properties:
-                  message:
-                    type: string
-                    example: 'The given data was invalid.'
-                  errors:
-                    type: object
-                    properties:
-                      email:
-                        type: array
-                        example:
-                          - 'The email field is required.'
-                        items:
-                          type: string
-                      password:
-                        type: array
-                        example:
-                          - 'The password field is required.'
-                        items:
-                          type: string
       tags:
         - Authentication
       requestBody:
@@ -1461,7 +1282,7 @@ paths:
                   nullable: false
                 password:
                   type: string
-                  description: 'The user''s password. Must be "password" for prototype.'
+                  description: "The user's password."
                   example: password
                   nullable: false
               required:
@@ -1558,7 +1379,7 @@ paths:
     get:
       summary: 'Get Profile Data'
       operationId: getProfileData
-      description: "Retrieve comprehensive profile information for the authenticated user including:\n- Employee details\n- Attendance statistics\n- Appointment statistics\n- Payroll history\n- Recent appointments\n\nRequires Bearer token authentication."
+      description: "Retrieve comprehensive profile information for the authenticated user including:\n- Employee details with branch name and permissions\n- Attendance statistics\n- Appointment statistics\n- Payroll history\n- Recent appointments\n\nRequires Bearer token authentication."
       parameters: []
       responses:
         200:
@@ -1578,6 +1399,12 @@ paths:
                     salary: 150000
                     hire_date: '2020-01-15'
                     branch_id: b1
+                    branch_name: 'Main Branch'
+                    permissions:
+                      - users.create
+                      - users.edit
+                      - users.delete
+                      - appointments.manage
                     created_at: '2024-01-01T00:00:00.000000Z'
                     updated_at: '2024-01-01T00:00:00.000000Z'
                   stats:
@@ -1640,6 +1467,18 @@ paths:
                       branch_id:
                         type: string
                         example: b1
+                      branch_name:
+                        type: string
+                        example: 'Main Branch'
+                      permissions:
+                        type: array
+                        example:
+                          - users.create
+                          - users.edit
+                          - users.delete
+                          - appointments.manage
+                        items:
+                          type: string
                       created_at:
                         type: string
                         example: '2024-01-01T00:00:00.000000Z'
@@ -1753,20 +1592,551 @@ paths:
                         updated_at:
                           type: string
                           example: '2024-01-01T00:00:00.000000Z'
-        401:
+      tags:
+        - Authentication
+  /api/employees:
+    get:
+      summary: 'Get All Employees'
+      operationId: getAllEmployees
+      description: "Retrieve a list of all employees with optional filtering by branch or role.\nReturns complete employee details including branch information."
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Filter employees by branch ID.'
+          example: b1
+          required: false
+          schema:
+            type: string
+            description: 'Filter employees by branch ID.'
+            example: b1
+            nullable: false
+        -
+          in: query
+          name: role
+          description: 'Filter employees by role.'
+          example: Dentist
+          required: false
+          schema:
+            type: string
+            description: 'Filter employees by role.'
+            example: Dentist
+            nullable: false
+      responses:
+        200:
           description: ''
           content:
             application/json:
               schema:
                 type: object
                 example:
-                  message: Unauthenticated.
+                  data:
+                    -
+                      id: emp1
+                      name: 'Dr. Lisa Cuddy'
+                      avatar: 'https://picsum.photos/seed/emp1/200/200'
+                      email: lisa.cuddy@example.com
+                      role: 'Super Admin'
+                      status: Active
+                      salary: 150000.0
+                      hire_date: '2020-01-15'
+                      branch_id: b1
+                      branch:
+                        id: b1
+                        name: 'Downtown Clinic'
+                        address: '123 Main St, Cityville'
+                properties:
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: emp1
+                        name: 'Dr. Lisa Cuddy'
+                        avatar: 'https://picsum.photos/seed/emp1/200/200'
+                        email: lisa.cuddy@example.com
+                        role: 'Super Admin'
+                        status: Active
+                        salary: 150000
+                        hire_date: '2020-01-15'
+                        branch_id: b1
+                        branch:
+                          id: b1
+                          name: 'Downtown Clinic'
+                          address: '123 Main St, Cityville'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: emp1
+                        name:
+                          type: string
+                          example: 'Dr. Lisa Cuddy'
+                        avatar:
+                          type: string
+                          example: 'https://picsum.photos/seed/emp1/200/200'
+                        email:
+                          type: string
+                          example: lisa.cuddy@example.com
+                        role:
+                          type: string
+                          example: 'Super Admin'
+                        status:
+                          type: string
+                          example: Active
+                        salary:
+                          type: number
+                          example: 150000.0
+                        hire_date:
+                          type: string
+                          example: '2020-01-15'
+                        branch_id:
+                          type: string
+                          example: b1
+                        branch:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              example: b1
+                            name:
+                              type: string
+                              example: 'Downtown Clinic'
+                            address:
+                              type: string
+                              example: '123 Main St, Cityville'
+      tags:
+        - Employees
+    post:
+      summary: 'Create Employee'
+      operationId: createEmployee
+      description: "Create a new employee record with assigned role and branch.\nValid roles must be from the predefined role permissions."
+      parameters: []
+      responses:
+        201:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: emp6
+                  name: 'Dr. Sarah Johnson'
+                  avatar: 'https://picsum.photos/200/200'
+                  email: sarah.johnson@example.com
+                  role: Dentist
+                  status: Active
+                  salary: 120000.0
+                  hire_date: '2024-01-15'
+                  branch_id: b1
+                  branch:
+                    id: b1
+                    name: 'Downtown Clinic'
+                    address: '123 Main St, Cityville'
+                properties:
+                  id:
+                    type: string
+                    example: emp6
+                  name:
+                    type: string
+                    example: 'Dr. Sarah Johnson'
+                  avatar:
+                    type: string
+                    example: 'https://picsum.photos/200/200'
+                  email:
+                    type: string
+                    example: sarah.johnson@example.com
+                  role:
+                    type: string
+                    example: Dentist
+                  status:
+                    type: string
+                    example: Active
+                  salary:
+                    type: number
+                    example: 120000.0
+                  hire_date:
+                    type: string
+                    example: '2024-01-15'
+                  branch_id:
+                    type: string
+                    example: b1
+                  branch:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: b1
+                      name:
+                        type: string
+                        example: 'Downtown Clinic'
+                      address:
+                        type: string
+                        example: '123 Main St, Cityville'
+        422:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'The given data was invalid.'
+                  errors:
+                    name:
+                      - 'The name field is required.'
+                    email:
+                      - 'The email field is required.'
+                    role:
+                      - 'The selected role is invalid.'
+                    salary:
+                      - 'The salary field is required.'
+                    hire_date:
+                      - 'The hire date field is required.'
+                    branch_id:
+                      - 'The branch id field is required.'
                 properties:
                   message:
                     type: string
-                    example: Unauthenticated.
+                    example: 'The given data was invalid.'
+                  errors:
+                    type: object
+                    properties:
+                      name:
+                        type: array
+                        example:
+                          - 'The name field is required.'
+                        items:
+                          type: string
+                      email:
+                        type: array
+                        example:
+                          - 'The email field is required.'
+                        items:
+                          type: string
+                      role:
+                        type: array
+                        example:
+                          - 'The selected role is invalid.'
+                        items:
+                          type: string
+                      salary:
+                        type: array
+                        example:
+                          - 'The salary field is required.'
+                        items:
+                          type: string
+                      hire_date:
+                        type: array
+                        example:
+                          - 'The hire date field is required.'
+                        items:
+                          type: string
+                      branch_id:
+                        type: array
+                        example:
+                          - 'The branch id field is required.'
+                        items:
+                          type: string
       tags:
-        - Authentication
+        - Employees
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "Employee's full name."
+                  example: 'Dr. Sarah Johnson'
+                  nullable: false
+                avatar:
+                  type: string
+                  description: "URL to employee's avatar image."
+                  example: 'https://picsum.photos/200/200'
+                  nullable: true
+                email:
+                  type: string
+                  description: "Employee's email address."
+                  example: sarah.johnson@example.com
+                  nullable: false
+                role:
+                  type: string
+                  description: "Employee's role. Must be a valid role from role permissions."
+                  example: Dentist
+                  nullable: false
+                salary:
+                  type: number
+                  description: "Employee's annual salary."
+                  example: 120000.0
+                  nullable: false
+                hire_date:
+                  type: date
+                  description: "Employee's hire date (YYYY-MM-DD)."
+                  example: '2024-01-15'
+                  nullable: false
+                branch_id:
+                  type: string
+                  description: 'Branch ID where employee works.'
+                  example: b1
+                  nullable: false
+              required:
+                - name
+                - email
+                - role
+                - salary
+                - hire_date
+                - branch_id
+  '/api/employees/{id}':
+    get:
+      summary: 'Get Employee by ID'
+      operationId: getEmployeeByID
+      description: 'Retrieve detailed information for a specific employee including branch details.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: emp1
+                  name: 'Dr. Lisa Cuddy'
+                  avatar: 'https://picsum.photos/seed/emp1/200/200'
+                  email: lisa.cuddy@example.com
+                  role: 'Super Admin'
+                  status: Active
+                  salary: 150000.0
+                  hire_date: '2020-01-15'
+                  branch_id: b1
+                  branch:
+                    id: b1
+                    name: 'Downtown Clinic'
+                    address: '123 Main St, Cityville'
+                properties:
+                  id:
+                    type: string
+                    example: emp1
+                  name:
+                    type: string
+                    example: 'Dr. Lisa Cuddy'
+                  avatar:
+                    type: string
+                    example: 'https://picsum.photos/seed/emp1/200/200'
+                  email:
+                    type: string
+                    example: lisa.cuddy@example.com
+                  role:
+                    type: string
+                    example: 'Super Admin'
+                  status:
+                    type: string
+                    example: Active
+                  salary:
+                    type: number
+                    example: 150000.0
+                  hire_date:
+                    type: string
+                    example: '2020-01-15'
+                  branch_id:
+                    type: string
+                    example: b1
+                  branch:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: b1
+                      name:
+                        type: string
+                        example: 'Downtown Clinic'
+                      address:
+                        type: string
+                        example: '123 Main St, Cityville'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Employee not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Employee not found'
+      tags:
+        - Employees
+    put:
+      summary: 'Update Employee'
+      operationId: updateEmployee
+      description: "Update an existing employee's information including role changes.\nValid roles must be from the predefined role permissions."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: emp1
+                  name: 'Dr. Lisa Cuddy Updated'
+                  avatar: 'https://picsum.photos/200/200'
+                  email: lisa.updated@example.com
+                  role: Dentist
+                  status: 'On Leave'
+                  salary: 160000.0
+                  hire_date: '2020-01-15'
+                  branch_id: b2
+                  branch:
+                    id: b2
+                    name: 'Uptown Dental'
+                    address: '456 Oak Ave, Townburg'
+                properties:
+                  id:
+                    type: string
+                    example: emp1
+                  name:
+                    type: string
+                    example: 'Dr. Lisa Cuddy Updated'
+                  avatar:
+                    type: string
+                    example: 'https://picsum.photos/200/200'
+                  email:
+                    type: string
+                    example: lisa.updated@example.com
+                  role:
+                    type: string
+                    example: Dentist
+                  status:
+                    type: string
+                    example: 'On Leave'
+                  salary:
+                    type: number
+                    example: 160000.0
+                  hire_date:
+                    type: string
+                    example: '2020-01-15'
+                  branch_id:
+                    type: string
+                    example: b2
+                  branch:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: b2
+                      name:
+                        type: string
+                        example: 'Uptown Dental'
+                      address:
+                        type: string
+                        example: '456 Oak Ave, Townburg'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Employee not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Employee not found'
+      tags:
+        - Employees
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "Employee's full name."
+                  example: 'Dr. Lisa Cuddy Updated'
+                  nullable: false
+                avatar:
+                  type: string
+                  description: "URL to employee's avatar image."
+                  example: 'https://picsum.photos/200/200'
+                  nullable: true
+                email:
+                  type: string
+                  description: "Employee's email address."
+                  example: lisa.updated@example.com
+                  nullable: false
+                role:
+                  type: string
+                  description: "Employee's role."
+                  example: Dentist
+                  nullable: false
+                status:
+                  type: string
+                  description: 'Employee status.'
+                  example: 'On Leave'
+                  nullable: false
+                salary:
+                  type: number
+                  description: "Employee's annual salary."
+                  example: 160000.0
+                  nullable: false
+                hire_date:
+                  type: date
+                  description: "Employee's hire date."
+                  example: '2020-01-15'
+                  nullable: false
+                branch_id:
+                  type: string
+                  description: 'Branch ID.'
+                  example: b2
+                  nullable: false
+    delete:
+      summary: 'Delete Employee'
+      operationId: deleteEmployee
+      description: "Permanently delete an employee record from the system.\nUse with caution as this action cannot be undone."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  success: true
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Employee not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Employee not found'
+      tags:
+        - Employees
+    parameters:
+      -
+        in: path
+        name: id
+        description: "The employee's ID."
+        example: emp1
+        required: true
+        schema:
+          type: string
   /api/invoices:
     get:
       summary: 'Get All Invoices'
@@ -3204,7 +3574,7 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-12T21:22:06'
+                  example: '2025-10-13T10:37:07'
                   nullable: true
                 status:
                   type: string

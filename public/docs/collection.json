@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "aa829d42-69b4-46d9-a509-5f975604f07a",
+        "_postman_id": "22a3fd10-99bf-4343-bbed-d4243599e5a8",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -19,160 +19,6 @@
             "name": "",
             "description": "",
             "item": [
-                {
-                    "name": "GET api\/employees",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/employees",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/employees"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "POST api\/employees",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/employees",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/employees"
-                        },
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"email\":\"zbailey@example.net\",\"role\":\"architecto\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T21:22:06\",\"branch_id\":\"architecto\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "PUT api\/employees\/{id}",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/employees\/:id",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/employees\/:id",
-                            "variable": [
-                                {
-                                    "id": "id",
-                                    "key": "id",
-                                    "value": "architecto",
-                                    "description": "The ID of the employee."
-                                }
-                            ]
-                        },
-                        "method": "PUT",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"name\":\"architecto\",\"avatar\":\"architecto\",\"role\":\"architecto\",\"status\":\"Active\",\"salary\":4326.41688,\"hire_date\":\"2025-10-12T21:22:06\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "DELETE api\/employees\/{id}",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/employees\/:id",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/employees\/:id",
-                            "variable": [
-                                {
-                                    "id": "id",
-                                    "key": "id",
-                                    "value": "architecto",
-                                    "description": "The ID of the employee."
-                                }
-                            ]
-                        },
-                        "method": "DELETE",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
                 {
                     "name": "GET api\/management\/payrolls",
                     "request": {
@@ -243,7 +89,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-12T21:22:06\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-13T10:37:07\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -322,7 +168,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-12T21:22:06\",\"status\":\"Present\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-13T10:37:07\",\"status\":\"Absent\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -496,7 +342,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Sent\"}"
+                            "raw": "{\"status\":\"Received\"}"
                         },
                         "description": "",
                         "auth": {
@@ -583,7 +429,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Approved\"}"
+                            "raw": "{\"status\":\"Pending\"}"
                         },
                         "description": "",
                         "auth": {
@@ -670,7 +516,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Rejected\"}"
+                            "raw": "{\"status\":\"Approved\"}"
                         },
                         "description": "",
                         "auth": {
@@ -1053,7 +899,7 @@
                             "mode": "raw",
                             "raw": "{\"email\":\"lisa.cuddy@example.com\",\"password\":\"password\"}"
                         },
-                        "description": "Authenticate a user using email and password and return an access token.\nFor this prototype system, any valid email with password \"password\" will be accepted.",
+                        "description": "Authenticate a user using email and password and return an access token with role, permissions, and branch info.",
                         "auth": {
                             "type": "noauth"
                         }
@@ -1062,19 +908,7 @@
                         {
                             "header": [],
                             "code": 200,
-                            "body": "{\n  \"token\": \"1|a1b2c3d4e5f6g7h8i9j0\",\n  \"user\": {\n    \"role\": \"Super Admin\",\n    \"branchId\": \"b1\",\n    \"email\": \"lisa.cuddy@example.com\",\n    \"name\": \"Dr. Lisa Cuddy\",\n    \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\"\n  }\n}",
-                            "name": ""
-                        },
-                        {
-                            "header": [],
-                            "code": 401,
-                            "body": "{\n  \"error\": \"Invalid credentials\"\n}",
-                            "name": ""
-                        },
-                        {
-                            "header": [],
-                            "code": 422,
-                            "body": "{\n  \"message\": \"The given data was invalid.\",\n  \"errors\": {\n    \"email\": [\"The email field is required.\"],\n    \"password\": [\"The password field is required.\"]\n  }\n}",
+                            "body": "{\n  \"token\": \"1|a1b2c3d4e5f6g7h8i9j0\",\n  \"user\": {\n    \"role\": \"Super Admin\",\n    \"permissions\": [\n      \"users.create\",\n      \"users.edit\",\n      \"users.delete\",\n      \"appointments.manage\",\n      \"reports.view\"\n    ],\n    \"branchId\": \"b1\",\n    \"branchName\": \"Main Branch\",\n    \"email\": \"lisa.cuddy@example.com\",\n    \"name\": \"Dr. Lisa Cuddy\",\n    \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\"\n  }\n}",
                             "name": ""
                         }
                     ]
@@ -1176,19 +1010,246 @@
                             }
                         ],
                         "body": null,
-                        "description": "Retrieve comprehensive profile information for the authenticated user including:\n- Employee details\n- Attendance statistics\n- Appointment statistics\n- Payroll history\n- Recent appointments\n\nRequires Bearer token authentication."
+                        "description": "Retrieve comprehensive profile information for the authenticated user including:\n- Employee details with branch name and permissions\n- Attendance statistics\n- Appointment statistics\n- Payroll history\n- Recent appointments\n\nRequires Bearer token authentication."
                     },
                     "response": [
                         {
                             "header": [],
                             "code": 200,
-                            "body": "{\n  \"employee\": {\n    \"id\": \"emp1\",\n    \"name\": \"Dr. Lisa Cuddy\",\n    \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\",\n    \"email\": \"lisa.cuddy@example.com\",\n    \"role\": \"Super Admin\",\n    \"status\": \"Active\",\n    \"salary\": 150000,\n    \"hire_date\": \"2020-01-15\",\n    \"branch_id\": \"b1\",\n    \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n    \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n  },\n  \"stats\": {\n    \"totalPaid\": 15000,\n    \"presentDays\": 20,\n    \"absentDays\": 2,\n    \"onLeaveDays\": 1,\n    \"totalAppointments\": 45,\n    \"uniquePatients\": 30,\n    \"recentAppointments\": [\n      {\n        \"id\": \"a1\",\n        \"patient_name\": \"John Doe\",\n        \"treatment\": \"Check-up\",\n        \"status\": \"Completed\",\n        \"date\": \"2024-07-20\",\n        \"time\": \"10:00 AM\"\n      }\n    ]\n  },\n  \"payrolls\": [\n    {\n      \"id\": \"pay1\",\n      \"employee_id\": \"emp1\",\n      \"employee_name\": \"Dr. Lisa Cuddy\",\n      \"pay_period\": \"2024-06-01 to 2024-06-15\",\n      \"gross_pay\": 6250,\n      \"deductions\": 1200,\n      \"net_pay\": 5050,\n      \"pay_date\": \"2024-06-15\",\n      \"status\": \"Paid\",\n      \"branch_id\": \"b1\",\n      \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n      \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n    }\n  ]\n}",
+                            "body": "{\n  \"employee\": {\n    \"id\": \"emp1\",\n    \"name\": \"Dr. Lisa Cuddy\",\n    \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\",\n    \"email\": \"lisa.cuddy@example.com\",\n    \"role\": \"Super Admin\",\n    \"status\": \"Active\",\n    \"salary\": 150000,\n    \"hire_date\": \"2020-01-15\",\n    \"branch_id\": \"b1\",\n    \"branch_name\": \"Main Branch\",\n    \"permissions\": [\n      \"users.create\",\n      \"users.edit\",\n      \"users.delete\",\n      \"appointments.manage\"\n    ],\n    \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n    \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n  },\n  \"stats\": {\n    \"totalPaid\": 15000,\n    \"presentDays\": 20,\n    \"absentDays\": 2,\n    \"onLeaveDays\": 1,\n    \"totalAppointments\": 45,\n    \"uniquePatients\": 30,\n    \"recentAppointments\": [\n      {\n        \"id\": \"a1\",\n        \"patient_name\": \"John Doe\",\n        \"treatment\": \"Check-up\",\n        \"status\": \"Completed\",\n        \"date\": \"2024-07-20\",\n        \"time\": \"10:00 AM\"\n      }\n    ]\n  },\n  \"payrolls\": [\n    {\n      \"id\": \"pay1\",\n      \"employee_id\": \"emp1\",\n      \"employee_name\": \"Dr. Lisa Cuddy\",\n      \"pay_period\": \"2024-06-01 to 2024-06-15\",\n      \"gross_pay\": 6250,\n      \"deductions\": 1200,\n      \"net_pay\": 5050,\n      \"pay_date\": \"2024-06-15\",\n      \"status\": \"Paid\",\n      \"branch_id\": \"b1\",\n      \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n      \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n    }\n  ]\n}",
+                            "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Employees",
+            "description": "\nEndpoints for managing employee records, roles, and staff information.\nIncludes role-based access control and employee management.",
+            "item": [
+                {
+                    "name": "Get All Employees",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/employees",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "b1",
+                                    "description": "Filter employees by branch ID.",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "role",
+                                    "value": "Dentist",
+                                    "description": "Filter employees by role.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/employees?branch_id=b1&role=Dentist"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve a list of all employees with optional filtering by branch or role.\nReturns complete employee details including branch information."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"data\": [\n    {\n      \"id\": \"emp1\",\n      \"name\": \"Dr. Lisa Cuddy\",\n      \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\",\n      \"email\": \"lisa.cuddy@example.com\",\n      \"role\": \"Super Admin\",\n      \"status\": \"Active\",\n      \"salary\": 150000.00,\n      \"hire_date\": \"2020-01-15\",\n      \"branch_id\": \"b1\",\n      \"branch\": {\n        \"id\": \"b1\",\n        \"name\": \"Downtown Clinic\",\n        \"address\": \"123 Main St, Cityville\"\n      }\n    }\n  ]\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Employee",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/employees",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/employees"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"name\":\"Dr. Sarah Johnson\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"sarah.johnson@example.com\",\"role\":\"Dentist\",\"salary\":120000,\"hire_date\":\"2024-01-15\",\"branch_id\":\"b1\"}"
+                        },
+                        "description": "Create a new employee record with assigned role and branch.\nValid roles must be from the predefined role permissions."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 201,
+                            "body": "{\n  \"id\": \"emp6\",\n  \"name\": \"Dr. Sarah Johnson\",\n  \"avatar\": \"https:\/\/picsum.photos\/200\/200\",\n  \"email\": \"sarah.johnson@example.com\",\n  \"role\": \"Dentist\",\n  \"status\": \"Active\",\n  \"salary\": 120000.00,\n  \"hire_date\": \"2024-01-15\",\n  \"branch_id\": \"b1\",\n  \"branch\": {\n    \"id\": \"b1\",\n    \"name\": \"Downtown Clinic\",\n    \"address\": \"123 Main St, Cityville\"\n  }\n}",
                             "name": ""
                         },
                         {
                             "header": [],
-                            "code": 401,
-                            "body": "{\n  \"message\": \"Unauthenticated.\"\n}",
+                            "code": 422,
+                            "body": "{\n  \"message\": \"The given data was invalid.\",\n  \"errors\": {\n    \"name\": [\"The name field is required.\"],\n    \"email\": [\"The email field is required.\"],\n    \"role\": [\"The selected role is invalid.\"],\n    \"salary\": [\"The salary field is required.\"],\n    \"hire_date\": [\"The hire date field is required.\"],\n    \"branch_id\": [\"The branch id field is required.\"]\n  }\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Employee by ID",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/employees\/:id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/employees\/:id",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "emp1",
+                                    "description": "The employee's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve detailed information for a specific employee including branch details."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"id\": \"emp1\",\n  \"name\": \"Dr. Lisa Cuddy\",\n  \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\",\n  \"email\": \"lisa.cuddy@example.com\",\n  \"role\": \"Super Admin\",\n  \"status\": \"Active\",\n  \"salary\": 150000.00,\n  \"hire_date\": \"2020-01-15\",\n  \"branch_id\": \"b1\",\n  \"branch\": {\n    \"id\": \"b1\",\n    \"name\": \"Downtown Clinic\",\n    \"address\": \"123 Main St, Cityville\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Employee not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Employee",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/employees\/:id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/employees\/:id",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "emp1",
+                                    "description": "The employee's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"name\":\"Dr. Lisa Cuddy Updated\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"lisa.updated@example.com\",\"role\":\"Dentist\",\"status\":\"On Leave\",\"salary\":160000,\"hire_date\":\"2020-01-15\",\"branch_id\":\"b2\"}"
+                        },
+                        "description": "Update an existing employee's information including role changes.\nValid roles must be from the predefined role permissions."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"id\": \"emp1\",\n  \"name\": \"Dr. Lisa Cuddy Updated\",\n  \"avatar\": \"https:\/\/picsum.photos\/200\/200\",\n  \"email\": \"lisa.updated@example.com\",\n  \"role\": \"Dentist\",\n  \"status\": \"On Leave\",\n  \"salary\": 160000.00,\n  \"hire_date\": \"2020-01-15\",\n  \"branch_id\": \"b2\",\n  \"branch\": {\n    \"id\": \"b2\",\n    \"name\": \"Uptown Dental\",\n    \"address\": \"456 Oak Ave, Townburg\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Employee not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Employee",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/employees\/:id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/employees\/:id",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "emp1",
+                                    "description": "The employee's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Permanently delete an employee record from the system.\nUse with caution as this action cannot be undone."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"success\": true\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Employee not found\"\n}",
                             "name": ""
                         }
                     ]
@@ -1637,7 +1698,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-12T21:22:06\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-13T10:37:07\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
                         },
                         "description": "Update an existing patient's information."
                     },

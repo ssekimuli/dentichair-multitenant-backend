@@ -17,7 +17,7 @@ class Employee extends Model
 
     protected $fillable = [
         'id', 'name', 'avatar', 'email', 'role', 'status', 
-        'salary', 'hire_date', 'branch_id','password'
+        'salary', 'hire_date', 'branch_id','password','role_id'
     ];
     protected $hidden = [
         'password',
@@ -28,9 +28,11 @@ class Employee extends Model
         'salary' => 'decimal:2',
     ];
 
-    public function branch(): BelongsTo
+    
+
+    public function branch()
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
 
     public function appointments(): HasMany

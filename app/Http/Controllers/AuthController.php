@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\RolePermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -20,40 +21,50 @@ use Illuminate\Support\Facades\Cache;
  */
 class AuthController extends Controller
 {
+
+    /**
+     * Get permissions based on user role_id from database
+     */
+    private function getPermissionsByRole($roleId)
+    {
+        // Get role permission record from database using role_id
+        $rolePermission = RolePermission::find($roleId);
+
+        if (!$rolePermission) {
+            return [];
+        }
+
+        // Return permissions from database
+        return $rolePermission->permissions ?? [];
+    }
+
     /**
      * User Login
      * 
-     * Authenticate a user using email and password and return an access token.
-     * For this prototype system, any valid email with password "password" will be accepted.
+     * Authenticate a user using email and password and return an access token with role, permissions, and branch info.
      * 
      * @bodyParam email string required The user's email address. Example: lisa.cuddy@example.com
-     * @bodyParam password string required The user's password. Must be "password" for prototype. Example: password
+     * @bodyParam password string required The user's password. Example: password
      * 
      * @response 200 {
      *   "token": "1|a1b2c3d4e5f6g7h8i9j0",
      *   "user": {
      *     "role": "Super Admin",
+     *     "permissions": [
+     *       "users.create",
+     *       "users.edit", 
+     *       "users.delete",
+     *       "appointments.manage",
+     *       "reports.view"
+     *     ],
      *     "branchId": "b1",
+     *     "branchName": "Main Branch",
      *     "email": "lisa.cuddy@example.com",
      *     "name": "Dr. Lisa Cuddy",
      *     "avatar": "https://picsum.photos/seed/emp1/200/200"
      *   }
      * }
-     * @response 401 {
-     *   "error": "Invalid credentials"
-     * }
-     * @response 422 {
-     *   "message": "The given data was invalid.",
-     *   "errors": {
-     *     "email": ["The email field is required."],
-     *     "password": ["The password field is required."]
-     *   }
-     * }
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
-
     public function login(Request $request)
     {
         $request->validate([
@@ -61,7 +72,7 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $employee = Employee::where('email', $request->email)->first();
+        $employee = Employee::with('branch')->where('email', $request->email)->first();
 
         if (!$employee || !Hash::check($request->password, $employee->password)) {
             throw ValidationException::withMessages([
@@ -71,14 +82,22 @@ class AuthController extends Controller
 
         $token = $employee->createToken('api-token')->plainTextToken;
 
+        // Get permissions based on role
+        $permissions = $this->getPermissionsByRole($employee->role_id);
+
         return response()->json([
             'token' => $token,
             'user' => [
                 'role' => $employee->role,
+                'permissions' => $permissions,
                 'branchId' => $employee->branch_id,
                 'email' => $employee->email,
                 'name' => $employee->name,
                 'avatar' => $employee->avatar,
+                'status' => $employee->status,
+                'hire_date' => $employee->hire_date,
+                'branch_id' => $employee->branch_id,
+                'branchName' => $employee->branch->name ?? null, // Include branch name
             ]
         ]);
     }
@@ -374,14 +393,20 @@ class AuthController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+
+    // Update other methods to use role_id instead of role for permission lookup
     public function user(Request $request)
     {
-        $employee = $request->user();
+        $employee = $request->user()->load('branch');
+        $permissions = $this->getPermissionsByRole($employee->role_id);
 
         return response()->json([
             'user' => [
                 'role' => $employee->role,
+                'role_id' => $employee->role_id,
+                'permissions' => $permissions,
                 'branchId' => $employee->branch_id,
+                'branchName' => $employee->branch->name ?? null,
                 'email' => $employee->email,
                 'name' => $employee->name,
                 'avatar' => $employee->avatar,
@@ -393,7 +418,7 @@ class AuthController extends Controller
      * Get Profile Data
      * 
      * Retrieve comprehensive profile information for the authenticated user including:
-     * - Employee details
+     * - Employee details with branch name and permissions
      * - Attendance statistics
      * - Appointment statistics  
      * - Payroll history
@@ -410,10 +435,18 @@ class AuthController extends Controller
      *     "avatar": "https://picsum.photos/seed/emp1/200/200",
      *     "email": "lisa.cuddy@example.com",
      *     "role": "Super Admin",
+     *     "role_id": 1,
      *     "status": "Active",
      *     "salary": 150000,
      *     "hire_date": "2020-01-15",
-     *     "branch_id": "b1",
+     *     "branch_id": 1,
+     *     "branch_name": "Main Branch",
+     *     "permissions": [
+     *       "users.create",
+     *       "users.edit",
+     *       "users.delete",
+     *       "appointments.manage"
+     *     ],
      *     "created_at": "2024-01-01T00:00:00.000000Z",
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   },
@@ -446,22 +479,19 @@ class AuthController extends Controller
      *       "net_pay": 5050,
      *       "pay_date": "2024-06-15",
      *       "status": "Paid",
-     *       "branch_id": "b1",
+     *       "branch_id": 1,
      *       "created_at": "2024-01-01T00:00:00.000000Z",
      *       "updated_at": "2024-01-01T00:00:00.000000Z"
      *     }
      *   ]
      * }
-     * @response 401 {
-     *   "message": "Unauthenticated."
-     * }
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function getProfileData(Request $request)
     {
-        $employee = $request->user();
+        $employee = $request->user()->load('branch');
+
+        // Use role_id instead of role for permission lookup
+        $permissions = $this->getPermissionsByRole($employee->role_id);
 
         $employeePayrolls = $employee->payrolls;
         $totalPaid = $employeePayrolls->sum('net_pay');
@@ -484,12 +514,32 @@ class AuthController extends Controller
             'recentAppointments' => $employeeAppointments->sortByDesc('date')->take(5)->values(),
         ];
 
+        // Build employee data with branch name and permissions
+        $employeeData = [
+            'id' => $employee->id,
+            'name' => $employee->name,
+            'avatar' => $employee->avatar,
+            'email' => $employee->email,
+            'role' => $employee->role,
+            'role_id' => $employee->role_id, // Include numeric role_id
+            'status' => $employee->status,
+            'salary' => $employee->salary,
+            'hire_date' => $employee->hire_date,
+            'branch_id' => $employee->branch_id,
+            'branch_name' => $employee->branch->name ?? null, // Include branch name
+            'permissions' => $permissions, // Include permissions
+            'created_at' => $employee->created_at,
+            'updated_at' => $employee->updated_at,
+        ];
+
         return response()->json([
-            'employee' => $employee,
+            'employee' => $employeeData,
             'stats' => $stats,
             'payrolls' => $employeePayrolls,
         ]);
     }
+
+
 
     /**
      * Send OTP via Email

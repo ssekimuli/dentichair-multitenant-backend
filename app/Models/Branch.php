@@ -20,10 +20,7 @@ class Branch extends Model
         return $this->hasMany(Patient::class);
     }
 
-    public function employees(): HasMany
-    {
-        return $this->hasMany(Employee::class);
-    }
+    
 
     public function appointments(): HasMany
     {
@@ -33,5 +30,10 @@ class Branch extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function employees()
+    {
+        return $this->hasMany(Employee::class, 'branch_id', 'id');
     }
 }

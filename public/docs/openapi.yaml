@@ -17,6 +17,9 @@ tags:
     name: Authentication
     description: "\nEndpoints for user authentication and profile management in the Dental Management System.\nThis API handles user login with token-based authentication and retrieval of profile data."
   -
+    name: 'Branch Management'
+    description: ''
+  -
     name: Employees
     description: "\nEndpoints for managing employee records, roles, and staff information.\nIncludes role-based access control and employee management."
   -
@@ -99,7 +102,7 @@ paths:
                 pay_date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-13T10:37:07'
+                  example: '2025-10-13T20:39:03'
                   nullable: false
                 branch_id:
                   type: string
@@ -166,12 +169,12 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-13T10:37:07'
+                  example: '2025-10-13T20:39:03'
                   nullable: false
                 status:
                   type: string
                   description: ''
-                  example: Absent
+                  example: 'On Leave'
                   nullable: false
                   enum:
                     - Present
@@ -305,7 +308,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Received
+                  example: Sent
                   nullable: false
                   enum:
                     - Sent
@@ -424,7 +427,7 @@ paths:
                 status:
                   type: string
                   description: ''
-                  example: Approved
+                  example: Pending
                   nullable: false
                   enum:
                     - Pending
@@ -1395,10 +1398,11 @@ paths:
                     avatar: 'https://picsum.photos/seed/emp1/200/200'
                     email: lisa.cuddy@example.com
                     role: 'Super Admin'
+                    role_id: 1
                     status: Active
                     salary: 150000
                     hire_date: '2020-01-15'
-                    branch_id: b1
+                    branch_id: 1
                     branch_name: 'Main Branch'
                     permissions:
                       - users.create
@@ -1433,7 +1437,7 @@ paths:
                       net_pay: 5050
                       pay_date: '2024-06-15'
                       status: Paid
-                      branch_id: b1
+                      branch_id: 1
                       created_at: '2024-01-01T00:00:00.000000Z'
                       updated_at: '2024-01-01T00:00:00.000000Z'
                 properties:
@@ -1455,6 +1459,9 @@ paths:
                       role:
                         type: string
                         example: 'Super Admin'
+                      role_id:
+                        type: integer
+                        example: 1
                       status:
                         type: string
                         example: Active
@@ -1465,8 +1472,8 @@ paths:
                         type: string
                         example: '2020-01-15'
                       branch_id:
-                        type: string
-                        example: b1
+                        type: integer
+                        example: 1
                       branch_name:
                         type: string
                         example: 'Main Branch'
@@ -1550,7 +1557,7 @@ paths:
                         net_pay: 5050
                         pay_date: '2024-06-15'
                         status: Paid
-                        branch_id: b1
+                        branch_id: 1
                         created_at: '2024-01-01T00:00:00.000000Z'
                         updated_at: '2024-01-01T00:00:00.000000Z'
                     items:
@@ -1584,8 +1591,8 @@ paths:
                           type: string
                           example: Paid
                         branch_id:
-                          type: string
-                          example: b1
+                          type: integer
+                          example: 1
                         created_at:
                           type: string
                           example: '2024-01-01T00:00:00.000000Z'
@@ -1594,6 +1601,49 @@ paths:
                           example: '2024-01-01T00:00:00.000000Z'
       tags:
         - Authentication
+  /api/all-branch:
+    get:
+      summary: 'Get all branches'
+      operationId: getAllBranches
+      description: 'Retrieve a list of all dental branches available in the system.'
+      parameters: []
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                example:
+                  -
+                    id: 1
+                    name: 'Downtown Clinic'
+                    address: '123 Main St, Cityville'
+                    created_at: '2025-10-13T12:00:00.000000Z'
+                    updated_at: '2025-10-13T12:00:00.000000Z'
+                  -
+                    id: 2
+                    name: 'Uptown Dental'
+                    address: '456 Oak Ave, Townburg'
+                    created_at: '2025-10-13T12:00:00.000000Z'
+                    updated_at: '2025-10-13T12:00:00.000000Z'
+        500:
+          description: 'Server Error'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Something went wrong while fetching branches.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Something went wrong while fetching branches.'
+      tags:
+        - 'Branch Management'
+      security: []
   /api/employees:
     get:
       summary: 'Get All Employees'
@@ -1866,6 +1916,11 @@ paths:
                   description: "Employee's role. Must be a valid role from role permissions."
                   example: Dentist
                   nullable: false
+                role_id:
+                  type: string
+                  description: 'Role name as string.'
+                  example: null
+                  nullable: false
                 salary:
                   type: number
                   description: "Employee's annual salary."
@@ -1881,6 +1936,11 @@ paths:
                   description: 'Branch ID where employee works.'
                   example: b1
                   nullable: false
+                password:
+                  type: string
+                  description: 'Must be at least 8 characters.'
+                  example: ']|{+-0pBNvYg'
+                  nullable: false
               required:
                 - name
                 - email
@@ -1888,6 +1948,7 @@ paths:
                 - salary
                 - hire_date
                 - branch_id
+                - password
   '/api/employees/{id}':
     get:
       summary: 'Get Employee by ID'
@@ -2076,10 +2137,10 @@ paths:
                   description: "Employee's role."
                   example: Dentist
                   nullable: false
-                status:
+                role_id:
                   type: string
-                  description: 'Employee status.'
-                  example: 'On Leave'
+                  description: ''
+                  example: null
                   nullable: false
                 salary:
                   type: number
@@ -2096,6 +2157,16 @@ paths:
                   description: 'Branch ID.'
                   example: b2
                   nullable: false
+                status:
+                  type: string
+                  description: 'Employee status.'
+                  example: 'On Leave'
+                  nullable: false
+                password:
+                  type: string
+                  description: 'Must be at least 8 characters.'
+                  example: '+-0pBNvYgxwmi/#iw'
+                  nullable: true
     delete:
       summary: 'Delete Employee'
       operationId: deleteEmployee
@@ -3574,7 +3645,7 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-13T10:37:07'
+                  example: '2025-10-13T20:39:02'
                   nullable: true
                 status:
                   type: string

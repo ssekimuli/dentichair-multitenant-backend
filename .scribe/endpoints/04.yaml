@@ -1,25 +1,25 @@
-name: Employees
+name: 'Invoices & Billing'
 description: |-
 
-  Endpoints for managing employee records, roles, and staff information.
-  Includes role-based access control and employee management.
+  Endpoints for managing patient invoices, payments, and billing operations.
+  Includes invoice creation, payment processing, and financial tracking.
 endpoints:
   -
     httpMethods:
       - GET
-    uri: api/employees
+    uri: api/invoices
     metadata:
-      groupName: Employees
+      groupName: 'Invoices & Billing'
       groupDescription: |-
 
-        Endpoints for managing employee records, roles, and staff information.
-        Includes role-based access control and employee management.
+        Endpoints for managing patient invoices, payments, and billing operations.
+        Includes invoice creation, payment processing, and financial tracking.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Get All Employees'
+      title: 'Get All Invoices'
       description: |-
-        Retrieve a list of all employees with optional filtering by branch or role.
-        Returns complete employee details including branch information.
+        Retrieve a list of invoices with optional filtering by branch or status.
+        Returns complete invoice details including treatments, charges, and payment transactions.
       authenticated: true
       deprecated: false
       custom: []
@@ -31,7 +31,7 @@ endpoints:
     queryParameters:
       branch_id:
         name: branch_id
-        description: 'Filter employees by branch ID.'
+        description: 'Filter invoices by branch ID.'
         required: false
         example: b1
         type: string
@@ -39,11 +39,11 @@ endpoints:
         exampleWasSpecified: true
         nullable: false
         custom: []
-      role:
-        name: role
-        description: 'Filter employees by role.'
+      status:
+        name: status
+        description: 'Filter invoices by status.'
         required: false
-        example: Dentist
+        example: Paid
         type: string
         enumValues: []
         exampleWasSpecified: true
@@ -51,7 +51,7 @@ endpoints:
         custom: []
     cleanQueryParameters:
       branch_id: b1
-      role: Dentist
+      status: Paid
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
@@ -62,19 +62,39 @@ endpoints:
           {
             "data": [
               {
-                "id": "emp1",
-                "name": "Dr. Lisa Cuddy",
-                "avatar": "https://picsum.photos/seed/emp1/200/200",
-                "email": "lisa.cuddy@example.com",
-                "role": "Super Admin",
-                "status": "Active",
-                "salary": 150000.00,
-                "hire_date": "2020-01-15",
+                "id": "inv1",
+                "patient_name": "John Doe",
+                "patient_id": "1",
+                "amount": 250.00,
+                "paid_amount": 100.00,
+                "status": "Pending",
+                "issue_date": "2024-05-10",
+                "due_date": "2024-06-10",
                 "branch_id": "b1",
+                "payment_method": "Insurance",
+                "treatments": [
+                  {
+                    "procedure": "Filling for #16",
+                    "cost": 250.00
+                  }
+                ],
+                "other_charges": [],
+                "transactions": [
+                  {
+                    "id": "txn1",
+                    "date": "2024-05-12",
+                    "amount": 100.00,
+                    "method": "Insurance"
+                  }
+                ],
+                "patient": {
+                  "id": "1",
+                  "name": "John Doe",
+                  "email": "john.doe@example.com"
+                },
                 "branch": {
                   "id": "b1",
-                  "name": "Downtown Clinic",
-                  "address": "123 Main St, Cityville"
+                  "name": "Downtown Clinic"
                 }
               }
             ]
@@ -91,19 +111,19 @@ endpoints:
   -
     httpMethods:
       - POST
-    uri: api/employees
+    uri: api/invoices
     metadata:
-      groupName: Employees
+      groupName: 'Invoices & Billing'
       groupDescription: |-
 
-        Endpoints for managing employee records, roles, and staff information.
-        Includes role-based access control and employee management.
+        Endpoints for managing patient invoices, payments, and billing operations.
+        Includes invoice creation, payment processing, and financial tracking.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Create Employee'
+      title: 'Create Invoice'
       description: |-
-        Create a new employee record with assigned role and branch.
-        Valid roles must be from the predefined role permissions.
+        Create a new invoice for a patient with treatments and optional additional charges.
+        Automatically sets initial status to "Pending" and paid amount to 0.
       authenticated: true
       deprecated: false
       custom: []
@@ -115,61 +135,51 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
-        name: name
-        description: "Employee's full name."
+      patient_name:
+        name: patient_name
+        description: "Patient's full name."
         required: true
-        example: 'Dr. Sarah Johnson'
+        example: 'John Doe'
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      avatar:
-        name: avatar
-        description: "URL to employee's avatar image."
-        required: false
-        example: 'https://picsum.photos/200/200'
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: true
-        custom: []
-      email:
-        name: email
-        description: "Employee's email address."
+      patient_id:
+        name: patient_id
+        description: "Patient's ID."
         required: true
-        example: sarah.johnson@example.com
+        example: '1'
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      role:
-        name: role
-        description: "Employee's role. Must be a valid role from role permissions."
+      amount:
+        name: amount
+        description: 'Total invoice amount.'
         required: true
-        example: Dentist
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-      salary:
-        name: salary
-        description: "Employee's annual salary."
-        required: true
-        example: 120000.0
+        example: 250.0
         type: number
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      hire_date:
-        name: hire_date
-        description: "Employee's hire date (YYYY-MM-DD)."
+      issue_date:
+        name: issue_date
+        description: 'Invoice issue date (YYYY-MM-DD).'
         required: true
-        example: '2024-01-15'
+        example: '2024-05-10'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      due_date:
+        name: due_date
+        description: 'Invoice due date (YYYY-MM-DD).'
+        required: true
+        example: '2024-06-10'
         type: date
         enumValues: []
         exampleWasSpecified: true
@@ -177,7 +187,7 @@ endpoints:
         custom: []
       branch_id:
         name: branch_id
-        description: 'Branch ID where employee works.'
+        description: 'Branch ID.'
         required: true
         example: b1
         type: string
@@ -185,34 +195,148 @@ endpoints:
         exampleWasSpecified: true
         nullable: false
         custom: []
+      treatments:
+        name: treatments
+        description: 'Array of treatment procedures'
+        required: true
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      other_charges:
+        name: other_charges
+        description: 'Optional array of additional charges'
+        required: false
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        custom: []
+      'treatments[].procedure':
+        name: 'treatments[].procedure'
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      'treatments[].cost':
+        name: 'treatments[].cost'
+        description: ''
+        required: true
+        example: 4326.41688
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      'other_charges[].description':
+        name: 'other_charges[].description'
+        description: ''
+        required: true
+        example: 'Eius et animi quos velit et.'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      'other_charges[].amount':
+        name: 'other_charges[].amount'
+        description: ''
+        required: true
+        example: 4326.41688
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      'treatments.*.procedure':
+        name: 'treatments.*.procedure'
+        description: 'Treatment procedure description.'
+        required: true
+        example: 'Filling for #16'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      'treatments.*.cost':
+        name: 'treatments.*.cost'
+        description: 'Treatment cost.'
+        required: true
+        example: 250.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      'other_charges.*.description':
+        name: 'other_charges.*.description'
+        description: 'Charge description.'
+        required: true
+        example: 'Late Fee'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      'other_charges.*.amount':
+        name: 'other_charges.*.amount'
+        description: 'Charge amount.'
+        required: true
+        example: 20.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
     cleanBodyParameters:
-      name: 'Dr. Sarah Johnson'
-      avatar: 'https://picsum.photos/200/200'
-      email: sarah.johnson@example.com
-      role: Dentist
-      salary: 120000.0
-      hire_date: '2024-01-15'
+      patient_name: 'John Doe'
+      patient_id: '1'
+      amount: 250.0
+      issue_date: '2024-05-10'
+      due_date: '2024-06-10'
       branch_id: b1
+      treatments:
+        - architecto
+      other_charges:
+        - architecto
     fileParameters: []
     responses:
       -
         status: 201
         content: |-
           {
-            "id": "emp6",
-            "name": "Dr. Sarah Johnson",
-            "avatar": "https://picsum.photos/200/200",
-            "email": "sarah.johnson@example.com",
-            "role": "Dentist",
-            "status": "Active",
-            "salary": 120000.00,
-            "hire_date": "2024-01-15",
+            "id": "inv5",
+            "patient_name": "John Doe",
+            "patient_id": "1",
+            "amount": 270.00,
+            "paid_amount": 0.00,
+            "status": "Pending",
+            "issue_date": "2024-05-10",
+            "due_date": "2024-06-10",
             "branch_id": "b1",
-            "branch": {
-              "id": "b1",
-              "name": "Downtown Clinic",
-              "address": "123 Main St, Cityville"
-            }
+            "payment_method": null,
+            "treatments": [
+              {
+                "procedure": "Filling for #16",
+                "cost": 250.00
+              }
+            ],
+            "other_charges": [
+              {
+                "description": "Late Fee",
+                "amount": 20.00
+              }
+            ],
+            "transactions": []
           }
         headers: []
         description: ''
@@ -223,12 +347,13 @@ endpoints:
           {
             "message": "The given data was invalid.",
             "errors": {
-              "name": ["The name field is required."],
-              "email": ["The email field is required."],
-              "role": ["The selected role is invalid."],
-              "salary": ["The salary field is required."],
-              "hire_date": ["The hire date field is required."],
-              "branch_id": ["The branch id field is required."]
+              "patient_name": ["The patient name field is required."],
+              "patient_id": ["The patient id field is required."],
+              "amount": ["The amount field is required."],
+              "issue_date": ["The issue date field is required."],
+              "due_date": ["The due date field is required."],
+              "branch_id": ["The branch id field is required."],
+              "treatments": ["The treatments field is required."]
             }
           }
         headers: []
@@ -243,17 +368,19 @@ endpoints:
   -
     httpMethods:
       - GET
-    uri: 'api/employees/{id}'
+    uri: 'api/invoices/{id}'
     metadata:
-      groupName: Employees
+      groupName: 'Invoices & Billing'
       groupDescription: |-
 
-        Endpoints for managing employee records, roles, and staff information.
-        Includes role-based access control and employee management.
+        Endpoints for managing patient invoices, payments, and billing operations.
+        Includes invoice creation, payment processing, and financial tracking.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Get Employee by ID'
-      description: 'Retrieve detailed information for a specific employee including branch details.'
+      title: 'Get Invoice by ID'
+      description: |-
+        Retrieve detailed information for a specific invoice including all treatments,
+        additional charges, and payment history.
       authenticated: true
       deprecated: false
       custom: []
@@ -263,16 +390,16 @@ endpoints:
     urlParameters:
       id:
         name: id
-        description: "The employee's ID."
+        description: 'The invoice ID.'
         required: true
-        example: emp1
+        example: inv1
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
     cleanUrlParameters:
-      id: emp1
+      id: inv1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -283,19 +410,43 @@ endpoints:
         status: 200
         content: |-
           {
-            "id": "emp1",
-            "name": "Dr. Lisa Cuddy",
-            "avatar": "https://picsum.photos/seed/emp1/200/200",
-            "email": "lisa.cuddy@example.com",
-            "role": "Super Admin",
-            "status": "Active",
-            "salary": 150000.00,
-            "hire_date": "2020-01-15",
+            "id": "inv1",
+            "patient_name": "John Doe",
+            "patient_id": "1",
+            "amount": 250.00,
+            "paid_amount": 100.00,
+            "status": "Pending",
+            "issue_date": "2024-05-10",
+            "due_date": "2024-06-10",
             "branch_id": "b1",
+            "payment_method": "Insurance",
+            "treatments": [
+              {
+                "procedure": "Filling for #16",
+                "cost": 250.00
+              }
+            ],
+            "other_charges": [
+              {
+                "description": "Late Fee",
+                "amount": 20.00
+              }
+            ],
+            "transactions": [
+              {
+                "id": "txn1",
+                "date": "2024-05-12",
+                "amount": 100.00,
+                "method": "Insurance"
+              }
+            ],
+            "patient": {
+              "id": "1",
+              "name": "John Doe"
+            },
             "branch": {
               "id": "b1",
-              "name": "Downtown Clinic",
-              "address": "123 Main St, Cityville"
+              "name": "Downtown Clinic"
             }
           }
         headers: []
@@ -305,7 +456,7 @@ endpoints:
         status: 404
         content: |-
           {
-            "error": "Employee not found"
+            "error": "Invoice not found"
           }
         headers: []
         description: ''
@@ -320,19 +471,19 @@ endpoints:
     httpMethods:
       - PUT
       - PATCH
-    uri: 'api/employees/{id}'
+    uri: 'api/invoices/{id}'
     metadata:
-      groupName: Employees
+      groupName: 'Invoices & Billing'
       groupDescription: |-
 
-        Endpoints for managing employee records, roles, and staff information.
-        Includes role-based access control and employee management.
+        Endpoints for managing patient invoices, payments, and billing operations.
+        Includes invoice creation, payment processing, and financial tracking.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update Employee'
+      title: 'Update Invoice'
       description: |-
-        Update an existing employee's information including role changes.
-        Valid roles must be from the predefined role permissions.
+        Update an existing invoice's details. Can update basic information but not treatments or charges.
+        For adding treatments or charges, create a new invoice instead.
       authenticated: true
       deprecated: false
       custom: []
@@ -342,84 +493,84 @@ endpoints:
     urlParameters:
       id:
         name: id
-        description: "The employee's ID."
+        description: 'The invoice ID.'
         required: true
-        example: emp1
+        example: inv1
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
     cleanUrlParameters:
-      id: emp1
+      id: inv1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
-        name: name
-        description: "Employee's full name."
+      patient_name:
+        name: patient_name
+        description: "Patient's full name."
         required: false
-        example: 'Dr. Lisa Cuddy Updated'
+        example: 'John Doe Updated'
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      avatar:
-        name: avatar
-        description: "URL to employee's avatar image."
+      patient_id:
+        name: patient_id
+        description: "Patient's ID."
         required: false
-        example: 'https://picsum.photos/200/200'
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: true
-        custom: []
-      email:
-        name: email
-        description: "Employee's email address."
-        required: false
-        example: lisa.updated@example.com
+        example: '1'
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      role:
-        name: role
-        description: "Employee's role."
+      amount:
+        name: amount
+        description: 'Total invoice amount.'
         required: false
-        example: Dentist
-        type: string
+        example: 300.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      paid_amount:
+        name: paid_amount
+        description: 'Amount already paid.'
+        required: false
+        example: 150.0
+        type: number
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
       status:
         name: status
-        description: 'Employee status.'
+        description: 'Invoice status.'
         required: false
-        example: 'On Leave'
+        example: Paid
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      salary:
-        name: salary
-        description: "Employee's annual salary."
+      issue_date:
+        name: issue_date
+        description: 'Invoice issue date.'
         required: false
-        example: 160000.0
-        type: number
+        example: '2024-05-10'
+        type: date
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-      hire_date:
-        name: hire_date
-        description: "Employee's hire date."
+      due_date:
+        name: due_date
+        description: 'Invoice due date.'
         required: false
-        example: '2020-01-15'
+        example: '2024-06-10'
         type: date
         enumValues: []
         exampleWasSpecified: true
@@ -429,41 +580,63 @@ endpoints:
         name: branch_id
         description: 'Branch ID.'
         required: false
-        example: b2
+        example: b1
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
+      payment_method:
+        name: payment_method
+        description: 'Payment method used.'
+        required: false
+        example: 'Credit Card'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
     cleanBodyParameters:
-      name: 'Dr. Lisa Cuddy Updated'
-      avatar: 'https://picsum.photos/200/200'
-      email: lisa.updated@example.com
-      role: Dentist
-      status: 'On Leave'
-      salary: 160000.0
-      hire_date: '2020-01-15'
-      branch_id: b2
+      patient_name: 'John Doe Updated'
+      patient_id: '1'
+      amount: 300.0
+      paid_amount: 150.0
+      status: Paid
+      issue_date: '2024-05-10'
+      due_date: '2024-06-10'
+      branch_id: b1
+      payment_method: 'Credit Card'
     fileParameters: []
     responses:
       -
         status: 200
         content: |-
           {
-            "id": "emp1",
-            "name": "Dr. Lisa Cuddy Updated",
-            "avatar": "https://picsum.photos/200/200",
-            "email": "lisa.updated@example.com",
-            "role": "Dentist",
-            "status": "On Leave",
-            "salary": 160000.00,
-            "hire_date": "2020-01-15",
-            "branch_id": "b2",
-            "branch": {
-              "id": "b2",
-              "name": "Uptown Dental",
-              "address": "456 Oak Ave, Townburg"
-            }
+            "id": "inv1",
+            "patient_name": "John Doe Updated",
+            "patient_id": "1",
+            "amount": 300.00,
+            "paid_amount": 150.00,
+            "status": "Paid",
+            "issue_date": "2024-05-10",
+            "due_date": "2024-06-10",
+            "branch_id": "b1",
+            "payment_method": "Credit Card",
+            "treatments": [
+              {
+                "procedure": "Filling for #16",
+                "cost": 250.00
+              }
+            ],
+            "other_charges": [],
+            "transactions": [
+              {
+                "id": "txn1",
+                "date": "2024-05-12",
+                "amount": 100.00,
+                "method": "Insurance"
+              }
+            ]
           }
         headers: []
         description: ''
@@ -472,7 +645,7 @@ endpoints:
         status: 404
         content: |-
           {
-            "error": "Employee not found"
+            "error": "Invoice not found"
           }
         headers: []
         description: ''
@@ -486,18 +659,18 @@ endpoints:
   -
     httpMethods:
       - DELETE
-    uri: 'api/employees/{id}'
+    uri: 'api/invoices/{id}'
     metadata:
-      groupName: Employees
+      groupName: 'Invoices & Billing'
       groupDescription: |-
 
-        Endpoints for managing employee records, roles, and staff information.
-        Includes role-based access control and employee management.
+        Endpoints for managing patient invoices, payments, and billing operations.
+        Includes invoice creation, payment processing, and financial tracking.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Delete Employee'
+      title: 'Delete Invoice'
       description: |-
-        Permanently delete an employee record from the system.
+        Permanently delete an invoice and all associated treatments, charges, and transactions.
         Use with caution as this action cannot be undone.
       authenticated: true
       deprecated: false
@@ -508,16 +681,16 @@ endpoints:
     urlParameters:
       id:
         name: id
-        description: "The employee's ID."
+        description: 'The invoice ID.'
         required: true
-        example: emp1
+        example: inv1
         type: string
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
     cleanUrlParameters:
-      id: emp1
+      id: inv1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -537,7 +710,125 @@ endpoints:
         status: 404
         content: |-
           {
-            "error": "Employee not found"
+            "error": "Invoice not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - POST
+    uri: 'api/invoices/{id}/payments'
+    metadata:
+      groupName: 'Invoices & Billing'
+      groupDescription: |-
+
+        Endpoints for managing patient invoices, payments, and billing operations.
+        Includes invoice creation, payment processing, and financial tracking.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Add Payment to Invoice'
+      description: |-
+        Process a payment for an invoice. Creates a payment transaction and updates
+        the invoice's paid amount and status automatically.
+        If paid amount reaches or exceeds total amount, status changes to "Paid".
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        name: id
+        description: 'The invoice ID.'
+        required: true
+        example: inv1
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      id: inv1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      amount:
+        name: amount
+        description: 'Payment amount.'
+        required: true
+        example: 150.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      method:
+        name: method
+        description: 'Payment method.'
+        required: true
+        example: 'Credit Card'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      amount: 150.0
+      method: 'Credit Card'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "id": "inv1",
+            "patient_name": "John Doe",
+            "patient_id": "1",
+            "amount": 250.00,
+            "paid_amount": 250.00,
+            "status": "Paid",
+            "issue_date": "2024-05-10",
+            "due_date": "2024-06-10",
+            "branch_id": "b1",
+            "payment_method": "Credit Card",
+            "treatments": [
+              {
+                "procedure": "Filling for #16",
+                "cost": 250.00
+              }
+            ],
+            "other_charges": [],
+            "transactions": [
+              {
+                "id": "txn1",
+                "date": "2024-05-12",
+                "amount": 100.00,
+                "method": "Insurance"
+              },
+              {
+                "id": "txn2",
+                "date": "2024-07-15",
+                "amount": 150.00,
+                "method": "Credit Card"
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Invoice not found"
           }
         headers: []
         description: ''

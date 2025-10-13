@@ -117,30 +117,35 @@ class EmployeeController extends Controller
      */
     public function store(Request $request)
     {
-        // Get valid role IDs from role_permissions table
-        $validRoleIds = RolePermission::pluck('id')->toArray();
-
         $validated = $request->validate([
             'name' => 'required|string',
             'avatar' => 'nullable|string',
             'email' => 'required|email|unique:employees,email',
-            'role' => 'required|string', // Role name as string
-            'role_id' => 'required|integer|in:' . implode(',', $validRoleIds), // role_id as integer
+            'role' => 'required|exists:role_permissions,id',
             'salary' => 'required|numeric',
             'hire_date' => 'required|date',
             'branch_id' => 'required|exists:branches,id',
-            'password' => 'required|string|min:8',
         ]);
 
+        // Fetch the role name automatically
+        $role = RolePermission::find($validated['role']);
+
         $employee = Employee::create([
-            ...$validated,
-            'id' => 'emp' . (Employee::count() + 1),
+            'name' => $validated['name'],
+            'avatar' => $validated['avatar'] ?? null,
+            'email' => $validated['email'],
+            'role_id' => $validated['role'],
+            'role' => $role->name ?? 'Unknown',
+            'salary' => $validated['salary'],
+            'hire_date' => $validated['hire_date'],
+            'branch_id' => $validated['branch_id'],
             'status' => 'Active',
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make('DE'.rand(1000,9999)),
         ]);
 
         return response()->json($employee->load('branch'), 201);
     }
+
 
 
 
@@ -229,30 +234,32 @@ class EmployeeController extends Controller
      * @param string $id Employee ID
      * @return \Illuminate\Http\JsonResponse
      */
-   
+
     public function update(Request $request, $id)
     {
         $employee = Employee::findOrFail($id);
-
-        // Get valid role IDs from role_permissions table
-        $validRoleIds = RolePermission::pluck('id')->toArray();
 
         $validated = $request->validate([
             'name' => 'sometimes|string',
             'avatar' => 'nullable|string',
             'email' => 'sometimes|email|unique:employees,email,' . $id,
-            'role' => 'sometimes|string',
-            'role_id' => 'sometimes|integer|in:' . implode(',', $validRoleIds),
+            'role' => 'required|exists:role_permissions,id',
             'salary' => 'sometimes|numeric',
             'hire_date' => 'sometimes|date',
             'branch_id' => 'sometimes|exists:branches,id',
             'status' => 'sometimes|string|in:Active,Inactive',
-            'password' => 'nullable|string|min:8',
         ]);
 
+        // Auto-fetch role name if provided
+        if (isset($validated['role'])) {
+            
+            $role = RolePermission::find($validated['role']);
+            $validated['role_id'] = $role->name ?? $employee->role;
+        }
+
         // Hash password if provided
-        if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+        if (!empty($validated['password'])) {
+            $validated['password'] = Hash::make('DE'.rand(1000,9999));
         } else {
             unset($validated['password']);
         }
@@ -285,7 +292,7 @@ class EmployeeController extends Controller
     public function destroy($id)
     {
         $employee = Employee::find($id);
-        
+
         if (!$employee) {
             return response()->json(['error' => 'Employee not found'], 404);
         }
@@ -328,7 +335,7 @@ class EmployeeController extends Controller
     public function getRoles()
     {
         $roles = RolePermission::all();
-        
+
         return response()->json(['roles' => $roles]);
     }
 }

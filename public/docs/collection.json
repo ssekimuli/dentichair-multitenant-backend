@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "22a3fd10-99bf-4343-bbed-d4243599e5a8",
+        "_postman_id": "d9cca0de-cf74-4f7e-94c7-055a148d79f3",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -89,7 +89,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-13T10:37:07\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-13T20:39:03\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -168,7 +168,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-13T10:37:07\",\"status\":\"Absent\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
+                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-13T20:39:03\",\"status\":\"On Leave\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
                         },
                         "description": "",
                         "auth": {
@@ -342,7 +342,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Received\"}"
+                            "raw": "{\"status\":\"Sent\"}"
                         },
                         "description": "",
                         "auth": {
@@ -516,7 +516,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"status\":\"Approved\"}"
+                            "raw": "{\"status\":\"Pending\"}"
                         },
                         "description": "",
                         "auth": {
@@ -1016,8 +1016,55 @@
                         {
                             "header": [],
                             "code": 200,
-                            "body": "{\n  \"employee\": {\n    \"id\": \"emp1\",\n    \"name\": \"Dr. Lisa Cuddy\",\n    \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\",\n    \"email\": \"lisa.cuddy@example.com\",\n    \"role\": \"Super Admin\",\n    \"status\": \"Active\",\n    \"salary\": 150000,\n    \"hire_date\": \"2020-01-15\",\n    \"branch_id\": \"b1\",\n    \"branch_name\": \"Main Branch\",\n    \"permissions\": [\n      \"users.create\",\n      \"users.edit\",\n      \"users.delete\",\n      \"appointments.manage\"\n    ],\n    \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n    \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n  },\n  \"stats\": {\n    \"totalPaid\": 15000,\n    \"presentDays\": 20,\n    \"absentDays\": 2,\n    \"onLeaveDays\": 1,\n    \"totalAppointments\": 45,\n    \"uniquePatients\": 30,\n    \"recentAppointments\": [\n      {\n        \"id\": \"a1\",\n        \"patient_name\": \"John Doe\",\n        \"treatment\": \"Check-up\",\n        \"status\": \"Completed\",\n        \"date\": \"2024-07-20\",\n        \"time\": \"10:00 AM\"\n      }\n    ]\n  },\n  \"payrolls\": [\n    {\n      \"id\": \"pay1\",\n      \"employee_id\": \"emp1\",\n      \"employee_name\": \"Dr. Lisa Cuddy\",\n      \"pay_period\": \"2024-06-01 to 2024-06-15\",\n      \"gross_pay\": 6250,\n      \"deductions\": 1200,\n      \"net_pay\": 5050,\n      \"pay_date\": \"2024-06-15\",\n      \"status\": \"Paid\",\n      \"branch_id\": \"b1\",\n      \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n      \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n    }\n  ]\n}",
+                            "body": "{\n  \"employee\": {\n    \"id\": \"emp1\",\n    \"name\": \"Dr. Lisa Cuddy\",\n    \"avatar\": \"https:\/\/picsum.photos\/seed\/emp1\/200\/200\",\n    \"email\": \"lisa.cuddy@example.com\",\n    \"role\": \"Super Admin\",\n    \"role_id\": 1,\n    \"status\": \"Active\",\n    \"salary\": 150000,\n    \"hire_date\": \"2020-01-15\",\n    \"branch_id\": 1,\n    \"branch_name\": \"Main Branch\",\n    \"permissions\": [\n      \"users.create\",\n      \"users.edit\",\n      \"users.delete\",\n      \"appointments.manage\"\n    ],\n    \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n    \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n  },\n  \"stats\": {\n    \"totalPaid\": 15000,\n    \"presentDays\": 20,\n    \"absentDays\": 2,\n    \"onLeaveDays\": 1,\n    \"totalAppointments\": 45,\n    \"uniquePatients\": 30,\n    \"recentAppointments\": [\n      {\n        \"id\": \"a1\",\n        \"patient_name\": \"John Doe\",\n        \"treatment\": \"Check-up\",\n        \"status\": \"Completed\",\n        \"date\": \"2024-07-20\",\n        \"time\": \"10:00 AM\"\n      }\n    ]\n  },\n  \"payrolls\": [\n    {\n      \"id\": \"pay1\",\n      \"employee_id\": \"emp1\",\n      \"employee_name\": \"Dr. Lisa Cuddy\",\n      \"pay_period\": \"2024-06-01 to 2024-06-15\",\n      \"gross_pay\": 6250,\n      \"deductions\": 1200,\n      \"net_pay\": 5050,\n      \"pay_date\": \"2024-06-15\",\n      \"status\": \"Paid\",\n      \"branch_id\": 1,\n      \"created_at\": \"2024-01-01T00:00:00.000000Z\",\n      \"updated_at\": \"2024-01-01T00:00:00.000000Z\"\n    }\n  ]\n}",
                             "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Branch Management",
+            "description": "",
+            "item": [
+                {
+                    "name": "Get all branches",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/all-branch",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/all-branch"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve a list of all dental branches available in the system.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Downtown Clinic\",\n    \"address\": \"123 Main St, Cityville\",\n    \"created_at\": \"2025-10-13T12:00:00.000000Z\",\n    \"updated_at\": \"2025-10-13T12:00:00.000000Z\"\n  },\n  {\n    \"id\": 2,\n    \"name\": \"Uptown Dental\",\n    \"address\": \"456 Oak Ave, Townburg\",\n    \"created_at\": \"2025-10-13T12:00:00.000000Z\",\n    \"updated_at\": \"2025-10-13T12:00:00.000000Z\"\n  }\n]",
+                            "name": "Success"
+                        },
+                        {
+                            "header": [],
+                            "code": 500,
+                            "body": "{\n  \"message\": \"Something went wrong while fetching branches.\"\n}",
+                            "name": "Server Error"
                         }
                     ]
                 }
@@ -1094,7 +1141,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"Dr. Sarah Johnson\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"sarah.johnson@example.com\",\"role\":\"Dentist\",\"salary\":120000,\"hire_date\":\"2024-01-15\",\"branch_id\":\"b1\"}"
+                            "raw": "{\"name\":\"Dr. Sarah Johnson\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"sarah.johnson@example.com\",\"role\":\"Dentist\",\"salary\":120000,\"hire_date\":\"2024-01-15\",\"branch_id\":\"b1\",\"password\":\"]|{+-0pBNvYg\"}"
                         },
                         "description": "Create a new employee record with assigned role and branch.\nValid roles must be from the predefined role permissions."
                     },
@@ -1189,7 +1236,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"Dr. Lisa Cuddy Updated\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"lisa.updated@example.com\",\"role\":\"Dentist\",\"status\":\"On Leave\",\"salary\":160000,\"hire_date\":\"2020-01-15\",\"branch_id\":\"b2\"}"
+                            "raw": "{\"name\":\"Dr. Lisa Cuddy Updated\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"lisa.updated@example.com\",\"role\":\"Dentist\",\"salary\":160000,\"hire_date\":\"2020-01-15\",\"branch_id\":\"b2\",\"status\":\"On Leave\",\"password\":\"+-0pBNvYgxwmi\\\/#iw\"}"
                         },
                         "description": "Update an existing employee's information including role changes.\nValid roles must be from the predefined role permissions."
                     },
@@ -1698,7 +1745,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-13T10:37:07\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-13T20:39:02\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
                         },
                         "description": "Update an existing patient's information."
                     },

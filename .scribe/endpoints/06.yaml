@@ -1,17 +1,23 @@
-name: ''
-description: ''
+name: 'Management Module'
+description: |-
+
+  APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+  expenses, and chart data management.
 endpoints:
   -
     httpMethods:
       - GET
     uri: api/management/payrolls
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Get Payrolls'
+      description: 'Retrieve all payroll records, optionally filtered by branch.'
       authenticated: false
       deprecated: false
       custom: []
@@ -20,20 +26,35 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Optional branch ID to filter payrolls.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: 1
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
     responses:
       -
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: '*'
-        description: null
+        status: 200
+        content: |-
+          {
+            "id": 1,
+            "employee_id": 2,
+            "gross_pay": 5000,
+            "net_pay": 4500,
+            "status": "Pending"
+          }
+        headers: []
+        description: ''
         custom: []
     responseFields: []
     auth: []
@@ -46,12 +67,15 @@ endpoints:
       - POST
     uri: api/management/payrolls
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Create Payroll'
+      description: 'Create a new payroll record for an employee.'
       authenticated: false
       deprecated: false
       custom: []
@@ -65,95 +89,106 @@ endpoints:
     bodyParameters:
       employee_id:
         name: employee_id
-        description: 'The <code>id</code> of an existing record in the employees table.'
+        description: 'The employee ID.'
         required: true
-        example: architecto
-        type: string
+        example: 2
+        type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       employee_name:
         name: employee_name
-        description: ''
+        description: "The employee's name."
         required: true
-        example: architecto
+        example: '"James Wilson"'
         type: string
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       pay_period:
         name: pay_period
-        description: ''
+        description: 'The pay period.'
         required: true
-        example: architecto
+        example: '"August 2025"'
         type: string
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       gross_pay:
         name: gross_pay
-        description: ''
+        description: 'The gross pay amount.'
         required: true
-        example: 4326.41688
+        example: 5000.0
         type: number
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       deductions:
         name: deductions
-        description: ''
+        description: 'Total deductions.'
         required: true
-        example: 4326.41688
+        example: 500.0
         type: number
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       net_pay:
         name: net_pay
-        description: ''
+        description: 'The net pay.'
         required: true
-        example: 4326.41688
+        example: 4500.0
         type: number
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       pay_date:
         name: pay_date
-        description: 'Must be a valid date.'
+        description: 'Date of payment.'
         required: true
-        example: '2025-10-13T20:39:03'
-        type: string
+        example: '"2025-08-31"'
+        type: date
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       branch_id:
         name: branch_id
-        description: 'The <code>id</code> of an existing record in the branches table.'
+        description: 'Branch ID.'
         required: true
-        example: architecto
-        type: string
+        example: 1
+        type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
     cleanBodyParameters:
-      employee_id: architecto
-      employee_name: architecto
-      pay_period: architecto
-      gross_pay: 4326.41688
-      deductions: 4326.41688
-      net_pay: 4326.41688
-      pay_date: '2025-10-13T20:39:03'
-      branch_id: architecto
+      employee_id: 2
+      employee_name: '"James Wilson"'
+      pay_period: '"August 2025"'
+      gross_pay: 5000.0
+      deductions: 500.0
+      net_pay: 4500.0
+      pay_date: '"2025-08-31"'
+      branch_id: 1
     fileParameters: []
-    responses: []
+    responses:
+      -
+        status: 201
+        content: |-
+          {
+            "id": "pr5",
+            "employee_name": "James Wilson",
+            "status": "Pending"
+          }
+        headers: []
+        description: ''
+        custom: []
     responseFields: []
     auth: []
     controller: null
@@ -165,12 +200,15 @@ endpoints:
       - GET
     uri: api/management/attendance
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Get Attendance Records'
+      description: 'Retrieve employee attendance records.'
       authenticated: false
       deprecated: false
       custom: []
@@ -179,132 +217,46 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Optional branch filter.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'date Optional specific date filter.'
+        required: false
+        example: '"2025-10-16"'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: 1
+      date: '"2025-10-16"'
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
     responses:
       -
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: '*'
-        description: null
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - POST
-    uri: api/management/attendance
-    metadata:
-      groupName: ''
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: false
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      employee_id:
-        name: employee_id
-        description: 'The <code>id</code> of an existing record in the employees table.'
-        required: true
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        custom: []
-      employee_name:
-        name: employee_name
+        status: 200
+        content: |-
+          {
+            "id": "att1",
+            "employee_id": 2,
+            "date": "2025-10-16",
+            "status": "Present"
+          }
+        headers: []
         description: ''
-        required: true
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
         custom: []
-      date:
-        name: date
-        description: 'Must be a valid date.'
-        required: true
-        example: '2025-10-13T20:39:03'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        custom: []
-      status:
-        name: status
-        description: ''
-        required: true
-        example: 'On Leave'
-        type: string
-        enumValues:
-          - Present
-          - Absent
-          - 'On Leave'
-        exampleWasSpecified: false
-        nullable: false
-        custom: []
-      check_in:
-        name: check_in
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        custom: []
-      check_out:
-        name: check_out
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        custom: []
-      branch_id:
-        name: branch_id
-        description: 'The <code>id</code> of an existing record in the branches table.'
-        required: true
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        custom: []
-    cleanBodyParameters:
-      employee_id: architecto
-      employee_name: architecto
-      date: '2025-10-13T20:39:03'
-      status: 'On Leave'
-      check_in: architecto
-      check_out: architecto
-      branch_id: architecto
-    fileParameters: []
-    responses: []
     responseFields: []
     auth: []
     controller: null
@@ -316,12 +268,15 @@ endpoints:
       - GET
     uri: api/management/inventory
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Get Inventory'
+      description: 'Retrieve inventory items.'
       authenticated: false
       deprecated: false
       custom: []
@@ -330,8 +285,19 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Optional branch filter.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: 1
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
@@ -356,12 +322,15 @@ endpoints:
       - PATCH
     uri: 'api/management/inventory/{id}'
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Update Inventory Item'
+      description: 'Update stock, reorder level, or price for an inventory item.'
       authenticated: false
       deprecated: false
       custom: []
@@ -386,38 +355,38 @@ endpoints:
     bodyParameters:
       stock:
         name: stock
-        description: ''
+        description: 'Current stock quantity.'
         required: true
-        example: 16
+        example: 100
         type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       reorder_level:
         name: reorder_level
-        description: ''
+        description: 'Optional Reorder threshold.'
         required: false
-        example: 16
+        example: 10
         type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
       price:
         name: price
-        description: ''
+        description: 'Optional Price per unit.'
         required: false
-        example: 4326.41688
+        example: 50.5
         type: number
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         custom: []
     cleanBodyParameters:
-      stock: 16
-      reorder_level: 16
-      price: 4326.41688
+      stock: 100
+      reorder_level: 10
+      price: 50.5
     fileParameters: []
     responses: []
     responseFields: []
@@ -431,12 +400,15 @@ endpoints:
       - GET
     uri: api/management/lab-orders
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Get Laboratory Orders'
+      description: 'Retrieve lab orders.'
       authenticated: false
       deprecated: false
       custom: []
@@ -445,8 +417,19 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Optional branch filter.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: 1
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
@@ -471,11 +454,14 @@ endpoints:
       - PATCH
     uri: 'api/management/lab-orders/{id}/status'
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
+      title: 'Update Lab Order Status'
       description: ''
       authenticated: false
       deprecated: false
@@ -501,20 +487,16 @@ endpoints:
     bodyParameters:
       status:
         name: status
-        description: ''
+        description: 'Must be Sent, Received, Completed, or Cancelled.'
         required: true
-        example: Sent
+        example: '"Completed"'
         type: string
-        enumValues:
-          - Sent
-          - Received
-          - Completed
-          - Cancelled
-        exampleWasSpecified: false
+        enumValues: []
+        exampleWasSpecified: true
         nullable: false
         custom: []
     cleanBodyParameters:
-      status: Sent
+      status: '"Completed"'
     fileParameters: []
     responses: []
     responseFields: []
@@ -525,15 +507,18 @@ endpoints:
     custom: []
   -
     httpMethods:
-      - GET
+      - POST
     uri: api/management/leave-requests
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Request Leave'
+      description: 'Employees can submit leave requests.'
       authenticated: false
       deprecated: false
       custom: []
@@ -544,19 +529,76 @@ endpoints:
     cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: '*'
-        description: null
+    bodyParameters:
+      employee_id:
+        name: employee_id
+        description: 'Employee ID.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
         custom: []
+      leave_type:
+        name: leave_type
+        description: 'Type of leave.'
+        required: true
+        example: '"Annual"'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      start_date:
+        name: start_date
+        description: 'Start date.'
+        required: true
+        example: '"2024-08-01"'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      end_date:
+        name: end_date
+        description: 'End date.'
+        required: true
+        example: '"2024-08-05"'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      reason:
+        name: reason
+        description: 'Reason for leave.'
+        required: true
+        example: '"Family vacation"'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      branch_id:
+        name: branch_id
+        description: 'Branch ID.'
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      employee_id: 1
+      leave_type: '"Annual"'
+      start_date: '"2024-08-01"'
+      end_date: '"2024-08-05"'
+      reason: '"Family vacation"'
+      branch_id: '1'
+    fileParameters: []
+    responses: []
     responseFields: []
     auth: []
     controller: null
@@ -568,11 +610,14 @@ endpoints:
       - PATCH
     uri: 'api/management/leave-requests/{id}'
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
+      title: 'Update Leave Request'
       description: ''
       authenticated: false
       deprecated: false
@@ -598,19 +643,16 @@ endpoints:
     bodyParameters:
       status:
         name: status
-        description: ''
+        description: 'Must be Pending, Approved, or Rejected.'
         required: true
-        example: Pending
+        example: '"Approved"'
         type: string
-        enumValues:
-          - Pending
-          - Approved
-          - Rejected
-        exampleWasSpecified: false
+        enumValues: []
+        exampleWasSpecified: true
         nullable: false
         custom: []
     cleanBodyParameters:
-      status: Pending
+      status: '"Approved"'
     fileParameters: []
     responses: []
     responseFields: []
@@ -621,15 +663,18 @@ endpoints:
     custom: []
   -
     httpMethods:
-      - GET
+      - POST
     uri: api/management/staff-advances
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Add Staff Advance'
+      description: 'Employees can submit staff advance requests.'
       authenticated: false
       deprecated: false
       custom: []
@@ -640,46 +685,10 @@ endpoints:
     cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: '*'
-        description: null
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - PATCH
-    uri: 'api/management/staff-advances/{id}'
-    metadata:
-      groupName: ''
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: false
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        name: id
-        description: 'The ID of the staff advance.'
+    bodyParameters:
+      employeeId:
+        name: employeeId
+        description: 'The <code>id</code> of an existing record in the employees table.'
         required: true
         example: architecto
         type: string
@@ -687,26 +696,112 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         custom: []
-    cleanUrlParameters:
-      id: architecto
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      status:
-        name: status
-        description: ''
+      amount:
+        name: amount
+        description: 'Must be at least 1.'
         required: true
-        example: Pending
-        type: string
-        enumValues:
-          - Pending
-          - Approved
-          - Rejected
+        example: 22
+        type: number
+        enumValues: []
         exampleWasSpecified: false
         nullable: false
         custom: []
+      reason:
+        name: reason
+        description: 'Must not be greater than 500 characters.'
+        required: true
+        example: g
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      branchId:
+        name: branchId
+        description: 'The <code>id</code> of an existing record in the branches table.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'Must be a valid date.'
+        required: true
+        example: '2025-10-16T19:57:06'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      data.object:
+        name: data.object
+        description: 'Contains advance details'
+        required: false
+        example: architecto
+        type: required
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      data.employeeId:
+        name: data.employeeId
+        description: 'Employee ID.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      data.amount:
+        name: data.amount
+        description: 'Amount requested.'
+        required: true
+        example: 599.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      data.reason:
+        name: data.reason
+        description: 'Reason for advance.'
+        required: true
+        example: '"Medical expenses"'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      data.branchId:
+        name: data.branchId
+        description: 'Branch ID.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      data.date:
+        name: data.date
+        description: 'Date of advance request.'
+        required: true
+        example: '"2025-10-16"'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
     cleanBodyParameters:
-      status: Pending
+      employeeId: architecto
+      amount: 22
+      reason: g
+      branchId: architecto
+      date: '2025-10-16T19:57:06'
     fileParameters: []
     responses: []
     responseFields: []
@@ -720,12 +815,15 @@ endpoints:
       - GET
     uri: api/management/expenses
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Get Expenses'
+      description: 'Retrieve all expenses, optionally filtered by branch.'
       authenticated: false
       deprecated: false
       custom: []
@@ -734,8 +832,19 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Optional branch filter.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: 1
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
@@ -760,12 +869,15 @@ endpoints:
       - GET
     uri: api/management/chart-data
     metadata:
-      groupName: ''
-      groupDescription: ''
+      groupName: 'Management Module'
+      groupDescription: |-
+
+        APIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,
+        expenses, and chart data management.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Get Chart Data'
+      description: 'Retrieve chart data for analytics.'
       authenticated: false
       deprecated: false
       custom: []
@@ -774,8 +886,19 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      branch_id:
+        name: branch_id
+        description: 'Optional branch filter.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanQueryParameters:
+      branch_id: 1
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []

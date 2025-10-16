@@ -10,619 +10,11 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "d9cca0de-cf74-4f7e-94c7-055a148d79f3",
+        "_postman_id": "72deb43c-d7ed-498d-a036-91794d9059e1",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
     "item": [
-        {
-            "name": "",
-            "description": "",
-            "item": [
-                {
-                    "name": "GET api\/management\/payrolls",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/payrolls",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/payrolls"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "POST api\/management\/payrolls",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/payrolls",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/payrolls"
-                        },
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"pay_period\":\"architecto\",\"gross_pay\":4326.41688,\"deductions\":4326.41688,\"net_pay\":4326.41688,\"pay_date\":\"2025-10-13T20:39:03\",\"branch_id\":\"architecto\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "GET api\/management\/attendance",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/attendance",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/attendance"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "POST api\/management\/attendance",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/attendance",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/attendance"
-                        },
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"employee_id\":\"architecto\",\"employee_name\":\"architecto\",\"date\":\"2025-10-13T20:39:03\",\"status\":\"On Leave\",\"check_in\":\"architecto\",\"check_out\":\"architecto\",\"branch_id\":\"architecto\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "GET api\/management\/inventory",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/inventory",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/inventory"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "PATCH api\/management\/inventory\/{id}",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/inventory\/:id",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/inventory\/:id",
-                            "variable": [
-                                {
-                                    "id": "id",
-                                    "key": "id",
-                                    "value": "architecto",
-                                    "description": "The ID of the inventory."
-                                }
-                            ]
-                        },
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"stock\":16,\"reorder_level\":16,\"price\":4326.41688}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "GET api\/management\/lab-orders",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/lab-orders",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/lab-orders"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "PATCH api\/management\/lab-orders\/{id}\/status",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/lab-orders\/:id\/status",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/lab-orders\/:id\/status",
-                            "variable": [
-                                {
-                                    "id": "id",
-                                    "key": "id",
-                                    "value": "architecto",
-                                    "description": "The ID of the lab order."
-                                }
-                            ]
-                        },
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"status\":\"Sent\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "GET api\/management\/leave-requests",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/leave-requests",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/leave-requests"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "PATCH api\/management\/leave-requests\/{id}",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/leave-requests\/:id",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/leave-requests\/:id",
-                            "variable": [
-                                {
-                                    "id": "id",
-                                    "key": "id",
-                                    "value": "architecto",
-                                    "description": "The ID of the leave request."
-                                }
-                            ]
-                        },
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"status\":\"Pending\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "GET api\/management\/staff-advances",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/staff-advances",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/staff-advances"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "PATCH api\/management\/staff-advances\/{id}",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/staff-advances\/:id",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/staff-advances\/:id",
-                            "variable": [
-                                {
-                                    "id": "id",
-                                    "key": "id",
-                                    "value": "architecto",
-                                    "description": "The ID of the staff advance."
-                                }
-                            ]
-                        },
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\"status\":\"Pending\"}"
-                        },
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": []
-                },
-                {
-                    "name": "GET api\/management\/expenses",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/expenses",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/expenses"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                },
-                {
-                    "name": "GET api\/management\/chart-data",
-                    "request": {
-                        "url": {
-                            "host": "{{baseUrl}}",
-                            "path": "api\/management\/chart-data",
-                            "query": [],
-                            "raw": "{{baseUrl}}\/api\/management\/chart-data"
-                        },
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application\/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application\/json"
-                            }
-                        ],
-                        "body": null,
-                        "description": "",
-                        "auth": {
-                            "type": "noauth"
-                        }
-                    },
-                    "response": [
-                        {
-                            "header": [
-                                {
-                                    "key": "cache-control",
-                                    "value": "no-cache, private"
-                                },
-                                {
-                                    "key": "content-type",
-                                    "value": "application\/json"
-                                },
-                                {
-                                    "key": "access-control-allow-origin",
-                                    "value": "*"
-                                }
-                            ],
-                            "code": 401,
-                            "body": "{\"message\":\"Unauthenticated.\"}",
-                            "name": ""
-                        }
-                    ]
-                }
-            ]
-        },
         {
             "name": "Appointments",
             "description": "\nEndpoints for managing patient appointments, scheduling, and appointment status.\nIncludes queue management and appointment tracking features.",
@@ -865,6 +257,50 @@
                             "header": [],
                             "code": 422,
                             "body": "{\n  \"message\": \"The given data was invalid.\",\n  \"errors\": {\n    \"status\": [\n      \"The status field is required.\",\n      \"The selected status is invalid.\"\n    ]\n  }\n}",
+                            "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Attendance",
+            "description": "",
+            "item": [
+                {
+                    "name": "Mark attendance for one or multiple employees.",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/attendance",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/attendance"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"employee_id\":\"1 or [1, 2, 3]\",\"employee_name\":\"John Doe\",\"date\":\"2025-10-16\",\"status\":\"Present\",\"check_in\":\"09:00\",\"check_out\":\"17:00\",\"branch_id\":1}"
+                        },
+                        "description": "This endpoint can handle:\n1. Single employee attendance\n2. Multiple employee attendance (send an array of employee IDs)",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "[\n  {\n     \"id\": \"att1\",\n     \"employee_id\": 1,\n     \"employee_name\": \"John Doe\",\n     \"date\": \"2025-10-16\",\n     \"status\": \"Present\",\n     \"check_in\": \"09:00\",\n     \"check_out\": \"17:00\",\n     \"branch_id\": 1,\n\n     \"branch\": {\n         \"id\": 1,\n         \"name\": \"Main Branch\"\n     }\n  }\n]",
                             "name": ""
                         }
                     ]
@@ -1141,7 +577,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"Dr. Sarah Johnson\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"sarah.johnson@example.com\",\"role\":\"Dentist\",\"salary\":120000,\"hire_date\":\"2024-01-15\",\"branch_id\":\"b1\",\"password\":\"]|{+-0pBNvYg\"}"
+                            "raw": "{\"name\":\"Dr. Sarah Johnson\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"sarah.johnson@example.com\",\"role\":\"Dentist\",\"salary\":120000,\"hire_date\":\"2024-01-15\",\"branch_id\":\"b1\"}"
                         },
                         "description": "Create a new employee record with assigned role and branch.\nValid roles must be from the predefined role permissions."
                     },
@@ -1236,7 +672,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"Dr. Lisa Cuddy Updated\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"lisa.updated@example.com\",\"role\":\"Dentist\",\"salary\":160000,\"hire_date\":\"2020-01-15\",\"branch_id\":\"b2\",\"status\":\"On Leave\",\"password\":\"+-0pBNvYgxwmi\\\/#iw\"}"
+                            "raw": "{\"name\":\"Dr. Lisa Cuddy Updated\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"lisa.updated@example.com\",\"role\":\"Dentist\",\"salary\":160000,\"hire_date\":\"2020-01-15\",\"branch_id\":\"b2\",\"status\":\"On Leave\"}"
                         },
                         "description": "Update an existing employee's information including role changes.\nValid roles must be from the predefined role permissions."
                     },
@@ -1586,6 +1022,590 @@
             ]
         },
         {
+            "name": "Leave Management",
+            "description": "",
+            "item": [
+                {
+                    "name": "Get Leave Requests",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/get-leave-requests",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/get-leave-requests"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": ""
+                    },
+                    "response": [
+                        {
+                            "header": [
+                                {
+                                    "key": "cache-control",
+                                    "value": "no-cache, private"
+                                },
+                                {
+                                    "key": "content-type",
+                                    "value": "application\/json"
+                                },
+                                {
+                                    "key": "access-control-allow-origin",
+                                    "value": "*"
+                                }
+                            ],
+                            "code": 401,
+                            "body": "{\"message\":\"Unauthenticated.\"}",
+                            "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Management Module",
+            "description": "\nAPIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,\nexpenses, and chart data management.",
+            "item": [
+                {
+                    "name": "Get Payrolls",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/payrolls",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional branch ID to filter payrolls.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/payrolls?branch_id=1"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all payroll records, optionally filtered by branch.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"id\": 1,\n  \"employee_id\": 2,\n  \"gross_pay\": 5000,\n  \"net_pay\": 4500,\n  \"status\": \"Pending\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Payroll",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/payrolls",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/payrolls"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"employee_id\":2,\"employee_name\":\"\\\"James Wilson\\\"\",\"pay_period\":\"\\\"August 2025\\\"\",\"gross_pay\":5000,\"deductions\":500,\"net_pay\":4500,\"pay_date\":\"\\\"2025-08-31\\\"\",\"branch_id\":1}"
+                        },
+                        "description": "Create a new payroll record for an employee.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 201,
+                            "body": "{\n  \"id\": \"pr5\",\n  \"employee_name\": \"James Wilson\",\n  \"status\": \"Pending\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Attendance Records",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/attendance",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional branch filter.",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "date",
+                                    "value": "%222025-10-16%22",
+                                    "description": "date Optional specific date filter.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/attendance?branch_id=1&date=%222025-10-16%22"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve employee attendance records.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"id\": \"att1\",\n  \"employee_id\": 2,\n  \"date\": \"2025-10-16\",\n  \"status\": \"Present\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Inventory",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/inventory",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional branch filter.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/inventory?branch_id=1"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve inventory items.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [
+                                {
+                                    "key": "cache-control",
+                                    "value": "no-cache, private"
+                                },
+                                {
+                                    "key": "content-type",
+                                    "value": "application\/json"
+                                },
+                                {
+                                    "key": "access-control-allow-origin",
+                                    "value": "*"
+                                }
+                            ],
+                            "code": 401,
+                            "body": "{\"message\":\"Unauthenticated.\"}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Inventory Item",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/inventory\/:id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/inventory\/:id",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "architecto",
+                                    "description": "The ID of the inventory."
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"stock\":100,\"reorder_level\":10,\"price\":50.5}"
+                        },
+                        "description": "Update stock, reorder level, or price for an inventory item.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Laboratory Orders",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/lab-orders",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional branch filter.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/lab-orders?branch_id=1"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve lab orders.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [
+                                {
+                                    "key": "cache-control",
+                                    "value": "no-cache, private"
+                                },
+                                {
+                                    "key": "content-type",
+                                    "value": "application\/json"
+                                },
+                                {
+                                    "key": "access-control-allow-origin",
+                                    "value": "*"
+                                }
+                            ],
+                            "code": 401,
+                            "body": "{\"message\":\"Unauthenticated.\"}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Lab Order Status",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/lab-orders\/:id\/status",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/lab-orders\/:id\/status",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "architecto",
+                                    "description": "The ID of the lab order."
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"status\":\"\\\"Completed\\\"\"}"
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Request Leave",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/leave-requests",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/leave-requests"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"employee_id\":1,\"leave_type\":\"\\\"Annual\\\"\",\"start_date\":\"\\\"2024-08-01\\\"\",\"end_date\":\"\\\"2024-08-05\\\"\",\"reason\":\"\\\"Family vacation\\\"\",\"branch_id\":\"1\"}"
+                        },
+                        "description": "Employees can submit leave requests.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Leave Request",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/leave-requests\/:id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/leave-requests\/:id",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "architecto",
+                                    "description": "The ID of the leave request."
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"status\":\"\\\"Approved\\\"\"}"
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add Staff Advance",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/staff-advances",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/staff-advances"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"employeeId\":\"architecto\",\"amount\":22,\"reason\":\"g\",\"branchId\":\"architecto\",\"date\":\"2025-10-16T19:57:06\"}"
+                        },
+                        "description": "Employees can submit staff advance requests.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Expenses",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/expenses",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional branch filter.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/expenses?branch_id=1"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all expenses, optionally filtered by branch.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [
+                                {
+                                    "key": "cache-control",
+                                    "value": "no-cache, private"
+                                },
+                                {
+                                    "key": "content-type",
+                                    "value": "application\/json"
+                                },
+                                {
+                                    "key": "access-control-allow-origin",
+                                    "value": "*"
+                                }
+                            ],
+                            "code": 401,
+                            "body": "{\"message\":\"Unauthenticated.\"}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Chart Data",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/chart-data",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional branch filter.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/chart-data?branch_id=1"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve chart data for analytics.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [
+                        {
+                            "header": [
+                                {
+                                    "key": "cache-control",
+                                    "value": "no-cache, private"
+                                },
+                                {
+                                    "key": "content-type",
+                                    "value": "application\/json"
+                                },
+                                {
+                                    "key": "access-control-allow-origin",
+                                    "value": "*"
+                                }
+                            ],
+                            "code": 401,
+                            "body": "{\"message\":\"Unauthenticated.\"}",
+                            "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "name": "Patients",
             "description": "\nEndpoints for managing patient records, dental charting, and treatment planning.\nIncludes comprehensive dental record management with odontogram support.",
             "item": [
@@ -1745,7 +1765,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-13T20:39:02\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-16T19:57:06\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
                         },
                         "description": "Update an existing patient's information."
                     },
@@ -2339,6 +2359,118 @@
                             "code": 403,
                             "body": "{\n  \"message\": \"Unauthorized. Super Admin or HR access required.\"\n}",
                             "name": ""
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Staff Management",
+            "description": "",
+            "item": [
+                {
+                    "name": "Get Staff Advances",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/staff-advances",
+                            "query": [
+                                {
+                                    "key": "branch_id",
+                                    "value": "1",
+                                    "description": "Optional. Filter staff advances by branch ID.",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "pending",
+                                    "description": "Optional. Filter staff advances by status (pending, approved, rejected).",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "start_date",
+                                    "value": "2025-10-01",
+                                    "description": "date Optional. Filter advances from this date.",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "end_date",
+                                    "value": "2025-10-10",
+                                    "description": "date Optional. Filter advances up to this date.",
+                                    "disabled": false
+                                }
+                            ],
+                            "raw": "{{baseUrl}}\/api\/management\/staff-advances?branch_id=1&status=pending&start_date=2025-10-01&end_date=2025-10-10"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve a list of staff advance requests, optionally filtered by branch."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"employee_id\": 5,\n      \"employee_name\": \"Jane Doe\",\n      \"amount\": \"150.00\",\n      \"date\": \"2025-10-05\",\n      \"reason\": \"Medical expenses\",\n      \"status\": \"pending\",\n      \"branch_id\": 2,\n      \"created_at\": \"2025-10-10T12:00:00.000000Z\",\n      \"updated_at\": \"2025-10-10T12:00:00.000000Z\",\n      \"employee\": {\n        \"id\": 5,\n        \"name\": \"Jane Doe\",\n        \"email\": \"jane@example.com\"\n      },\n      \"branch\": {\n        \"id\": 2,\n        \"name\": \"Main Branch\"\n      }\n    }\n  ]\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Staff Advance",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/management\/staff-advances\/:id",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/management\/staff-advances\/:id",
+                            "variable": [
+                                {
+                                    "id": "id",
+                                    "key": "id",
+                                    "value": "16",
+                                    "description": "The ID of the staff advance request."
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"status\":\"Approved\"}"
+                        },
+                        "description": "Approve or reject a staff advance request."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"id\": 1,\n  \"employee_id\": 2,\n  \"employee_name\": \"Jane Doe\",\n  \"amount\": \"5600.00\",\n  \"reason\": \"bb\",\n  \"branch_id\": 1,\n  \"date\": \"2025-10-16\",\n  \"status\": \"Approved\",\n  \"created_at\": \"2025-10-16T12:00:00.000000Z\",\n  \"updated_at\": \"2025-10-16T12:30:00.000000Z\",\n  \"employee\": {\n    \"id\": 2,\n    \"name\": \"Jane Doe\",\n    \"email\": \"jane@example.com\"\n  },\n  \"branch\": {\n    \"id\": 1,\n    \"name\": \"Main Branch\"\n  }\n}",
+                            "name": "Success"
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Staff advance not found\"\n}",
+                            "name": "Not Found"
                         }
                     ]
                 }

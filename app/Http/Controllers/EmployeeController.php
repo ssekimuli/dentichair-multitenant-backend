@@ -7,6 +7,7 @@ use App\Models\RolePermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
  * @group Employees
@@ -140,7 +141,7 @@ class EmployeeController extends Controller
             'hire_date' => $validated['hire_date'],
             'branch_id' => $validated['branch_id'],
             'status' => 'Active',
-            'password' => Hash::make('DE'.rand(1000,9999)),
+            'password' => Hash::make('DE' . rand(1000, 9999)),
         ]);
 
         return response()->json($employee->load('branch'), 201);
@@ -181,16 +182,62 @@ class EmployeeController extends Controller
      * @param string $id Employee ID
      * @return \Illuminate\Http\JsonResponse
      */
+
+
     public function show($id)
     {
-        $employee = Employee::with(['branch'])->find($id);
+        $employee = Employee::with(['branch', 'payrolls', 'leaveRequests', 'staffAdvances'])->find($id);
 
         if (!$employee) {
             return response()->json(['error' => 'Employee not found'], 404);
         }
 
-        return response()->json($employee);
+        // === Compute Stats ===
+
+        // Total amount paid from payrolls
+        $totalPaid = $employee->payrolls->sum('amount') ?? 0;
+
+        // Attendance stats
+        $presentDays = $employee->attendance()->where('status', 'present')->count() ?? 0;
+        $absentDays = $employee->attendance()->where('status', 'absent')->count() ?? 0;
+
+        // ✅ Calculate leave days dynamically (Approved requests only)
+        $onLeaveDays = $employee->leaveRequests()
+            ->where('status', 'Approved') // match your table case
+            ->get()
+            ->sum(function ($leave) {
+                $start = Carbon::parse($leave->start_date);
+                $end = Carbon::parse($leave->end_date);
+                return $start->diffInDays($end) + 1; // inclusive of start and end date
+            });
+
+        // Appointment stats (if applicable)
+        $totalAppointments = $employee->appointments()->count() ?? 0;
+        $uniquePatients = $employee->appointments()->distinct('patient_id')->count('patient_id') ?? 0;
+        $completedAppointments = $employee->appointments()->where('status', 'completed')->count() ?? 0;
+        $pendingAppointments = $employee->appointments()->where('status', 'pending')->count() ?? 0;
+
+        // Derived metric
+        $patientsTreated = $completedAppointments;
+
+        // === Merge stats into response ===
+        $employeeData = $employee->toArray();
+        $employeeData['stats'] = [
+            'totalPaid' => $totalPaid,
+            'presentDays' => $presentDays,
+            'absentDays' => $absentDays,
+            'onLeaveDays' => $onLeaveDays,
+            'totalAppointments' => $totalAppointments,
+            'uniquePatients' => $uniquePatients,
+            'completedAppointments' => $completedAppointments,
+            'pendingAppointments' => $pendingAppointments,
+            'patientsTreated' => $patientsTreated,
+        ];
+
+        return response()->json($employeeData);
     }
+
+
 
     /**
      * Update Employee
@@ -243,7 +290,7 @@ class EmployeeController extends Controller
             'name' => 'sometimes|string',
             'avatar' => 'nullable|string',
             'email' => 'sometimes|email|unique:employees,email,' . $id,
-            'role' => 'required|exists:role_permissions,id',
+            'role' => 'nullable|exists:role_permissions,id',
             'salary' => 'sometimes|numeric',
             'hire_date' => 'sometimes|date',
             'branch_id' => 'sometimes|exists:branches,id',
@@ -252,14 +299,14 @@ class EmployeeController extends Controller
 
         // Auto-fetch role name if provided
         if (isset($validated['role'])) {
-            
+
             $role = RolePermission::find($validated['role']);
             $validated['role_id'] = $role->name ?? $employee->role;
         }
 
         // Hash password if provided
         if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make('DE'.rand(1000,9999));
+            $validated['password'] = Hash::make('DE' . rand(1000, 9999));
         } else {
             unset($validated['password']);
         }

@@ -61,11 +61,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus']);
 
         // Leave Requests
-        Route::get('/leave-requests', [ManagementController::class, 'getLeaveRequests']);
+        Route::post('/leave-requests', [ManagementController::class, 'createLeaveRequest']);
+        Route::get('/get-leave-requests', [ManagementController::class, 'getLeaveRequests']);
         Route::patch('/leave-requests/{id}', [ManagementController::class, 'updateLeaveRequest']);
 
         // Staff Advances
         Route::get('/staff-advances', [ManagementController::class, 'getStaffAdvances']);
+        Route::post('/staff-advances', [ManagementController::class, 'AddStaffAdvance']);
         Route::patch('/staff-advances/{id}', [ManagementController::class, 'updateStaffAdvance']);
 
         // Expenses

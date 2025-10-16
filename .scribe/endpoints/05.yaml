@@ -155,16 +155,6 @@ endpoints:
         exampleWasSpecified: true
         nullable: false
         custom: []
-      role_id:
-        name: role_id
-        description: 'Role name as string.'
-        required: false
-        example: null
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        custom: []
       salary:
         name: salary
         description: "Employee's annual salary."
@@ -195,16 +185,6 @@ endpoints:
         exampleWasSpecified: true
         nullable: false
         custom: []
-      password:
-        name: password
-        description: 'Must be at least 8 characters.'
-        required: true
-        example: ']|{+-0pBNvYg'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        custom: []
     cleanBodyParameters:
       name: 'Dr. Sarah Johnson'
       avatar: 'https://picsum.photos/200/200'
@@ -213,7 +193,6 @@ endpoints:
       salary: 120000.0
       hire_date: '2024-01-15'
       branch_id: b1
-      password: ']|{+-0pBNvYg'
     fileParameters: []
     responses:
       -
@@ -414,17 +393,7 @@ endpoints:
         type: string
         enumValues: []
         exampleWasSpecified: true
-        nullable: false
-        custom: []
-      role_id:
-        name: role_id
-        description: ''
-        required: false
-        example: null
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
+        nullable: true
         custom: []
       salary:
         name: salary
@@ -466,16 +435,6 @@ endpoints:
         exampleWasSpecified: true
         nullable: false
         custom: []
-      password:
-        name: password
-        description: 'Must be at least 8 characters.'
-        required: false
-        example: '+-0pBNvYgxwmi/#iw'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        custom: []
     cleanBodyParameters:
       name: 'Dr. Lisa Cuddy Updated'
       avatar: 'https://picsum.photos/200/200'
@@ -485,7 +444,6 @@ endpoints:
       hire_date: '2020-01-15'
       branch_id: b2
       status: 'On Leave'
-      password: '+-0pBNvYgxwmi/#iw'
     fileParameters: []
     responses:
       -

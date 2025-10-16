@@ -14,7 +14,7 @@ class Payroll extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'employee_id', 'employee_name', 'pay_period', 'gross_pay',
+        'employee_id', 'employee_name', 'pay_period', 'gross_pay',
         'deductions', 'net_pay', 'pay_date', 'status', 'branch_id'
     ];
 

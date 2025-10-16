@@ -8,11 +8,11 @@ servers:
     url: 'http://localhost'
 tags:
   -
-    name: ''
-    description: ''
-  -
     name: Appointments
     description: "\nEndpoints for managing patient appointments, scheduling, and appointment status.\nIncludes queue management and appointment tracking features."
+  -
+    name: Attendance
+    description: ''
   -
     name: Authentication
     description: "\nEndpoints for user authentication and profile management in the Dental Management System.\nThis API handles user login with token-based authentication and retrieval of profile data."
@@ -26,469 +26,21 @@ tags:
     name: 'Invoices & Billing'
     description: "\nEndpoints for managing patient invoices, payments, and billing operations.\nIncludes invoice creation, payment processing, and financial tracking."
   -
+    name: 'Leave Management'
+    description: ''
+  -
+    name: 'Management Module'
+    description: "\nAPIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,\nexpenses, and chart data management."
+  -
     name: Patients
     description: "\nEndpoints for managing patient records, dental charting, and treatment planning.\nIncludes comprehensive dental record management with odontogram support."
   -
     name: 'Roles & Permissions Management'
     description: "\nEndpoints for managing user roles and permissions in the Dental Management System.\nSuper Admin access required for most operations."
+  -
+    name: 'Staff Management'
+    description: ''
 paths:
-  /api/management/payrolls:
-    get:
-      summary: ''
-      operationId: getApiManagementPayrolls
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-    post:
-      summary: ''
-      operationId: postApiManagementPayrolls
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                employee_id:
-                  type: string
-                  description: 'The <code>id</code> of an existing record in the employees table.'
-                  example: architecto
-                  nullable: false
-                employee_name:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                pay_period:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                gross_pay:
-                  type: number
-                  description: ''
-                  example: 4326.41688
-                  nullable: false
-                deductions:
-                  type: number
-                  description: ''
-                  example: 4326.41688
-                  nullable: false
-                net_pay:
-                  type: number
-                  description: ''
-                  example: 4326.41688
-                  nullable: false
-                pay_date:
-                  type: string
-                  description: 'Must be a valid date.'
-                  example: '2025-10-13T20:39:03'
-                  nullable: false
-                branch_id:
-                  type: string
-                  description: 'The <code>id</code> of an existing record in the branches table.'
-                  example: architecto
-                  nullable: false
-              required:
-                - employee_id
-                - employee_name
-                - pay_period
-                - gross_pay
-                - deductions
-                - net_pay
-                - pay_date
-                - branch_id
-      security: []
-  /api/management/attendance:
-    get:
-      summary: ''
-      operationId: getApiManagementAttendance
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-    post:
-      summary: ''
-      operationId: postApiManagementAttendance
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                employee_id:
-                  type: string
-                  description: 'The <code>id</code> of an existing record in the employees table.'
-                  example: architecto
-                  nullable: false
-                employee_name:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: false
-                date:
-                  type: string
-                  description: 'Must be a valid date.'
-                  example: '2025-10-13T20:39:03'
-                  nullable: false
-                status:
-                  type: string
-                  description: ''
-                  example: 'On Leave'
-                  nullable: false
-                  enum:
-                    - Present
-                    - Absent
-                    - 'On Leave'
-                check_in:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: true
-                check_out:
-                  type: string
-                  description: ''
-                  example: architecto
-                  nullable: true
-                branch_id:
-                  type: string
-                  description: 'The <code>id</code> of an existing record in the branches table.'
-                  example: architecto
-                  nullable: false
-              required:
-                - employee_id
-                - employee_name
-                - date
-                - status
-                - branch_id
-      security: []
-  /api/management/inventory:
-    get:
-      summary: ''
-      operationId: getApiManagementInventory
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-  '/api/management/inventory/{id}':
-    patch:
-      summary: ''
-      operationId: patchApiManagementInventoryId
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                stock:
-                  type: integer
-                  description: ''
-                  example: 16
-                  nullable: false
-                reorder_level:
-                  type: integer
-                  description: ''
-                  example: 16
-                  nullable: false
-                price:
-                  type: number
-                  description: ''
-                  example: 4326.41688
-                  nullable: false
-              required:
-                - stock
-      security: []
-    parameters:
-      -
-        in: path
-        name: id
-        description: 'The ID of the inventory.'
-        example: architecto
-        required: true
-        schema:
-          type: string
-  /api/management/lab-orders:
-    get:
-      summary: ''
-      operationId: getApiManagementLabOrders
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-  '/api/management/lab-orders/{id}/status':
-    patch:
-      summary: ''
-      operationId: patchApiManagementLabOrdersIdStatus
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  description: ''
-                  example: Sent
-                  nullable: false
-                  enum:
-                    - Sent
-                    - Received
-                    - Completed
-                    - Cancelled
-              required:
-                - status
-      security: []
-    parameters:
-      -
-        in: path
-        name: id
-        description: 'The ID of the lab order.'
-        example: architecto
-        required: true
-        schema:
-          type: string
-  /api/management/leave-requests:
-    get:
-      summary: ''
-      operationId: getApiManagementLeaveRequests
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-  '/api/management/leave-requests/{id}':
-    patch:
-      summary: ''
-      operationId: patchApiManagementLeaveRequestsId
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  description: ''
-                  example: Pending
-                  nullable: false
-                  enum:
-                    - Pending
-                    - Approved
-                    - Rejected
-              required:
-                - status
-      security: []
-    parameters:
-      -
-        in: path
-        name: id
-        description: 'The ID of the leave request.'
-        example: architecto
-        required: true
-        schema:
-          type: string
-  /api/management/staff-advances:
-    get:
-      summary: ''
-      operationId: getApiManagementStaffAdvances
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-  '/api/management/staff-advances/{id}':
-    patch:
-      summary: ''
-      operationId: patchApiManagementStaffAdvancesId
-      description: ''
-      parameters: []
-      responses: {  }
-      tags:
-        - ''
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  description: ''
-                  example: Pending
-                  nullable: false
-                  enum:
-                    - Pending
-                    - Approved
-                    - Rejected
-              required:
-                - status
-      security: []
-    parameters:
-      -
-        in: path
-        name: id
-        description: 'The ID of the staff advance.'
-        example: architecto
-        required: true
-        schema:
-          type: string
-  /api/management/expenses:
-    get:
-      summary: ''
-      operationId: getApiManagementExpenses
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
-  /api/management/chart-data:
-    get:
-      summary: ''
-      operationId: getApiManagementChartData
-      description: ''
-      parameters: []
-      responses:
-        401:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: Unauthenticated.
-                properties:
-                  message:
-                    type: string
-                    example: Unauthenticated.
-      tags:
-        - ''
-      security: []
   /api/appointments:
     get:
       summary: 'Get All Appointments'
@@ -1206,6 +758,139 @@ paths:
         required: true
         schema:
           type: string
+  /api/management/attendance:
+    post:
+      summary: 'Mark attendance for one or multiple employees.'
+      operationId: markAttendanceForOneOrMultipleEmployees
+      description: "This endpoint can handle:\n1. Single employee attendance\n2. Multiple employee attendance (send an array of employee IDs)"
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                example:
+                  -
+                    id: att1
+                    employee_id: 1
+                    employee_name: 'John Doe'
+                    date: '2025-10-16'
+                    status: Present
+                    check_in: '09:00'
+                    check_out: '17:00'
+                    branch_id: 1
+                    branch:
+                      id: 1
+                      name: 'Main Branch'
+      tags:
+        - Attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employee_id:
+                  type: int|array
+                  description: 'The employee ID or an array of employee IDs.'
+                  example: '1 or [1, 2, 3]'
+                  nullable: false
+                employee_name:
+                  type: string
+                  description: 'nullable The employee name. If empty, it will be fetched from Employee model.'
+                  example: 'John Doe'
+                  nullable: false
+                date:
+                  type: date
+                  description: 'The date of the attendance.'
+                  example: '2025-10-16'
+                  nullable: false
+                status:
+                  type: string
+                  description: 'The attendance status. Allowed values: Present, Absent, On Leave.'
+                  example: Present
+                  nullable: false
+                check_in:
+                  type: string
+                  description: 'nullable The check-in time in HH:MM format.'
+                  example: '09:00'
+                  nullable: false
+                check_out:
+                  type: string
+                  description: 'nullable The check-out time in HH:MM format.'
+                  example: '17:00'
+                  nullable: false
+                branch_id:
+                  type: integer
+                  description: 'The branch ID.'
+                  example: 1
+                  nullable: false
+              required:
+                - employee_id
+                - date
+                - status
+                - branch_id
+      security: []
+    get:
+      summary: 'Get Attendance Records'
+      operationId: getAttendanceRecords
+      description: 'Retrieve employee attendance records.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional branch filter.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional branch filter.'
+            example: 1
+            nullable: false
+        -
+          in: query
+          name: date
+          description: 'date Optional specific date filter.'
+          example: '"2025-10-16"'
+          required: false
+          schema:
+            type: string
+            description: 'date Optional specific date filter.'
+            example: '"2025-10-16"'
+            nullable: false
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: att1
+                  employee_id: 2
+                  date: '2025-10-16'
+                  status: Present
+                properties:
+                  id:
+                    type: string
+                    example: att1
+                  employee_id:
+                    type: integer
+                    example: 2
+                  date:
+                    type: string
+                    example: '2025-10-16'
+                  status:
+                    type: string
+                    example: Present
+      tags:
+        - 'Management Module'
+      security: []
   /api/login:
     post:
       summary: 'User Login'
@@ -1916,11 +1601,6 @@ paths:
                   description: "Employee's role. Must be a valid role from role permissions."
                   example: Dentist
                   nullable: false
-                role_id:
-                  type: string
-                  description: 'Role name as string.'
-                  example: null
-                  nullable: false
                 salary:
                   type: number
                   description: "Employee's annual salary."
@@ -1936,11 +1616,6 @@ paths:
                   description: 'Branch ID where employee works.'
                   example: b1
                   nullable: false
-                password:
-                  type: string
-                  description: 'Must be at least 8 characters.'
-                  example: ']|{+-0pBNvYg'
-                  nullable: false
               required:
                 - name
                 - email
@@ -1948,7 +1623,6 @@ paths:
                 - salary
                 - hire_date
                 - branch_id
-                - password
   '/api/employees/{id}':
     get:
       summary: 'Get Employee by ID'
@@ -2136,12 +1810,7 @@ paths:
                   type: string
                   description: "Employee's role."
                   example: Dentist
-                  nullable: false
-                role_id:
-                  type: string
-                  description: ''
-                  example: null
-                  nullable: false
+                  nullable: true
                 salary:
                   type: number
                   description: "Employee's annual salary."
@@ -2162,11 +1831,6 @@ paths:
                   description: 'Employee status.'
                   example: 'On Leave'
                   nullable: false
-                password:
-                  type: string
-                  description: 'Must be at least 8 characters.'
-                  example: '+-0pBNvYgxwmi/#iw'
-                  nullable: true
     delete:
       summary: 'Delete Employee'
       operationId: deleteEmployee
@@ -3167,6 +2831,701 @@ paths:
         required: true
         schema:
           type: string
+  /api/management/get-leave-requests:
+    get:
+      summary: 'Get Leave Requests'
+      operationId: getLeaveRequests
+      description: ''
+      parameters: []
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+      tags:
+        - 'Leave Management'
+  /api/management/payrolls:
+    get:
+      summary: 'Get Payrolls'
+      operationId: getPayrolls
+      description: 'Retrieve all payroll records, optionally filtered by branch.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional branch ID to filter payrolls.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional branch ID to filter payrolls.'
+            example: 1
+            nullable: false
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: 1
+                  employee_id: 2
+                  gross_pay: 5000
+                  net_pay: 4500
+                  status: Pending
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  employee_id:
+                    type: integer
+                    example: 2
+                  gross_pay:
+                    type: integer
+                    example: 5000
+                  net_pay:
+                    type: integer
+                    example: 4500
+                  status:
+                    type: string
+                    example: Pending
+      tags:
+        - 'Management Module'
+      security: []
+    post:
+      summary: 'Create Payroll'
+      operationId: createPayroll
+      description: 'Create a new payroll record for an employee.'
+      parameters: []
+      responses:
+        201:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: pr5
+                  employee_name: 'James Wilson'
+                  status: Pending
+                properties:
+                  id:
+                    type: string
+                    example: pr5
+                  employee_name:
+                    type: string
+                    example: 'James Wilson'
+                  status:
+                    type: string
+                    example: Pending
+      tags:
+        - 'Management Module'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employee_id:
+                  type: integer
+                  description: 'The employee ID.'
+                  example: 2
+                  nullable: false
+                employee_name:
+                  type: string
+                  description: "The employee's name."
+                  example: '"James Wilson"'
+                  nullable: false
+                pay_period:
+                  type: string
+                  description: 'The pay period.'
+                  example: '"August 2025"'
+                  nullable: false
+                gross_pay:
+                  type: number
+                  description: 'The gross pay amount.'
+                  example: 5000.0
+                  nullable: false
+                deductions:
+                  type: number
+                  description: 'Total deductions.'
+                  example: 500.0
+                  nullable: false
+                net_pay:
+                  type: number
+                  description: 'The net pay.'
+                  example: 4500.0
+                  nullable: false
+                pay_date:
+                  type: date
+                  description: 'Date of payment.'
+                  example: '"2025-08-31"'
+                  nullable: false
+                branch_id:
+                  type: integer
+                  description: 'Branch ID.'
+                  example: 1
+                  nullable: false
+              required:
+                - employee_id
+                - employee_name
+                - pay_period
+                - gross_pay
+                - deductions
+                - net_pay
+                - pay_date
+                - branch_id
+      security: []
+  /api/management/inventory:
+    get:
+      summary: 'Get Inventory'
+      operationId: getInventory
+      description: 'Retrieve inventory items.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional branch filter.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional branch filter.'
+            example: 1
+            nullable: false
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+      tags:
+        - 'Management Module'
+      security: []
+  '/api/management/inventory/{id}':
+    patch:
+      summary: 'Update Inventory Item'
+      operationId: updateInventoryItem
+      description: 'Update stock, reorder level, or price for an inventory item.'
+      parameters: []
+      responses: {  }
+      tags:
+        - 'Management Module'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stock:
+                  type: integer
+                  description: 'Current stock quantity.'
+                  example: 100
+                  nullable: false
+                reorder_level:
+                  type: integer
+                  description: 'Optional Reorder threshold.'
+                  example: 10
+                  nullable: false
+                price:
+                  type: number
+                  description: 'Optional Price per unit.'
+                  example: 50.5
+                  nullable: false
+              required:
+                - stock
+      security: []
+    parameters:
+      -
+        in: path
+        name: id
+        description: 'The ID of the inventory.'
+        example: architecto
+        required: true
+        schema:
+          type: string
+  /api/management/lab-orders:
+    get:
+      summary: 'Get Laboratory Orders'
+      operationId: getLaboratoryOrders
+      description: 'Retrieve lab orders.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional branch filter.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional branch filter.'
+            example: 1
+            nullable: false
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+      tags:
+        - 'Management Module'
+      security: []
+  '/api/management/lab-orders/{id}/status':
+    patch:
+      summary: 'Update Lab Order Status'
+      operationId: updateLabOrderStatus
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - 'Management Module'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: 'Must be Sent, Received, Completed, or Cancelled.'
+                  example: '"Completed"'
+                  nullable: false
+              required:
+                - status
+      security: []
+    parameters:
+      -
+        in: path
+        name: id
+        description: 'The ID of the lab order.'
+        example: architecto
+        required: true
+        schema:
+          type: string
+  /api/management/leave-requests:
+    post:
+      summary: 'Request Leave'
+      operationId: requestLeave
+      description: 'Employees can submit leave requests.'
+      parameters: []
+      responses: {  }
+      tags:
+        - 'Management Module'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employee_id:
+                  type: integer
+                  description: 'Employee ID.'
+                  example: 1
+                  nullable: false
+                leave_type:
+                  type: string
+                  description: 'Type of leave.'
+                  example: '"Annual"'
+                  nullable: false
+                start_date:
+                  type: date
+                  description: 'Start date.'
+                  example: '"2024-08-01"'
+                  nullable: false
+                end_date:
+                  type: date
+                  description: 'End date.'
+                  example: '"2024-08-05"'
+                  nullable: false
+                reason:
+                  type: string
+                  description: 'Reason for leave.'
+                  example: '"Family vacation"'
+                  nullable: false
+                branch_id:
+                  type: string
+                  description: 'Branch ID.'
+                  example: '1'
+                  nullable: false
+              required:
+                - employee_id
+                - leave_type
+                - start_date
+                - end_date
+                - reason
+                - branch_id
+      security: []
+  '/api/management/leave-requests/{id}':
+    patch:
+      summary: 'Update Leave Request'
+      operationId: updateLeaveRequest
+      description: ''
+      parameters: []
+      responses: {  }
+      tags:
+        - 'Management Module'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: 'Must be Pending, Approved, or Rejected.'
+                  example: '"Approved"'
+                  nullable: false
+              required:
+                - status
+      security: []
+    parameters:
+      -
+        in: path
+        name: id
+        description: 'The ID of the leave request.'
+        example: architecto
+        required: true
+        schema:
+          type: string
+  /api/management/staff-advances:
+    post:
+      summary: 'Add Staff Advance'
+      operationId: addStaffAdvance
+      description: 'Employees can submit staff advance requests.'
+      parameters: []
+      responses: {  }
+      tags:
+        - 'Management Module'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: string
+                  description: 'The <code>id</code> of an existing record in the employees table.'
+                  example: architecto
+                  nullable: false
+                amount:
+                  type: number
+                  description: 'Must be at least 1.'
+                  example: 22
+                  nullable: false
+                reason:
+                  type: string
+                  description: 'Must not be greater than 500 characters.'
+                  example: g
+                  nullable: false
+                branchId:
+                  type: string
+                  description: 'The <code>id</code> of an existing record in the branches table.'
+                  example: architecto
+                  nullable: false
+                date:
+                  type: string
+                  description: 'Must be a valid date.'
+                  example: '2025-10-16T19:57:06'
+                  nullable: false
+                data:
+                  type: object
+                  description: ''
+                  example:
+                    object: architecto
+                  nullable: false
+                  properties:
+                    object:
+                      type: required
+                      description: 'Contains advance details'
+                      example: architecto
+                      nullable: false
+                    employeeId:
+                      type: integer
+                      description: 'Employee ID.'
+                      example: 1
+                      nullable: false
+                    amount:
+                      type: number
+                      description: 'Amount requested.'
+                      example: 599.0
+                      nullable: false
+                    reason:
+                      type: string
+                      description: 'Reason for advance.'
+                      example: '"Medical expenses"'
+                      nullable: false
+                    branchId:
+                      type: integer
+                      description: 'Branch ID.'
+                      example: 1
+                      nullable: false
+                    date:
+                      type: date
+                      description: 'Date of advance request.'
+                      example: '"2025-10-16"'
+                      nullable: false
+                  required:
+                    - employeeId
+                    - amount
+                    - reason
+                    - branchId
+                    - date
+              required:
+                - employeeId
+                - amount
+                - reason
+                - branchId
+                - date
+      security: []
+    get:
+      summary: 'Get Staff Advances'
+      operationId: getStaffAdvances
+      description: 'Retrieve a list of staff advance requests, optionally filtered by branch.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional. Filter staff advances by branch ID.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional. Filter staff advances by branch ID.'
+            example: 1
+            nullable: false
+        -
+          in: query
+          name: status
+          description: 'Optional. Filter staff advances by status (pending, approved, rejected).'
+          example: pending
+          required: false
+          schema:
+            type: string
+            description: 'Optional. Filter staff advances by status (pending, approved, rejected).'
+            example: pending
+            nullable: false
+        -
+          in: query
+          name: start_date
+          description: 'date Optional. Filter advances from this date.'
+          example: '2025-10-01'
+          required: false
+          schema:
+            type: string
+            description: 'date Optional. Filter advances from this date.'
+            example: '2025-10-01'
+            nullable: false
+        -
+          in: query
+          name: end_date
+          description: 'date Optional. Filter advances up to this date.'
+          example: '2025-10-10'
+          required: false
+          schema:
+            type: string
+            description: 'date Optional. Filter advances up to this date.'
+            example: '2025-10-10'
+            nullable: false
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  data:
+                    -
+                      id: 1
+                      employee_id: 5
+                      employee_name: 'Jane Doe'
+                      amount: '150.00'
+                      date: '2025-10-05'
+                      reason: 'Medical expenses'
+                      status: pending
+                      branch_id: 2
+                      created_at: '2025-10-10T12:00:00.000000Z'
+                      updated_at: '2025-10-10T12:00:00.000000Z'
+                      employee:
+                        id: 5
+                        name: 'Jane Doe'
+                        email: jane@example.com
+                      branch:
+                        id: 2
+                        name: 'Main Branch'
+                properties:
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        employee_id: 5
+                        employee_name: 'Jane Doe'
+                        amount: '150.00'
+                        date: '2025-10-05'
+                        reason: 'Medical expenses'
+                        status: pending
+                        branch_id: 2
+                        created_at: '2025-10-10T12:00:00.000000Z'
+                        updated_at: '2025-10-10T12:00:00.000000Z'
+                        employee:
+                          id: 5
+                          name: 'Jane Doe'
+                          email: jane@example.com
+                        branch:
+                          id: 2
+                          name: 'Main Branch'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        employee_id:
+                          type: integer
+                          example: 5
+                        employee_name:
+                          type: string
+                          example: 'Jane Doe'
+                        amount:
+                          type: string
+                          example: '150.00'
+                        date:
+                          type: string
+                          example: '2025-10-05'
+                        reason:
+                          type: string
+                          example: 'Medical expenses'
+                        status:
+                          type: string
+                          example: pending
+                        branch_id:
+                          type: integer
+                          example: 2
+                        created_at:
+                          type: string
+                          example: '2025-10-10T12:00:00.000000Z'
+                        updated_at:
+                          type: string
+                          example: '2025-10-10T12:00:00.000000Z'
+                        employee:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 5
+                            name:
+                              type: string
+                              example: 'Jane Doe'
+                            email:
+                              type: string
+                              example: jane@example.com
+                        branch:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 2
+                            name:
+                              type: string
+                              example: 'Main Branch'
+      tags:
+        - 'Staff Management'
+  /api/management/expenses:
+    get:
+      summary: 'Get Expenses'
+      operationId: getExpenses
+      description: 'Retrieve all expenses, optionally filtered by branch.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional branch filter.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional branch filter.'
+            example: 1
+            nullable: false
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+      tags:
+        - 'Management Module'
+      security: []
+  /api/management/chart-data:
+    get:
+      summary: 'Get Chart Data'
+      operationId: getChartData
+      description: 'Retrieve chart data for analytics.'
+      parameters:
+        -
+          in: query
+          name: branch_id
+          description: 'Optional branch filter.'
+          example: 1
+          required: false
+          schema:
+            type: integer
+            description: 'Optional branch filter.'
+            example: 1
+            nullable: false
+      responses:
+        401:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: Unauthenticated.
+                properties:
+                  message:
+                    type: string
+                    example: Unauthenticated.
+      tags:
+        - 'Management Module'
+      security: []
   /api/patients:
     get:
       summary: 'Get All Patients'
@@ -3645,7 +4004,7 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-13T20:39:02'
+                  example: '2025-10-16T19:57:06'
                   nullable: true
                 status:
                   type: string
@@ -4826,3 +5185,123 @@ paths:
                     example: 'Unauthorized. Super Admin or HR access required.'
       tags:
         - 'Roles & Permissions Management'
+  '/api/management/staff-advances/{id}':
+    patch:
+      summary: 'Update Staff Advance'
+      operationId: updateStaffAdvance
+      description: 'Approve or reject a staff advance request.'
+      parameters: []
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  id: 1
+                  employee_id: 2
+                  employee_name: 'Jane Doe'
+                  amount: '5600.00'
+                  reason: bb
+                  branch_id: 1
+                  date: '2025-10-16'
+                  status: Approved
+                  created_at: '2025-10-16T12:00:00.000000Z'
+                  updated_at: '2025-10-16T12:30:00.000000Z'
+                  employee:
+                    id: 2
+                    name: 'Jane Doe'
+                    email: jane@example.com
+                  branch:
+                    id: 1
+                    name: 'Main Branch'
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  employee_id:
+                    type: integer
+                    example: 2
+                  employee_name:
+                    type: string
+                    example: 'Jane Doe'
+                  amount:
+                    type: string
+                    example: '5600.00'
+                  reason:
+                    type: string
+                    example: bb
+                  branch_id:
+                    type: integer
+                    example: 1
+                  date:
+                    type: string
+                    example: '2025-10-16'
+                  status:
+                    type: string
+                    example: Approved
+                  created_at:
+                    type: string
+                    example: '2025-10-16T12:00:00.000000Z'
+                  updated_at:
+                    type: string
+                    example: '2025-10-16T12:30:00.000000Z'
+                  employee:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 2
+                      name:
+                        type: string
+                        example: 'Jane Doe'
+                      email:
+                        type: string
+                        example: jane@example.com
+                  branch:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: 'Main Branch'
+        404:
+          description: 'Not Found'
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Staff advance not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Staff advance not found'
+      tags:
+        - 'Staff Management'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: 'Must be one of: Pending, Approved, Rejected.'
+                  example: Approved
+                  nullable: false
+              required:
+                - status
+    parameters:
+      -
+        in: path
+        name: id
+        description: 'The ID of the staff advance request.'
+        example: 16
+        required: true
+        schema:
+          type: integer

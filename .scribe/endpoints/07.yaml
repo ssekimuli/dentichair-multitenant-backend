@@ -1,26 +1,21 @@
-name: 'Roles & Permissions Management'
-description: |-
-
-  Endpoints for managing user roles and permissions in the Dental Management System.
-  Super Admin access required for most operations.
+name: Attendance
+description: ''
 endpoints:
   -
     httpMethods:
-      - GET
-    uri: api/settings/roles
+      - POST
+    uri: api/management/attendance
     metadata:
-      groupName: 'Roles & Permissions Management'
-      groupDescription: |-
-
-        Endpoints for managing user roles and permissions in the Dental Management System.
-        Super Admin access required for most operations.
+      groupName: Attendance
+      groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Get All Roles and Permissions'
+      title: 'Mark attendance for one or multiple employees.'
       description: |-
-        Retrieve a comprehensive list of all defined roles and their assigned permissions.
-        Intended for the 'Roles & Permissions' settings page.
-      authenticated: true
+        This endpoint can handle:
+        1. Single employee attendance
+        2. Multiple employee attendance (send an array of employee IDs)
+      authenticated: false
       deprecated: false
       custom: []
     headers:
@@ -30,363 +25,107 @@ endpoints:
     cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        status: 200
-        content: |-
-          {
-            "data": [
-              {
-                "id": 1,
-                "name": "Super Admin",
-                "permissions": [
-                  "dashboard:read",
-                  "queue:read",
-                  "patients:read",
-                  "patients:create",
-                  "patients:update",
-                  "patients:delete",
-                  "settings:manage"
-                ]
-              },
-              {
-                "id": 2,
-                "name": "Dentist",
-                "permissions": [
-                  "dashboard:read",
-                  "queue:read",
-                  "patients:read",
-                  "charting:read",
-                  "charting:update"
-                ]
-              }
-            ]
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 401
-        content: |-
-          {
-            "message": "Unauthenticated."
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 403
-        content: |-
-          {
-            "message": "Unauthorized. Super Admin access required."
-          }
-        headers: []
-        description: ''
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - PUT
-    uri: 'api/settings/roles/{role_id}'
-    metadata:
-      groupName: 'Roles & Permissions Management'
-      groupDescription: |-
-
-        Endpoints for managing user roles and permissions in the Dental Management System.
-        Super Admin access required for most operations.
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Update Permissions for a Role'
-      description: |-
-        Update the permissions for a specific role. The provided permissions array
-        will completely replace the existing permissions for that role.
-      authenticated: true
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      role_id:
-        name: role_id
-        description: 'The ID of the role to update.'
+    bodyParameters:
+      employee_id:
+        name: employee_id
+        description: 'The employee ID or an array of employee IDs.'
         required: true
-        example: 1
-        type: integer
+        example: '1 or [1, 2, 3]'
+        type: int|array
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
-    cleanUrlParameters:
-      role_id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      permissions:
-        name: permissions
-        description: 'Array of permission strings.'
+      employee_name:
+        name: employee_name
+        description: 'nullable The employee name. If empty, it will be fetched from Employee model.'
+        required: false
+        example: 'John Doe'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'The date of the attendance.'
         required: true
-        example:
-          - 'dashboard:read'
-          - 'patients:read'
-        type: 'string[]'
+        example: '2025-10-16'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      status:
+        name: status
+        description: 'The attendance status. Allowed values: Present, Absent, On Leave.'
+        required: true
+        example: Present
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      check_in:
+        name: check_in
+        description: 'nullable The check-in time in HH:MM format.'
+        required: false
+        example: '09:00'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      check_out:
+        name: check_out
+        description: 'nullable The check-out time in HH:MM format.'
+        required: false
+        example: '17:00'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      branch_id:
+        name: branch_id
+        description: 'The branch ID.'
+        required: true
+        example: 1
+        type: integer
         enumValues: []
         exampleWasSpecified: true
         nullable: false
         custom: []
     cleanBodyParameters:
-      permissions:
-        - 'dashboard:read'
-        - 'patients:read'
+      employee_id: '1 or [1, 2, 3]'
+      employee_name: 'John Doe'
+      date: '2025-10-16'
+      status: Present
+      check_in: '09:00'
+      check_out: '17:00'
+      branch_id: 1
     fileParameters: []
     responses:
       -
         status: 200
         content: |-
-          {
-            "message": "Permissions updated successfully",
-            "data": {
-              "id": 1,
-              "name": "Super Admin",
-              "permissions": [
-                "dashboard:read",
-                "patients:read",
-                "patients:create"
-              ]
-            }
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 401
-        content: |-
-          {
-            "message": "Unauthenticated."
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 403
-        content: |-
-          {
-            "message": "Unauthorized. Super Admin access required."
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 404
-        content: |-
-          {
-            "message": "Role not found"
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 422
-        content: |-
-          {
-            "message": "The given data was invalid.",
-            "errors": {
-              "permissions": ["The permissions field is required."]
-            }
-          }
-        headers: []
-        description: ''
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - GET
-    uri: 'api/settings/roles/{role_id}'
-    metadata:
-      groupName: 'Roles & Permissions Management'
-      groupDescription: |-
+          [
+            {
+               "id": "att1",
+               "employee_id": 1,
+               "employee_name": "John Doe",
+               "date": "2025-10-16",
+               "status": "Present",
+               "check_in": "09:00",
+               "check_out": "17:00",
+               "branch_id": 1,
 
-        Endpoints for managing user roles and permissions in the Dental Management System.
-        Super Admin access required for most operations.
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Get Role by ID'
-      description: 'Retrieve detailed information about a specific role including all permissions.'
-      authenticated: true
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      role_id:
-        name: role_id
-        description: 'The ID of the role to retrieve.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        custom: []
-    cleanUrlParameters:
-      role_id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        status: 200
-        content: |-
-          {
-            "data": {
-              "id": 1,
-              "name": "Super Admin",
-              "permissions": [
-                "dashboard:read",
-                "queue:read",
-                "patients:read",
-                "patients:create",
-                "patients:update",
-                "patients:delete",
-                "settings:manage"
-              ]
+               "branch": {
+                   "id": 1,
+                   "name": "Main Branch"
+               }
             }
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 401
-        content: |-
-          {
-            "message": "Unauthenticated."
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 403
-        content: |-
-          {
-            "message": "Unauthorized. Super Admin access required."
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 404
-        content: |-
-          {
-            "message": "Role not found"
-          }
-        headers: []
-        description: ''
-        custom: []
-    responseFields: []
-    auth: []
-    controller: null
-    method: null
-    route: null
-    custom: []
-  -
-    httpMethods:
-      - GET
-    uri: api/roles
-    metadata:
-      groupName: 'Roles & Permissions Management'
-      groupDescription: |-
-
-        Endpoints for managing user roles and permissions in the Dental Management System.
-        Super Admin access required for most operations.
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Get Simple List of Roles'
-      description: |-
-        Retrieve a lightweight list of all roles containing only their ID and name.
-        Useful for populating UI dropdowns when creating or editing employees.
-      authenticated: true
-      deprecated: false
-      custom: []
-    headers:
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        status: 200
-        content: |-
-          {
-            "data": [
-              {
-                "id": 1,
-                "name": "Super Admin"
-              },
-              {
-                "id": 2,
-                "name": "Accountant"
-              },
-              {
-                "id": 3,
-                "name": "HR Manager"
-              },
-              {
-                "id": 4,
-                "name": "Dentist"
-              },
-              {
-                "id": 5,
-                "name": "Hygienist"
-              },
-              {
-                "id": 6,
-                "name": "Receptionist"
-              },
-              {
-                "id": 7,
-                "name": "Dental Assistant"
-              }
-            ]
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 401
-        content: |-
-          {
-            "message": "Unauthenticated."
-          }
-        headers: []
-        description: ''
-        custom: []
-      -
-        status: 403
-        content: |-
-          {
-            "message": "Unauthorized. Super Admin or HR access required."
-          }
+          ]
         headers: []
         description: ''
         custom: []

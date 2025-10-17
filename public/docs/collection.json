@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "72deb43c-d7ed-498d-a036-91794d9059e1",
+        "_postman_id": "b94592b6-82c4-4996-bc4a-fd16ca14869b",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -1484,7 +1484,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employeeId\":\"architecto\",\"amount\":22,\"reason\":\"g\",\"branchId\":\"architecto\",\"date\":\"2025-10-16T19:57:06\"}"
+                            "raw": "{\"employeeId\":\"architecto\",\"amount\":22,\"reason\":\"g\",\"branchId\":\"architecto\",\"date\":\"2025-10-17T16:13:46\"}"
                         },
                         "description": "Employees can submit staff advance requests.",
                         "auth": {
@@ -1607,10 +1607,10 @@
         },
         {
             "name": "Patients",
-            "description": "\nEndpoints for managing patient records, dental charting, and treatment planning.\nIncludes comprehensive dental record management with odontogram support.",
+            "description": "This endpoint returns a list of all patients with their related records.\n\nYou can optionally filter by:\n- **branch_id** \u2014 show only patients from a specific branch\n- **status** \u2014 filter by Active\/Inactive\n- **gender** \u2014 filter by Male\/Female\/Other",
             "item": [
                 {
-                    "name": "Get All Patients",
+                    "name": "Display a listing of patients.",
                     "request": {
                         "url": {
                             "host": "{{baseUrl}}",
@@ -1618,12 +1618,24 @@
                             "query": [
                                 {
                                     "key": "branch_id",
-                                    "value": "b1",
-                                    "description": "Filter patients by branch ID.",
+                                    "value": "16",
+                                    "description": "Optional. Filter by branch ID.",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "architecto",
+                                    "description": "Optional. Filter by patient status (Active, Inactive).",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "gender",
+                                    "value": "architecto",
+                                    "description": "Optional. Filter by gender (Male, Female, Other).",
                                     "disabled": false
                                 }
                             ],
-                            "raw": "{{baseUrl}}\/api\/patients?branch_id=b1"
+                            "raw": "{{baseUrl}}\/api\/patients?branch_id=16&status=architecto&gender=architecto"
                         },
                         "method": "GET",
                         "header": [
@@ -1637,19 +1649,22 @@
                             }
                         ],
                         "body": null,
-                        "description": "Retrieve a list of all patients with their complete dental records.\nCan be filtered by branch ID."
+                        "description": "",
+                        "auth": {
+                            "type": "noauth"
+                        }
                     },
                     "response": [
                         {
                             "header": [],
                             "code": 200,
-                            "body": "{\n  \"data\": [\n    {\n      \"id\": \"1\",\n      \"name\": \"John Doe\",\n      \"email\": \"john.doe@example.com\",\n      \"status\": \"Active\",\n      \"branch_id\": \"b1\",\n      \"last_visit\": \"2024-05-10\",\n      \"dental_records\": [\n        {\n          \"tooth_id\": 16,\n          \"condition\": \"Caries\",\n          \"notes\": \"Distal caries, requires attention.\"\n        }\n      ],\n      \"treatment_plans\": [],\n      \"imaging\": []\n    }\n  ]\n}",
+                            "body": "{\n  \"id\": 1,\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"256700000000\",\n  \"address\": \"123 Kampala Road\",\n  \"gender\": \"Male\",\n  \"date_of_birth\": \"1985-05-20\",\n  \"last_visit\": \"2024-05-10\",\n  \"status\": \"Active\",\n  \"branch_id\": 1,\n  \"history\": \"Patient has a history of grinding teeth.\",\n  \"occlusal_records\": {\n      \"overbite\": 2,\n      \"overjet\": 1,\n      \"crossbite\": \"None\"\n  }\n}",
                             "name": ""
                         }
                     ]
                 },
                 {
-                    "name": "Create Patient",
+                    "name": "Store a newly created patient.",
                     "request": {
                         "url": {
                             "host": "{{baseUrl}}",
@@ -1670,21 +1685,18 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith\",\"avatar\":\"https:\\\/\\\/picsum.photos\\\/200\\\/200\",\"email\":\"john.smith@example.com\",\"date_of_birth\":\"1985-03-15\",\"branch_id\":\"b1\",\"history\":\"No known allergies\"}"
+                            "raw": "{\"first_name\":\"John\",\"last_name\":\"Doe\",\"avatar\":\"https:\\\/\\\/example.com\\\/avatar.jpg\",\"email\":\"johndoe@example.com\",\"phone\":\"+256700123456\",\"address\":\"Kampala, Uganda\",\"gender\":\"Male\",\"date_of_birth\":\"1990-05-15\",\"last_visit\":\"2025-01-10\",\"status\":\"Active\",\"branch_id\":1,\"history\":\"Has a history of gum disease.\",\"occlusal_records\":\"{\\\"upper\\\":\\\"good\\\",\\\"lower\\\":\\\"fair\\\"}\"}"
                         },
-                        "description": "Create a new patient record with basic information.\nAutomatically sets default occlusal records and status."
+                        "description": "This endpoint allows you to create a new patient record in the system.",
+                        "auth": {
+                            "type": "noauth"
+                        }
                     },
                     "response": [
                         {
                             "header": [],
                             "code": 201,
-                            "body": "{\n  \"id\": \"p6\",\n  \"name\": \"John Smith\",\n  \"email\": \"john.smith@example.com\",\n  \"date_of_birth\": \"1985-03-15\",\n  \"status\": \"Active\",\n  \"branch_id\": \"b1\",\n  \"last_visit\": \"2024-07-15\",\n  \"history\": \"No known allergies\",\n  \"occlusal_records\": {\n    \"overbite\": 0,\n    \"overjet\": 0,\n    \"crossbite\": \"None\",\n    \"openbite\": \"None\",\n    \"malocclusion\": \"Class I\"\n  }\n}",
-                            "name": ""
-                        },
-                        {
-                            "header": [],
-                            "code": 422,
-                            "body": "{\n  \"message\": \"The given data was invalid.\",\n  \"errors\": {\n    \"name\": [\"The name field is required.\"],\n    \"email\": [\"The email field is required.\"],\n    \"date_of_birth\": [\"The date of birth field is required.\"],\n    \"branch_id\": [\"The branch id field is required.\"]\n  }\n}",
+                            "body": "{\n  \"message\": \"Patient created successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\",\n    \"avatar\": \"https:\/\/example.com\/avatar.jpg\",\n    \"email\": \"johndoe@example.com\",\n    \"phone\": \"+256700123456\",\n    \"address\": \"Kampala, Uganda\",\n    \"gender\": \"Male\",\n    \"date_of_birth\": \"1990-05-15\",\n    \"last_visit\": \"2025-01-10\",\n    \"status\": \"Active\",\n    \"branch_id\": 1,\n    \"history\": \"Has a history of gum disease.\",\n    \"occlusal_records\": {\"upper\":\"good\",\"lower\":\"fair\"},\n    \"created_at\": \"2025-10-17T12:00:00.000000Z\",\n    \"updated_at\": \"2025-10-17T12:00:00.000000Z\"\n  }\n}",
                             "name": ""
                         }
                     ]
@@ -1765,7 +1777,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-16T19:57:06\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-17T16:13:46\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
                         },
                         "description": "Update an existing patient's information."
                     },

@@ -33,7 +33,7 @@ tags:
     description: "\nAPIs for payroll, attendance, inventory, lab orders, leave requests, staff advances,\nexpenses, and chart data management."
   -
     name: Patients
-    description: "\nEndpoints for managing patient records, dental charting, and treatment planning.\nIncludes comprehensive dental record management with odontogram support."
+    description: "This endpoint returns a list of all patients with their related records.\n\nYou can optionally filter by:\n- **branch_id** — show only patients from a specific branch\n- **status** — filter by Active/Inactive\n- **gender** — filter by Male/Female/Other"
   -
     name: 'Roles & Permissions Management'
     description: "\nEndpoints for managing user roles and permissions in the Dental Management System.\nSuper Admin access required for most operations."
@@ -3254,7 +3254,7 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-16T19:57:06'
+                  example: '2025-10-17T16:13:46'
                   nullable: false
                 data:
                   type: object
@@ -3528,20 +3528,42 @@ paths:
       security: []
   /api/patients:
     get:
-      summary: 'Get All Patients'
-      operationId: getAllPatients
-      description: "Retrieve a list of all patients with their complete dental records.\nCan be filtered by branch ID."
+      summary: 'Display a listing of patients.'
+      operationId: displayAListingOfPatients
+      description: ''
       parameters:
         -
           in: query
           name: branch_id
-          description: 'Filter patients by branch ID.'
-          example: b1
+          description: 'Optional. Filter by branch ID.'
+          example: 16
+          required: false
+          schema:
+            type: integer
+            description: 'Optional. Filter by branch ID.'
+            example: 16
+            nullable: false
+        -
+          in: query
+          name: status
+          description: 'Optional. Filter by patient status (Active, Inactive).'
+          example: architecto
           required: false
           schema:
             type: string
-            description: 'Filter patients by branch ID.'
-            example: b1
+            description: 'Optional. Filter by patient status (Active, Inactive).'
+            example: architecto
+            nullable: false
+        -
+          in: query
+          name: gender
+          description: 'Optional. Filter by gender (Male, Female, Other).'
+          example: architecto
+          required: false
+          schema:
+            type: string
+            description: 'Optional. Filter by gender (Male, Female, Other).'
+            example: architecto
             nullable: false
       responses:
         200:
@@ -3551,91 +3573,78 @@ paths:
               schema:
                 type: object
                 example:
-                  data:
-                    -
-                      id: '1'
-                      name: 'John Doe'
-                      email: john.doe@example.com
-                      status: Active
-                      branch_id: b1
-                      last_visit: '2024-05-10'
-                      dental_records:
-                        -
-                          tooth_id: 16
-                          condition: Caries
-                          notes: 'Distal caries, requires attention.'
-                      treatment_plans: []
-                      imaging: []
+                  id: 1
+                  first_name: John
+                  last_name: Doe
+                  email: john.doe@example.com
+                  phone: '256700000000'
+                  address: '123 Kampala Road'
+                  gender: Male
+                  date_of_birth: '1985-05-20'
+                  last_visit: '2024-05-10'
+                  status: Active
+                  branch_id: 1
+                  history: 'Patient has a history of grinding teeth.'
+                  occlusal_records:
+                    overbite: 2
+                    overjet: 1
+                    crossbite: None
                 properties:
-                  data:
-                    type: array
-                    example:
-                      -
-                        id: '1'
-                        name: 'John Doe'
-                        email: john.doe@example.com
-                        status: Active
-                        branch_id: b1
-                        last_visit: '2024-05-10'
-                        dental_records:
-                          -
-                            tooth_id: 16
-                            condition: Caries
-                            notes: 'Distal caries, requires attention.'
-                        treatment_plans: []
-                        imaging: []
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          example: '1'
-                        name:
-                          type: string
-                          example: 'John Doe'
-                        email:
-                          type: string
-                          example: john.doe@example.com
-                        status:
-                          type: string
-                          example: Active
-                        branch_id:
-                          type: string
-                          example: b1
-                        last_visit:
-                          type: string
-                          example: '2024-05-10'
-                        dental_records:
-                          type: array
-                          example:
-                            -
-                              tooth_id: 16
-                              condition: Caries
-                              notes: 'Distal caries, requires attention.'
-                          items:
-                            type: object
-                            properties:
-                              tooth_id:
-                                type: integer
-                                example: 16
-                              condition:
-                                type: string
-                                example: Caries
-                              notes:
-                                type: string
-                                example: 'Distal caries, requires attention.'
-                        treatment_plans:
-                          type: array
-                          example: []
-                        imaging:
-                          type: array
-                          example: []
+                  id:
+                    type: integer
+                    example: 1
+                  first_name:
+                    type: string
+                    example: John
+                  last_name:
+                    type: string
+                    example: Doe
+                  email:
+                    type: string
+                    example: john.doe@example.com
+                  phone:
+                    type: string
+                    example: '256700000000'
+                  address:
+                    type: string
+                    example: '123 Kampala Road'
+                  gender:
+                    type: string
+                    example: Male
+                  date_of_birth:
+                    type: string
+                    example: '1985-05-20'
+                  last_visit:
+                    type: string
+                    example: '2024-05-10'
+                  status:
+                    type: string
+                    example: Active
+                  branch_id:
+                    type: integer
+                    example: 1
+                  history:
+                    type: string
+                    example: 'Patient has a history of grinding teeth.'
+                  occlusal_records:
+                    type: object
+                    properties:
+                      overbite:
+                        type: integer
+                        example: 2
+                      overjet:
+                        type: integer
+                        example: 1
+                      crossbite:
+                        type: string
+                        example: None
       tags:
         - Patients
+      security: []
     post:
-      summary: 'Create Patient'
-      operationId: createPatient
-      description: "Create a new patient record with basic information.\nAutomatically sets default occlusal records and status."
+      summary: 'Store a newly created patient.'
+      operationId: storeANewlyCreatedPatient
+      description: 'This endpoint allows you to create a new patient record in the system.'
       parameters: []
       responses:
         201:
@@ -3645,111 +3654,87 @@ paths:
               schema:
                 type: object
                 example:
-                  id: p6
-                  name: 'John Smith'
-                  email: john.smith@example.com
-                  date_of_birth: '1985-03-15'
-                  status: Active
-                  branch_id: b1
-                  last_visit: '2024-07-15'
-                  history: 'No known allergies'
-                  occlusal_records:
-                    overbite: 0
-                    overjet: 0
-                    crossbite: None
-                    openbite: None
-                    malocclusion: 'Class I'
-                properties:
-                  id:
-                    type: string
-                    example: p6
-                  name:
-                    type: string
-                    example: 'John Smith'
-                  email:
-                    type: string
-                    example: john.smith@example.com
-                  date_of_birth:
-                    type: string
-                    example: '1985-03-15'
-                  status:
-                    type: string
-                    example: Active
-                  branch_id:
-                    type: string
-                    example: b1
-                  last_visit:
-                    type: string
-                    example: '2024-07-15'
-                  history:
-                    type: string
-                    example: 'No known allergies'
-                  occlusal_records:
-                    type: object
-                    properties:
-                      overbite:
-                        type: integer
-                        example: 0
-                      overjet:
-                        type: integer
-                        example: 0
-                      crossbite:
-                        type: string
-                        example: None
-                      openbite:
-                        type: string
-                        example: None
-                      malocclusion:
-                        type: string
-                        example: 'Class I'
-        422:
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                example:
-                  message: 'The given data was invalid.'
-                  errors:
-                    name:
-                      - 'The name field is required.'
-                    email:
-                      - 'The email field is required.'
-                    date_of_birth:
-                      - 'The date of birth field is required.'
-                    branch_id:
-                      - 'The branch id field is required.'
+                  message: 'Patient created successfully.'
+                  data:
+                    id: 1
+                    first_name: John
+                    last_name: Doe
+                    avatar: 'https://example.com/avatar.jpg'
+                    email: johndoe@example.com
+                    phone: '+256700123456'
+                    address: 'Kampala, Uganda'
+                    gender: Male
+                    date_of_birth: '1990-05-15'
+                    last_visit: '2025-01-10'
+                    status: Active
+                    branch_id: 1
+                    history: 'Has a history of gum disease.'
+                    occlusal_records:
+                      upper: good
+                      lower: fair
+                    created_at: '2025-10-17T12:00:00.000000Z'
+                    updated_at: '2025-10-17T12:00:00.000000Z'
                 properties:
                   message:
                     type: string
-                    example: 'The given data was invalid.'
-                  errors:
+                    example: 'Patient created successfully.'
+                  data:
                     type: object
                     properties:
-                      name:
-                        type: array
-                        example:
-                          - 'The name field is required.'
-                        items:
-                          type: string
+                      id:
+                        type: integer
+                        example: 1
+                      first_name:
+                        type: string
+                        example: John
+                      last_name:
+                        type: string
+                        example: Doe
+                      avatar:
+                        type: string
+                        example: 'https://example.com/avatar.jpg'
                       email:
-                        type: array
-                        example:
-                          - 'The email field is required.'
-                        items:
-                          type: string
+                        type: string
+                        example: johndoe@example.com
+                      phone:
+                        type: string
+                        example: '+256700123456'
+                      address:
+                        type: string
+                        example: 'Kampala, Uganda'
+                      gender:
+                        type: string
+                        example: Male
                       date_of_birth:
-                        type: array
-                        example:
-                          - 'The date of birth field is required.'
-                        items:
-                          type: string
+                        type: string
+                        example: '1990-05-15'
+                      last_visit:
+                        type: string
+                        example: '2025-01-10'
+                      status:
+                        type: string
+                        example: Active
                       branch_id:
-                        type: array
-                        example:
-                          - 'The branch id field is required.'
-                        items:
-                          type: string
+                        type: integer
+                        example: 1
+                      history:
+                        type: string
+                        example: 'Has a history of gum disease.'
+                      occlusal_records:
+                        type: object
+                        properties:
+                          upper:
+                            type: string
+                            example: good
+                          lower:
+                            type: string
+                            example: fair
+                      created_at:
+                        type: string
+                        example: '2025-10-17T12:00:00.000000Z'
+                      updated_at:
+                        type: string
+                        example: '2025-10-17T12:00:00.000000Z'
       tags:
         - Patients
       requestBody:
@@ -3759,41 +3744,78 @@ paths:
             schema:
               type: object
               properties:
-                name:
+                first_name:
                   type: string
-                  description: "Patient's full name."
-                  example: 'John Smith'
+                  description: "The patient's first name."
+                  example: John
+                  nullable: false
+                last_name:
+                  type: string
+                  description: "The patient's last name."
+                  example: Doe
                   nullable: false
                 avatar:
                   type: string
-                  description: "URL to patient's avatar image."
-                  example: 'https://picsum.photos/200/200'
+                  description: "The URL or path to the patient's avatar image."
+                  example: 'https://example.com/avatar.jpg'
                   nullable: true
                 email:
                   type: string
-                  description: "Patient's email address."
-                  example: john.smith@example.com
+                  description: "The patient's email address (must be unique)."
+                  example: johndoe@example.com
                   nullable: false
+                phone:
+                  type: string
+                  description: "The patient's phone number."
+                  example: '+256700123456'
+                  nullable: true
+                address:
+                  type: string
+                  description: "The patient's address."
+                  example: 'Kampala, Uganda'
+                  nullable: true
+                gender:
+                  type: string
+                  description: "The patient's gender. Must be one of: Male, Female, Other."
+                  example: Male
+                  nullable: true
                 date_of_birth:
                   type: date
-                  description: "Patient's date of birth."
-                  example: '1985-03-15'
+                  description: "The patient's date of birth (Y-m-d format)."
+                  example: '1990-05-15'
                   nullable: false
-                branch_id:
+                last_visit:
+                  type: date
+                  description: "The date of the patient's last visit (Y-m-d format)."
+                  example: '2025-01-10'
+                  nullable: true
+                status:
                   type: string
-                  description: 'Branch ID where patient is registered.'
-                  example: b1
+                  description: "The patient's current status. Must be one of: Active, Inactive."
+                  example: Active
+                  nullable: true
+                branch_id:
+                  type: integer
+                  description: 'The ID of the branch this patient belongs to.'
+                  example: 1
                   nullable: false
                 history:
                   type: string
-                  description: "Patient's medical/dental history."
-                  example: 'No known allergies'
+                  description: "The patient's medical history or notes."
+                  example: 'Has a history of gum disease.'
+                  nullable: true
+                occlusal_records:
+                  type: json
+                  description: "The patient's occlusal records in JSON format."
+                  example: '{"upper":"good","lower":"fair"}'
                   nullable: true
               required:
-                - name
+                - first_name
+                - last_name
                 - email
                 - date_of_birth
                 - branch_id
+      security: []
   '/api/patients/{id}':
     get:
       summary: 'Get Patient by ID'
@@ -4004,7 +4026,7 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-16T19:57:06'
+                  example: '2025-10-17T16:13:46'
                   nullable: true
                 status:
                   type: string

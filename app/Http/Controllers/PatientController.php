@@ -21,59 +21,74 @@ use Illuminate\Support\Str;
 class PatientController extends Controller
 {
     /**
-     * Get All Patients
+     * Display a listing of patients.
+     *
+     * @group Patients
      * 
-     * Retrieve a list of all patients with their complete dental records.
-     * Can be filtered by branch ID.
-     * 
-     * @authenticated
-     * 
-     * @queryParam branch_id string Filter patients by branch ID. Example: b1
-     * 
+     * This endpoint returns a list of all patients with their related records.
+     *
+     * You can optionally filter by:
+     * - **branch_id** — show only patients from a specific branch
+     * - **status** — filter by Active/Inactive
+     * - **gender** — filter by Male/Female/Other
+     *
+     * @queryParam branch_id integer Optional. Filter by branch ID.
+     * @queryParam status string Optional. Filter by patient status (Active, Inactive).
+     * @queryParam gender string Optional. Filter by gender (Male, Female, Other).
+     *
      * @response 200 {
-     *   "data": [
-     *     {
-     *       "id": "1",
-     *       "name": "John Doe",
-     *       "email": "john.doe@example.com",
-     *       "status": "Active",
-     *       "branch_id": "b1",
-     *       "last_visit": "2024-05-10",
-     *       "dental_records": [
-     *         {
-     *           "tooth_id": 16,
-     *           "condition": "Caries",
-     *           "notes": "Distal caries, requires attention."
-     *         }
-     *       ],
-     *       "treatment_plans": [],
-     *       "imaging": []
-     *     }
-     *   ]
+     *   "id": 1,
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "email": "john.doe@example.com",
+     *   "phone": "256700000000",
+     *   "address": "123 Kampala Road",
+     *   "gender": "Male",
+     *   "date_of_birth": "1985-05-20",
+     *   "last_visit": "2024-05-10",
+     *   "status": "Active",
+     *   "branch_id": 1,
+     *   "history": "Patient has a history of grinding teeth.",
+     *   "occlusal_records": {
+     *       "overbite": 2,
+     *       "overjet": 1,
+     *       "crossbite": "None"
+     *   }
      * }
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
         $query = Patient::with([
-            'dentalRecords', 
-            'treatmentPlans', 
-            'images', 
+            'dentalRecords',
+            'treatmentPlans',
+            'images',
             'periodontalRecords',
             'softTissueRecords',
-            'orthodonticRecords'
+            'orthodonticRecords',
+            'branch'
         ]);
 
-        if ($request->has('branch_id')) {
+        // Optional filters
+        if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
 
-        $patients = $query->get();
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
-        return response()->json($patients);
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        $patients = $query->orderBy('first_name')->get();
+
+        return response()->json([
+            'message' => 'Patients retrieved successfully.',
+            'data' => $patients
+        ]);
     }
+
 
     /**
      * Get Patient by ID
@@ -126,9 +141,9 @@ class PatientController extends Controller
     public function show($id)
     {
         $patient = Patient::with([
-            'dentalRecords', 
-            'treatmentPlans', 
-            'images', 
+            'dentalRecords',
+            'treatmentPlans',
+            'images',
             'periodontalRecords',
             'softTissueRecords',
             'orthodonticRecords'
@@ -142,77 +157,73 @@ class PatientController extends Controller
     }
 
     /**
-     * Create Patient
-     * 
-     * Create a new patient record with basic information.
-     * Automatically sets default occlusal records and status.
-     * 
-     * @authenticated
-     * 
-     * @bodyParam name string required Patient's full name. Example: John Smith
-     * @bodyParam email string required Patient's email address. Example: john.smith@example.com
-     * @bodyParam date_of_birth date required Patient's date of birth. Example: 1985-03-15
-     * @bodyParam branch_id string required Branch ID where patient is registered. Example: b1
-     * @bodyParam avatar string URL to patient's avatar image. Example: https://picsum.photos/200/200
-     * @bodyParam history string Patient's medical/dental history. Example: No known allergies
-     * 
+     * Store a newly created patient.
+     *
+     * This endpoint allows you to create a new patient record in the system.
+     *
+     * @bodyParam first_name string required The patient's first name. Example: John
+     * @bodyParam last_name string required The patient's last name. Example: Doe
+     * @bodyParam avatar string The URL or path to the patient's avatar image. Example: https://example.com/avatar.jpg
+     * @bodyParam email string required The patient's email address (must be unique). Example: johndoe@example.com
+     * @bodyParam phone string The patient's phone number. Example: +256700123456
+     * @bodyParam address string The patient's address. Example: Kampala, Uganda
+     * @bodyParam gender string The patient's gender. Must be one of: Male, Female, Other. Example: Male
+     * @bodyParam date_of_birth date required The patient's date of birth (Y-m-d format). Example: 1990-05-15
+     * @bodyParam last_visit date The date of the patient's last visit (Y-m-d format). Example: 2025-01-10
+     * @bodyParam status string The patient's current status. Must be one of: Active, Inactive. Example: Active
+     * @bodyParam branch_id integer required The ID of the branch this patient belongs to. Example: 1
+     * @bodyParam history string The patient's medical history or notes. Example: Has a history of gum disease.
+     * @bodyParam occlusal_records json The patient's occlusal records in JSON format. Example: {"upper":"good","lower":"fair"}
+     *
      * @response 201 {
-     *   "id": "p6",
-     *   "name": "John Smith",
-     *   "email": "john.smith@example.com",
-     *   "date_of_birth": "1985-03-15",
-     *   "status": "Active",
-     *   "branch_id": "b1",
-     *   "last_visit": "2024-07-15",
-     *   "history": "No known allergies",
-     *   "occlusal_records": {
-     *     "overbite": 0,
-     *     "overjet": 0,
-     *     "crossbite": "None",
-     *     "openbite": "None",
-     *     "malocclusion": "Class I"
+     *   "message": "Patient created successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "first_name": "John",
+     *     "last_name": "Doe",
+     *     "avatar": "https://example.com/avatar.jpg",
+     *     "email": "johndoe@example.com",
+     *     "phone": "+256700123456",
+     *     "address": "Kampala, Uganda",
+     *     "gender": "Male",
+     *     "date_of_birth": "1990-05-15",
+     *     "last_visit": "2025-01-10",
+     *     "status": "Active",
+     *     "branch_id": 1,
+     *     "history": "Has a history of gum disease.",
+     *     "occlusal_records": {"upper":"good","lower":"fair"},
+     *     "created_at": "2025-10-17T12:00:00.000000Z",
+     *     "updated_at": "2025-10-17T12:00:00.000000Z"
      *   }
      * }
-     * @response 422 {
-     *   "message": "The given data was invalid.",
-     *   "errors": {
-     *     "name": ["The name field is required."],
-     *     "email": ["The email field is required."],
-     *     "date_of_birth": ["The date of birth field is required."],
-     *     "branch_id": ["The branch id field is required."]
-     *   }
-     * }
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'avatar' => 'nullable|string',
-            'email' => 'required|email',
+            'email' => 'required|email|unique:patients,email',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'required|date',
+            'last_visit' => 'nullable|date',
+            'status' => 'nullable|in:Active,Inactive',
             'branch_id' => 'required|exists:branches,id',
             'history' => 'nullable|string',
+            'occlusal_records' => 'nullable|json',
         ]);
 
-        $patient = Patient::create([
-            ...$validated,
-            'id' => 'p' . (Patient::count() + 1),
-            'last_visit' => now()->format('Y-m-d'),
-            'status' => 'Active',
-            'occlusal_records' => [
-                'overbite' => 0,
-                'overjet' => 0,
-                'crossbite' => 'None',
-                'openbite' => 'None',
-                'malocclusion' => 'Class I',
-            ],
-        ]);
+        $patient = Patient::create($validated);
 
-        return response()->json($patient->load(['dentalRecords', 'treatmentPlans', 'images']), 201);
+        return response()->json([
+            'message' => 'Patient created successfully.',
+            'data' => $patient
+        ], 201);
     }
+
+
 
     /**
      * Update Patient
@@ -248,7 +259,7 @@ class PatientController extends Controller
     public function update(Request $request, $id)
     {
         $patient = Patient::find($id);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -292,7 +303,7 @@ class PatientController extends Controller
     public function destroy($id)
     {
         $patient = Patient::find($id);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -335,7 +346,7 @@ class PatientController extends Controller
     public function addImage(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -388,7 +399,7 @@ class PatientController extends Controller
     public function saveDentalRecord(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -458,7 +469,7 @@ class PatientController extends Controller
     public function savePeriodontalRecords(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -474,7 +485,7 @@ class PatientController extends Controller
         ]);
 
         $patient->periodontalRecords()->delete();
-        
+
         foreach ($records['records'] as $record) {
             $patient->periodontalRecords()->create($record);
         }
@@ -515,7 +526,7 @@ class PatientController extends Controller
     public function saveOcclusalRecord(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -568,7 +579,7 @@ class PatientController extends Controller
     public function addTreatment(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -621,7 +632,7 @@ class PatientController extends Controller
     public function addSoftTissueRecord(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
@@ -675,7 +686,7 @@ class PatientController extends Controller
     public function addOrthodonticRecord(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
-        
+
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }

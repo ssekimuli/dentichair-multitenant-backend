@@ -732,7 +732,7 @@ endpoints:
         name: date
         description: 'Must be a valid date.'
         required: true
-        example: '2025-10-16T19:57:06'
+        example: '2025-10-17T16:13:46'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -803,7 +803,7 @@ endpoints:
       amount: 22
       reason: g
       branchId: architecto
-      date: '2025-10-16T19:57:06'
+      date: '2025-10-17T16:13:46'
     fileParameters: []
     responses: []
     responseFields: []

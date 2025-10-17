@@ -24,18 +24,20 @@ return new class extends Migration
 
         Schema::create('patients', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('first_name');
+            $table->string('last_name');
             $table->string('avatar')->nullable();
-            $table->string('email');
+            $table->string('email')->unique();
+            $table->string('phone')->nullable();
+            $table->string('address')->nullable();
+            $table->enum('gender', ['Male', 'Female', 'Other'])->nullable();
             $table->date('date_of_birth');
             $table->date('last_visit')->nullable();
             $table->enum('status', ['Active', 'Inactive'])->default('Active');
-            $table->foreignId('branch_id'); // Changed to foreignId which creates a bigInteger
+            $table->foreignId('branch_id')->constrained('branches');
             $table->text('history')->nullable();
             $table->json('occlusal_records')->nullable();
             $table->timestamps();
-
-            $table->foreign('branch_id')->references('id')->on('branches');
         });
 
         Schema::create('dental_records', function (Blueprint $table) {

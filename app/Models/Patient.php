@@ -15,9 +15,21 @@ class Patient extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'name', 'avatar', 'email', 'date_of_birth', 'last_visit', 
-        'status', 'branch_id', 'history', 'occlusal_records'
-    ];
+    'first_name',
+    'last_name',
+    'avatar',
+    'email',
+    'phone',
+    'address',
+    'gender',
+    'date_of_birth',
+    'last_visit',
+    'status',
+    'branch_id',
+    'history',
+    'occlusal_records',
+];
+
 
     protected $casts = [
         'date_of_birth' => 'date',

@@ -238,10 +238,10 @@
                 </li>
                                     <ul id="tocify-subheader-patients" class="tocify-subheader">
                                                     <li class="tocify-item level-2" data-unique="patients-GETapi-patients">
-                                <a href="#patients-GETapi-patients">Get All Patients</a>
+                                <a href="#patients-GETapi-patients">Display a listing of patients.</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="patients-POSTapi-patients">
-                                <a href="#patients-POSTapi-patients">Create Patient</a>
+                                <a href="#patients-POSTapi-patients">Store a newly created patient.</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="patients-GETapi-patients--id-">
                                 <a href="#patients-GETapi-patients--id-">Get Patient by ID</a>
@@ -316,7 +316,7 @@
     </ul>
 
     <ul class="toc-footer" id="last-updated">
-        <li>Last updated: October 16, 2025</li>
+        <li>Last updated: October 17, 2025</li>
     </ul>
 </div>
 
@@ -6423,7 +6423,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"amount\": 22,
     \"reason\": \"g\",
     \"branchId\": \"architecto\",
-    \"date\": \"2025-10-16T19:57:06\"
+    \"date\": \"2025-10-17T16:13:46\"
 }"
 </code></pre></div>
 
@@ -6443,7 +6443,7 @@ let body = {
     "amount": 22,
     "reason": "g",
     "branchId": "architecto",
-    "date": "2025-10-16T19:57:06"
+    "date": "2025-10-17T16:13:46"
 };
 
 fetch(url, {
@@ -6576,10 +6576,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="date"                data-endpoint="POSTapi-management-staff-advances"
-               value="2025-10-16T19:57:06"
+               value="2025-10-17T16:13:46"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-16T19:57:06</code></p>
+<p>Must be a valid date. Example: <code>2025-10-17T16:13:46</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
         <details>
@@ -6946,17 +6946,20 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
                 <h1 id="patients">Patients</h1>
 
-    <p>Endpoints for managing patient records, dental charting, and treatment planning.
-Includes comprehensive dental record management with odontogram support.</p>
+    <p>This endpoint returns a list of all patients with their related records.</p>
+<p>You can optionally filter by:</p>
+<ul>
+<li><strong>branch_id</strong> — show only patients from a specific branch</li>
+<li><strong>status</strong> — filter by Active/Inactive</li>
+<li><strong>gender</strong> — filter by Male/Female/Other</li>
+</ul>
 
-                                <h2 id="patients-GETapi-patients">Get All Patients</h2>
+                                <h2 id="patients-GETapi-patients">Display a listing of patients.</h2>
 
 <p>
-<small class="badge badge-darkred">requires authentication</small>
 </p>
 
-<p>Retrieve a list of all patients with their complete dental records.
-Can be filtered by branch ID.</p>
+
 
 <span id="example-requests-GETapi-patients">
 <blockquote>Example request:</blockquote>
@@ -6964,7 +6967,7 @@ Can be filtered by branch ID.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "http://localhost/api/patients?branch_id=b1" \
+    --get "http://localhost/api/patients?branch_id=16&amp;status=architecto&amp;gender=architecto" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
 
@@ -6975,7 +6978,9 @@ Can be filtered by branch ID.</p>
 );
 
 const params = {
-    "branch_id": "b1",
+    "branch_id": "16",
+    "status": "architecto",
+    "gender": "architecto",
 };
 Object.keys(params)
     .forEach(key =&gt; url.searchParams.append(key, params[key]));
@@ -6999,25 +7004,23 @@ fetch(url, {
                 <pre>
 
 <code class="language-json" style="max-height: 300px;">{
-    &quot;data&quot;: [
-        {
-            &quot;id&quot;: &quot;1&quot;,
-            &quot;name&quot;: &quot;John Doe&quot;,
-            &quot;email&quot;: &quot;john.doe@example.com&quot;,
-            &quot;status&quot;: &quot;Active&quot;,
-            &quot;branch_id&quot;: &quot;b1&quot;,
-            &quot;last_visit&quot;: &quot;2024-05-10&quot;,
-            &quot;dental_records&quot;: [
-                {
-                    &quot;tooth_id&quot;: 16,
-                    &quot;condition&quot;: &quot;Caries&quot;,
-                    &quot;notes&quot;: &quot;Distal caries, requires attention.&quot;
-                }
-            ],
-            &quot;treatment_plans&quot;: [],
-            &quot;imaging&quot;: []
-        }
-    ]
+    &quot;id&quot;: 1,
+    &quot;first_name&quot;: &quot;John&quot;,
+    &quot;last_name&quot;: &quot;Doe&quot;,
+    &quot;email&quot;: &quot;john.doe@example.com&quot;,
+    &quot;phone&quot;: &quot;256700000000&quot;,
+    &quot;address&quot;: &quot;123 Kampala Road&quot;,
+    &quot;gender&quot;: &quot;Male&quot;,
+    &quot;date_of_birth&quot;: &quot;1985-05-20&quot;,
+    &quot;last_visit&quot;: &quot;2024-05-10&quot;,
+    &quot;status&quot;: &quot;Active&quot;,
+    &quot;branch_id&quot;: 1,
+    &quot;history&quot;: &quot;Patient has a history of grinding teeth.&quot;,
+    &quot;occlusal_records&quot;: {
+        &quot;overbite&quot;: 2,
+        &quot;overjet&quot;: 1,
+        &quot;crossbite&quot;: &quot;None&quot;
+    }
 }</code>
  </pre>
     </span>
@@ -7038,7 +7041,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 </span>
 <form id="form-GETapi-patients" data-method="GET"
       data-path="api/patients"
-      data-authed="1"
+      data-authed="0"
       data-hasfiles="0"
       data-isarraybody="0"
       autocomplete="off"
@@ -7093,25 +7096,45 @@ You can check the Dev Tools console for debugging information.</code></pre>
                             <h4 class="fancy-heading-panel"><b>Query Parameters</b></h4>
                                     <div style="padding-left: 28px; clear: unset;">
                 <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="branch_id"                data-endpoint="GETapi-patients"
+               value="16"
+               data-component="query">
+    <br>
+<p>Optional. Filter by branch ID. Example: <code>16</code></p>
+            </div>
+                                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
 <small>string</small>&nbsp;
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
-                              name="branch_id"                data-endpoint="GETapi-patients"
-               value="b1"
+                              name="status"                data-endpoint="GETapi-patients"
+               value="architecto"
                data-component="query">
     <br>
-<p>Filter patients by branch ID. Example: <code>b1</code></p>
+<p>Optional. Filter by patient status (Active, Inactive). Example: <code>architecto</code></p>
+            </div>
+                                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>gender</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="gender"                data-endpoint="GETapi-patients"
+               value="architecto"
+               data-component="query">
+    <br>
+<p>Optional. Filter by gender (Male, Female, Other). Example: <code>architecto</code></p>
             </div>
                 </form>
 
-                    <h2 id="patients-POSTapi-patients">Create Patient</h2>
+                    <h2 id="patients-POSTapi-patients">Store a newly created patient.</h2>
 
 <p>
-<small class="badge badge-darkred">requires authentication</small>
 </p>
 
-<p>Create a new patient record with basic information.
-Automatically sets default occlusal records and status.</p>
+<p>This endpoint allows you to create a new patient record in the system.</p>
 
 <span id="example-requests-POSTapi-patients">
 <blockquote>Example request:</blockquote>
@@ -7123,12 +7146,19 @@ Automatically sets default occlusal records and status.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"name\": \"John Smith\",
-    \"avatar\": \"https:\\/\\/picsum.photos\\/200\\/200\",
-    \"email\": \"john.smith@example.com\",
-    \"date_of_birth\": \"1985-03-15\",
-    \"branch_id\": \"b1\",
-    \"history\": \"No known allergies\"
+    \"first_name\": \"John\",
+    \"last_name\": \"Doe\",
+    \"avatar\": \"https:\\/\\/example.com\\/avatar.jpg\",
+    \"email\": \"johndoe@example.com\",
+    \"phone\": \"+256700123456\",
+    \"address\": \"Kampala, Uganda\",
+    \"gender\": \"Male\",
+    \"date_of_birth\": \"1990-05-15\",
+    \"last_visit\": \"2025-01-10\",
+    \"status\": \"Active\",
+    \"branch_id\": 1,
+    \"history\": \"Has a history of gum disease.\",
+    \"occlusal_records\": \"{\\\"upper\\\":\\\"good\\\",\\\"lower\\\":\\\"fair\\\"}\"
 }"
 </code></pre></div>
 
@@ -7144,12 +7174,19 @@ const headers = {
 };
 
 let body = {
-    "name": "John Smith",
-    "avatar": "https:\/\/picsum.photos\/200\/200",
-    "email": "john.smith@example.com",
-    "date_of_birth": "1985-03-15",
-    "branch_id": "b1",
-    "history": "No known allergies"
+    "first_name": "John",
+    "last_name": "Doe",
+    "avatar": "https:\/\/example.com\/avatar.jpg",
+    "email": "johndoe@example.com",
+    "phone": "+256700123456",
+    "address": "Kampala, Uganda",
+    "gender": "Male",
+    "date_of_birth": "1990-05-15",
+    "last_visit": "2025-01-10",
+    "status": "Active",
+    "branch_id": 1,
+    "history": "Has a history of gum disease.",
+    "occlusal_records": "{\"upper\":\"good\",\"lower\":\"fair\"}"
 };
 
 fetch(url, {
@@ -7167,43 +7204,27 @@ fetch(url, {
                 <pre>
 
 <code class="language-json" style="max-height: 300px;">{
-    &quot;id&quot;: &quot;p6&quot;,
-    &quot;name&quot;: &quot;John Smith&quot;,
-    &quot;email&quot;: &quot;john.smith@example.com&quot;,
-    &quot;date_of_birth&quot;: &quot;1985-03-15&quot;,
-    &quot;status&quot;: &quot;Active&quot;,
-    &quot;branch_id&quot;: &quot;b1&quot;,
-    &quot;last_visit&quot;: &quot;2024-07-15&quot;,
-    &quot;history&quot;: &quot;No known allergies&quot;,
-    &quot;occlusal_records&quot;: {
-        &quot;overbite&quot;: 0,
-        &quot;overjet&quot;: 0,
-        &quot;crossbite&quot;: &quot;None&quot;,
-        &quot;openbite&quot;: &quot;None&quot;,
-        &quot;malocclusion&quot;: &quot;Class I&quot;
-    }
-}</code>
- </pre>
-            <blockquote>
-            <p>Example response (422):</p>
-        </blockquote>
-                <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;message&quot;: &quot;The given data was invalid.&quot;,
-    &quot;errors&quot;: {
-        &quot;name&quot;: [
-            &quot;The name field is required.&quot;
-        ],
-        &quot;email&quot;: [
-            &quot;The email field is required.&quot;
-        ],
-        &quot;date_of_birth&quot;: [
-            &quot;The date of birth field is required.&quot;
-        ],
-        &quot;branch_id&quot;: [
-            &quot;The branch id field is required.&quot;
-        ]
+    &quot;message&quot;: &quot;Patient created successfully.&quot;,
+    &quot;data&quot;: {
+        &quot;id&quot;: 1,
+        &quot;first_name&quot;: &quot;John&quot;,
+        &quot;last_name&quot;: &quot;Doe&quot;,
+        &quot;avatar&quot;: &quot;https://example.com/avatar.jpg&quot;,
+        &quot;email&quot;: &quot;johndoe@example.com&quot;,
+        &quot;phone&quot;: &quot;+256700123456&quot;,
+        &quot;address&quot;: &quot;Kampala, Uganda&quot;,
+        &quot;gender&quot;: &quot;Male&quot;,
+        &quot;date_of_birth&quot;: &quot;1990-05-15&quot;,
+        &quot;last_visit&quot;: &quot;2025-01-10&quot;,
+        &quot;status&quot;: &quot;Active&quot;,
+        &quot;branch_id&quot;: 1,
+        &quot;history&quot;: &quot;Has a history of gum disease.&quot;,
+        &quot;occlusal_records&quot;: {
+            &quot;upper&quot;: &quot;good&quot;,
+            &quot;lower&quot;: &quot;fair&quot;
+        },
+        &quot;created_at&quot;: &quot;2025-10-17T12:00:00.000000Z&quot;,
+        &quot;updated_at&quot;: &quot;2025-10-17T12:00:00.000000Z&quot;
     }
 }</code>
  </pre>
@@ -7225,7 +7246,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 </span>
 <form id="form-POSTapi-patients" data-method="POST"
       data-path="api/patients"
-      data-authed="1"
+      data-authed="0"
       data-hasfiles="0"
       data-isarraybody="0"
       autocomplete="off"
@@ -7279,15 +7300,26 @@ You can check the Dev Tools console for debugging information.</code></pre>
             </div>
                                 <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
         <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>name</code></b>&nbsp;&nbsp;
+            <b style="line-height: 2;"><code>first_name</code></b>&nbsp;&nbsp;
 <small>string</small>&nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="name"                data-endpoint="POSTapi-patients"
-               value="John Smith"
+                              name="first_name"                data-endpoint="POSTapi-patients"
+               value="John"
                data-component="body">
     <br>
-<p>Patient's full name. Example: <code>John Smith</code></p>
+<p>The patient's first name. Example: <code>John</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>last_name</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="last_name"                data-endpoint="POSTapi-patients"
+               value="Doe"
+               data-component="body">
+    <br>
+<p>The patient's last name. Example: <code>Doe</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>avatar</code></b>&nbsp;&nbsp;
@@ -7295,10 +7327,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="avatar"                data-endpoint="POSTapi-patients"
-               value="https://picsum.photos/200/200"
+               value="https://example.com/avatar.jpg"
                data-component="body">
     <br>
-<p>URL to patient's avatar image. Example: <code>https://picsum.photos/200/200</code></p>
+<p>The URL or path to the patient's avatar image. Example: <code>https://example.com/avatar.jpg</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>email</code></b>&nbsp;&nbsp;
@@ -7306,10 +7338,43 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="email"                data-endpoint="POSTapi-patients"
-               value="john.smith@example.com"
+               value="johndoe@example.com"
                data-component="body">
     <br>
-<p>Patient's email address. Example: <code>john.smith@example.com</code></p>
+<p>The patient's email address (must be unique). Example: <code>johndoe@example.com</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>phone</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="phone"                data-endpoint="POSTapi-patients"
+               value="+256700123456"
+               data-component="body">
+    <br>
+<p>The patient's phone number. Example: <code>+256700123456</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>address</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="address"                data-endpoint="POSTapi-patients"
+               value="Kampala, Uganda"
+               data-component="body">
+    <br>
+<p>The patient's address. Example: <code>Kampala, Uganda</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>gender</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="gender"                data-endpoint="POSTapi-patients"
+               value="Male"
+               data-component="body">
+    <br>
+<p>The patient's gender. Must be one of: Male, Female, Other. Example: <code>Male</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>date_of_birth</code></b>&nbsp;&nbsp;
@@ -7317,21 +7382,43 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="date_of_birth"                data-endpoint="POSTapi-patients"
-               value="1985-03-15"
+               value="1990-05-15"
                data-component="body">
     <br>
-<p>Patient's date of birth. Example: <code>1985-03-15</code></p>
+<p>The patient's date of birth (Y-m-d format). Example: <code>1990-05-15</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>last_visit</code></b>&nbsp;&nbsp;
+<small>date</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="last_visit"                data-endpoint="POSTapi-patients"
+               value="2025-01-10"
+               data-component="body">
+    <br>
+<p>The date of the patient's last visit (Y-m-d format). Example: <code>2025-01-10</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="status"                data-endpoint="POSTapi-patients"
+               value="Active"
+               data-component="body">
+    <br>
+<p>The patient's current status. Must be one of: Active, Inactive. Example: <code>Active</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>branch_id</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
+<small>integer</small>&nbsp;
  &nbsp;
-                <input type="text" style="display: none"
-                              name="branch_id"                data-endpoint="POSTapi-patients"
-               value="b1"
+                <input type="number" style="display: none"
+               step="any"               name="branch_id"                data-endpoint="POSTapi-patients"
+               value="1"
                data-component="body">
     <br>
-<p>Branch ID where patient is registered. Example: <code>b1</code></p>
+<p>The ID of the branch this patient belongs to. Example: <code>1</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>history</code></b>&nbsp;&nbsp;
@@ -7339,10 +7426,21 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="history"                data-endpoint="POSTapi-patients"
-               value="No known allergies"
+               value="Has a history of gum disease."
                data-component="body">
     <br>
-<p>Patient's medical/dental history. Example: <code>No known allergies</code></p>
+<p>The patient's medical history or notes. Example: <code>Has a history of gum disease.</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>occlusal_records</code></b>&nbsp;&nbsp;
+<small>json</small>&nbsp;
+<i>optional</i> &nbsp;
+                <input type="text" style="display: none"
+                              name="occlusal_records"                data-endpoint="POSTapi-patients"
+               value="{"upper":"good","lower":"fair"}"
+               data-component="body">
+    <br>
+<p>The patient's occlusal records in JSON format. Example: <code>{"upper":"good","lower":"fair"}</code></p>
         </div>
         </form>
 
@@ -7536,7 +7634,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"avatar\": \"architecto\",
     \"email\": \"john.updated@example.com\",
     \"date_of_birth\": \"1985-03-15\",
-    \"last_visit\": \"2025-10-16T19:57:06\",
+    \"last_visit\": \"2025-10-17T16:13:46\",
     \"status\": \"Inactive\",
     \"branch_id\": \"b2\",
     \"history\": \"Updated medical history\",
@@ -7562,7 +7660,7 @@ let body = {
     "avatar": "architecto",
     "email": "john.updated@example.com",
     "date_of_birth": "1985-03-15",
-    "last_visit": "2025-10-16T19:57:06",
+    "last_visit": "2025-10-17T16:13:46",
     "status": "Inactive",
     "branch_id": "b2",
     "history": "Updated medical history",
@@ -7739,10 +7837,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <i>optional</i> &nbsp;
                 <input type="text" style="display: none"
                               name="last_visit"                data-endpoint="PUTapi-patients--id-"
-               value="2025-10-16T19:57:06"
+               value="2025-10-17T16:13:46"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2025-10-16T19:57:06</code></p>
+<p>Must be a valid date. Example: <code>2025-10-17T16:13:46</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;

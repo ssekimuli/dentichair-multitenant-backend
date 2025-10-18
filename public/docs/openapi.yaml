@@ -3254,7 +3254,7 @@ paths:
                 date:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-17T16:13:46'
+                  example: '2025-10-18T13:50:38'
                   nullable: false
                 data:
                   type: object
@@ -3962,7 +3962,7 @@ paths:
                 type: object
                 example:
                   id: '1'
-                  name: 'John Smith Updated'
+                  first_name: 'John Smith Updated'
                   email: john.updated@example.com
                   status: Active
                   branch_id: b1
@@ -3970,7 +3970,7 @@ paths:
                   id:
                     type: string
                     example: '1'
-                  name:
+                  first_name:
                     type: string
                     example: 'John Smith Updated'
                   email:
@@ -4003,10 +4003,15 @@ paths:
             schema:
               type: object
               properties:
-                name:
+                first_name:
                   type: string
-                  description: "Patient's full name."
-                  example: 'John Smith Updated'
+                  description: 'Must not be greater than 255 characters.'
+                  example: b
+                  nullable: false
+                last_name:
+                  type: string
+                  description: 'Must not be greater than 255 characters.'
+                  example: 'n'
                   nullable: false
                 avatar:
                   type: string
@@ -4018,6 +4023,25 @@ paths:
                   description: "Patient's email address."
                   example: john.updated@example.com
                   nullable: false
+                phone:
+                  type: string
+                  description: 'Must not be greater than 20 characters.'
+                  example: ngzmiyvdljnikhwa
+                  nullable: true
+                address:
+                  type: string
+                  description: 'Must not be greater than 255 characters.'
+                  example: 'y'
+                  nullable: true
+                gender:
+                  type: string
+                  description: ''
+                  example: Female
+                  nullable: true
+                  enum:
+                    - Male
+                    - Female
+                    - Other
                 date_of_birth:
                   type: date
                   description: "Patient's date of birth."
@@ -4026,13 +4050,13 @@ paths:
                 last_visit:
                   type: string
                   description: 'Must be a valid date.'
-                  example: '2025-10-17T16:13:46'
+                  example: '2025-10-18T13:50:38'
                   nullable: true
                 status:
                   type: string
                   description: 'Patient status.'
                   example: Inactive
-                  nullable: false
+                  nullable: true
                 branch_id:
                   type: string
                   description: 'Branch ID.'
@@ -4051,6 +4075,11 @@ paths:
                   items:
                     type: string
                     nullable: true
+                name:
+                  type: string
+                  description: "Patient's full name."
+                  example: 'John Smith Updated'
+                  nullable: false
     delete:
       summary: 'Delete Patient'
       operationId: deletePatient
@@ -4093,6 +4122,67 @@ paths:
         schema:
           type: string
   '/api/patients/{patientId}/images':
+    get:
+      summary: 'Get Patient Images'
+      operationId: getPatientImages
+      description: 'Retrieve all images for a specific patient (X-rays, clinical photos, etc.).'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Images retrieved successfully.'
+                  data:
+                    -
+                      id: 1
+                      url: 'https://picsum.photos/800/600'
+                      description: 'Panoramic X-ray showing full dentition'
+                      date: '2024-07-15'
+                properties:
+                  message:
+                    type: string
+                    example: 'Images retrieved successfully.'
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        url: 'https://picsum.photos/800/600'
+                        description: 'Panoramic X-ray showing full dentition'
+                        date: '2024-07-15'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        url:
+                          type: string
+                          example: 'https://picsum.photos/800/600'
+                        description:
+                          type: string
+                          example: 'Panoramic X-ray showing full dentition'
+                        date:
+                          type: string
+                          example: '2024-07-15'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     post:
       summary: 'Add Patient Image'
       operationId: addPatientImage
@@ -4182,11 +4272,11 @@ paths:
         required: true
         schema:
           type: string
-  '/api/patients/{patientId}/dental-records':
-    post:
-      summary: 'Update Dental Record for Tooth'
-      operationId: updateDentalRecordForTooth
-      description: "Update or create a dental record for a specific tooth (odontogram update).\nThis is the primary endpoint for dental charting/odontogram updates."
+  '/api/patients/{patientId}/images/{imageId}':
+    put:
+      summary: 'Update Patient Image'
+      operationId: updatePatientImage
+      description: 'Update an existing patient image record.'
       parameters: []
       responses:
         200:
@@ -4196,39 +4286,177 @@ paths:
               schema:
                 type: object
                 example:
-                  id: '1'
-                  name: 'John Doe'
-                  dental_records:
-                    -
-                      tooth_id: 16
-                      condition: Caries
-                      notes: 'Distal caries, requires attention.'
+                  message: 'Image updated successfully.'
+                  data:
+                    id: 1
+                    url: 'https://picsum.photos/800/700'
+                    description: 'Updated panoramic X-ray'
+                    date: '2024-07-15'
                 properties:
-                  id:
+                  message:
                     type: string
-                    example: '1'
-                  name:
+                    example: 'Image updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      url:
+                        type: string
+                        example: 'https://picsum.photos/800/700'
+                      description:
+                        type: string
+                        example: 'Updated panoramic X-ray'
+                      date:
+                        type: string
+                        example: '2024-07-15'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Image not found\"\n}"
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: 'The updated URL of the image.'
+                  example: 'https://picsum.photos/800/700'
+                  nullable: false
+                description:
+                  type: string
+                  description: 'The updated description.'
+                  example: 'Updated panoramic X-ray'
+                  nullable: false
+    delete:
+      summary: 'Delete Patient Image'
+      operationId: deletePatientImage
+      description: 'Delete a patient image record.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Image deleted successfully.'
+                properties:
+                  message:
                     type: string
-                    example: 'John Doe'
-                  dental_records:
-                    type: array
-                    example:
-                      -
-                        tooth_id: 16
-                        condition: Caries
-                        notes: 'Distal caries, requires attention.'
-                    items:
-                      type: object
-                      properties:
-                        tooth_id:
-                          type: integer
-                          example: 16
-                        condition:
-                          type: string
-                          example: Caries
-                        notes:
-                          type: string
-                          example: 'Distal caries, requires attention.'
+                    example: 'Image deleted successfully.'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Image not found\"\n}"
+      tags:
+        - Patients
+    parameters:
+      -
+        in: path
+        name: patientId
+        description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+      -
+        in: path
+        name: imageId
+        description: "The image's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+  '/api/patients/{patientId}/odontogram-records':
+    get:
+      summary: 'Get Dental Records (Odontogram)'
+      operationId: getDentalRecordsOdontogram
+      description: "Retrieve all dental records for a specific patient's odontogram."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                example:
+                  -
+                    tooth_id: 11
+                    condition: Healthy
+                    notes: ''
+                  -
+                    tooth_id: 14
+                    condition: Filling
+                    notes: 'Composite filling placed on occlusal surface - 2023-06-15'
+                  -
+                    tooth_id: 16
+                    condition: Caries
+                    notes: 'Moderate cavity detected on mesial surface'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
+    post:
+      summary: 'Save Dental Record for Tooth'
+      operationId: saveDentalRecordForTooth
+      description: "Create or update a dental record for a specific tooth (odontogram update).\nThis is the primary endpoint for dental charting/odontogram updates."
+      parameters: []
+      responses:
+        201:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Dental record saved successfully.'
+                  data:
+                    tooth_id: 13
+                    condition: Filling
+                    notes: 'Amalgam filling - procedure completed'
+                properties:
+                  message:
+                    type: string
+                    example: 'Dental record saved successfully.'
+                  data:
+                    type: object
+                    properties:
+                      tooth_id:
+                        type: integer
+                        example: 13
+                      condition:
+                        type: string
+                        example: Filling
+                      notes:
+                        type: string
+                        example: 'Amalgam filling - procedure completed'
         404:
           description: ''
           content:
@@ -4252,18 +4480,18 @@ paths:
               properties:
                 tooth_id:
                   type: integer
-                  description: 'The tooth number (1-32).'
-                  example: 16
+                  description: 'The tooth number (11-18, 21-28, 31-38, 41-48).'
+                  example: 13
                   nullable: false
                 condition:
                   type: string
                   description: 'The dental condition.'
-                  example: Caries
+                  example: Filling
                   nullable: false
                 notes:
                   type: string
                   description: 'Notes about the tooth condition.'
-                  example: 'Distal caries, requires attention.'
+                  example: 'Amalgam filling - procedure completed'
                   nullable: true
               required:
                 - tooth_id
@@ -4277,7 +4505,222 @@ paths:
         required: true
         schema:
           type: string
+  '/api/patients/{patientId}/odontogram-records/{recordId}':
+    put:
+      summary: 'Update Dental Record'
+      operationId: updateDentalRecord
+      description: 'Update an existing dental record for a specific tooth.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Dental record updated successfully.'
+                  data:
+                    id: 1
+                    tooth_id: 16
+                    condition: Filled
+                    notes: 'Composite filling completed'
+                properties:
+                  message:
+                    type: string
+                    example: 'Dental record updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      tooth_id:
+                        type: integer
+                        example: 16
+                      condition:
+                        type: string
+                        example: Filled
+                      notes:
+                        type: string
+                        example: 'Composite filling completed'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Dental record not found\"\n}"
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tooth_id:
+                  type: integer
+                  description: 'The tooth number (1-32).'
+                  example: 16
+                  nullable: false
+                condition:
+                  type: string
+                  description: 'The dental condition.'
+                  example: Filled
+                  nullable: false
+                notes:
+                  type: string
+                  description: 'Notes about the tooth condition.'
+                  example: 'Composite filling completed'
+                  nullable: true
+    delete:
+      summary: 'Delete Dental Record'
+      operationId: deleteDentalRecord
+      description: 'Delete a dental record for a specific tooth.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Dental record deleted successfully.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Dental record deleted successfully.'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Dental record not found\"\n}"
+      tags:
+        - Patients
+    parameters:
+      -
+        in: path
+        name: patientId
+        description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+      -
+        in: path
+        name: recordId
+        description: "The dental record's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
   '/api/patients/{patientId}/periodontal-records':
+    get:
+      summary: 'Get Periodontal Records'
+      operationId: getPeriodontalRecords
+      description: 'Retrieve all periodontal records for a specific patient.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Periodontal records retrieved successfully.'
+                  data:
+                    -
+                      id: 1
+                      tooth_id: 16
+                      pockets:
+                        distobuccal: 3
+                        buccal: 2
+                        mesiobuccal: 3
+                      recession: 2
+                      mobility: '1'
+                      furcation: I
+                      conditions:
+                        bleeding: true
+                        calculus: false
+                properties:
+                  message:
+                    type: string
+                    example: 'Periodontal records retrieved successfully.'
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        tooth_id: 16
+                        pockets:
+                          distobuccal: 3
+                          buccal: 2
+                          mesiobuccal: 3
+                        recession: 2
+                        mobility: '1'
+                        furcation: I
+                        conditions:
+                          bleeding: true
+                          calculus: false
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        tooth_id:
+                          type: integer
+                          example: 16
+                        pockets:
+                          type: object
+                          properties:
+                            distobuccal:
+                              type: integer
+                              example: 3
+                            buccal:
+                              type: integer
+                              example: 2
+                            mesiobuccal:
+                              type: integer
+                              example: 3
+                        recession:
+                          type: integer
+                          example: 2
+                        mobility:
+                          type: string
+                          example: '1'
+                        furcation:
+                          type: string
+                          example: I
+                        conditions:
+                          type: object
+                          properties:
+                            bleeding:
+                              type: boolean
+                              example: true
+                            calculus:
+                              type: boolean
+                              example: false
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     post:
       summary: 'Save Periodontal Records'
       operationId: savePeriodontalRecords
@@ -4391,7 +4834,228 @@ paths:
         required: true
         schema:
           type: string
+  '/api/patients/{patientId}/periodontal-records/{recordId}':
+    put:
+      summary: 'Update Periodontal Record'
+      operationId: updatePeriodontalRecord
+      description: 'Update an existing periodontal record for a specific tooth.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Periodontal record updated successfully.'
+                  data:
+                    id: 1
+                    tooth_id: 16
+                    pockets:
+                      distobuccal: 3
+                      buccal: 2
+                      mesiobuccal: 3
+                    recession: 2
+                    mobility: '1'
+                    furcation: I
+                    conditions:
+                      bleeding: true
+                      calculus: false
+                properties:
+                  message:
+                    type: string
+                    example: 'Periodontal record updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      tooth_id:
+                        type: integer
+                        example: 16
+                      pockets:
+                        type: object
+                        properties:
+                          distobuccal:
+                            type: integer
+                            example: 3
+                          buccal:
+                            type: integer
+                            example: 2
+                          mesiobuccal:
+                            type: integer
+                            example: 3
+                      recession:
+                        type: integer
+                        example: 2
+                      mobility:
+                        type: string
+                        example: '1'
+                      furcation:
+                        type: string
+                        example: I
+                      conditions:
+                        type: object
+                        properties:
+                          bleeding:
+                            type: boolean
+                            example: true
+                          calculus:
+                            type: boolean
+                            example: false
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Periodontal record not found\"\n}"
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tooth_id:
+                  type: integer
+                  description: 'Tooth number.'
+                  example: 16
+                  nullable: false
+                pockets:
+                  type: array
+                  description: 'Pocket measurements'
+                  example:
+                    - architecto
+                  items:
+                    type: string
+                recession:
+                  type: integer
+                  description: 'Gingival recession measurement.'
+                  example: 2
+                  nullable: false
+                mobility:
+                  type: string
+                  description: 'Tooth mobility.'
+                  example: '1'
+                  nullable: false
+                furcation:
+                  type: string
+                  description: 'Furcation involvement.'
+                  example: I
+                  nullable: true
+                conditions:
+                  type: array
+                  description: 'Periodontal conditions'
+                  example:
+                    - architecto
+                  items:
+                    type: string
+    delete:
+      summary: 'Delete Periodontal Record'
+      operationId: deletePeriodontalRecord
+      description: 'Delete a periodontal record for a specific tooth.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Periodontal record deleted successfully.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Periodontal record deleted successfully.'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Periodontal record not found\"\n}"
+      tags:
+        - Patients
+    parameters:
+      -
+        in: path
+        name: patientId
+        description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+      -
+        in: path
+        name: recordId
+        description: "The periodontal record's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
   '/api/patients/{patientId}/occlusal-records':
+    get:
+      summary: 'Get Occlusal Records'
+      operationId: getOcclusalRecords
+      description: "Retrieve the patient's occlusal analysis record."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Occlusal records retrieved successfully.'
+                  data:
+                    overbite: 2
+                    overjet: 3
+                    crossbite: None
+                    openbite: None
+                    malocclusion: 'Class I'
+                properties:
+                  message:
+                    type: string
+                    example: 'Occlusal records retrieved successfully.'
+                  data:
+                    type: object
+                    properties:
+                      overbite:
+                        type: integer
+                        example: 2
+                      overjet:
+                        type: integer
+                        example: 3
+                      crossbite:
+                        type: string
+                        example: None
+                      openbite:
+                        type: string
+                        example: None
+                      malocclusion:
+                        type: string
+                        example: 'Class I'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     post:
       summary: 'Save Occlusal Record'
       operationId: saveOcclusalRecord
@@ -4478,6 +5142,126 @@ paths:
                 - crossbite
                 - openbite
                 - malocclusion
+    put:
+      summary: 'Update Occlusal Record'
+      operationId: updateOcclusalRecord
+      description: "Update the patient's occlusal analysis record."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Occlusal record updated successfully.'
+                  data:
+                    overbite: 3
+                    overjet: 4
+                    crossbite: Anterior
+                    openbite: None
+                    malocclusion: 'Class II'
+                properties:
+                  message:
+                    type: string
+                    example: 'Occlusal record updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      overbite:
+                        type: integer
+                        example: 3
+                      overjet:
+                        type: integer
+                        example: 4
+                      crossbite:
+                        type: string
+                        example: Anterior
+                      openbite:
+                        type: string
+                        example: None
+                      malocclusion:
+                        type: string
+                        example: 'Class II'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                overbite:
+                  type: integer
+                  description: 'Overbite measurement in mm.'
+                  example: 3
+                  nullable: false
+                overjet:
+                  type: integer
+                  description: 'Overjet measurement in mm.'
+                  example: 4
+                  nullable: false
+                crossbite:
+                  type: string
+                  description: 'Crossbite description.'
+                  example: Anterior
+                  nullable: false
+                openbite:
+                  type: string
+                  description: 'Openbite description.'
+                  example: None
+                  nullable: false
+                malocclusion:
+                  type: string
+                  description: 'Malocclusion classification.'
+                  example: 'Class II'
+                  nullable: false
+    delete:
+      summary: 'Delete Occlusal Record'
+      operationId: deleteOcclusalRecord
+      description: "Clear the patient's occlusal analysis record."
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Occlusal record deleted successfully.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Occlusal record deleted successfully.'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     parameters:
       -
         in: path
@@ -4488,6 +5272,77 @@ paths:
         schema:
           type: string
   '/api/patients/{patientId}/treatments':
+    get:
+      summary: 'Get Treatment Plans'
+      operationId: getTreatmentPlans
+      description: 'Retrieve all treatment plans for a specific patient.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Treatment plans retrieved successfully.'
+                  data:
+                    -
+                      id: 1
+                      procedure: 'Filling for #16'
+                      tooth: 16
+                      status: Proposed
+                      cost: 250.0
+                      date: '2024-08-01'
+                properties:
+                  message:
+                    type: string
+                    example: 'Treatment plans retrieved successfully.'
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        procedure: 'Filling for #16'
+                        tooth: 16
+                        status: Proposed
+                        cost: 250
+                        date: '2024-08-01'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        procedure:
+                          type: string
+                          example: 'Filling for #16'
+                        tooth:
+                          type: integer
+                          example: 16
+                        status:
+                          type: string
+                          example: Proposed
+                        cost:
+                          type: number
+                          example: 250.0
+                        date:
+                          type: string
+                          example: '2024-08-01'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     post:
       summary: 'Add Treatment Plan'
       operationId: addTreatmentPlan
@@ -4592,7 +5447,205 @@ paths:
         required: true
         schema:
           type: string
+  '/api/patients/{patientId}/treatments/{treatmentId}':
+    put:
+      summary: 'Update Treatment Plan'
+      operationId: updateTreatmentPlan
+      description: 'Update an existing treatment plan.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Treatment plan updated successfully.'
+                  data:
+                    id: 1
+                    procedure: 'Root canal for #16'
+                    tooth: 16
+                    status: Completed
+                    cost: 500.0
+                    date: '2024-08-15'
+                properties:
+                  message:
+                    type: string
+                    example: 'Treatment plan updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      procedure:
+                        type: string
+                        example: 'Root canal for #16'
+                      tooth:
+                        type: integer
+                        example: 16
+                      status:
+                        type: string
+                        example: Completed
+                      cost:
+                        type: number
+                        example: 500.0
+                      date:
+                        type: string
+                        example: '2024-08-15'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Treatment plan not found\"\n}"
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                procedure:
+                  type: string
+                  description: 'The treatment procedure.'
+                  example: 'Root canal for #16'
+                  nullable: false
+                tooth:
+                  type: integer
+                  description: 'The tooth number.'
+                  example: 16
+                  nullable: true
+                status:
+                  type: string
+                  description: 'Treatment status.'
+                  example: Completed
+                  nullable: false
+                cost:
+                  type: number
+                  description: 'Cost of the treatment.'
+                  example: 500.0
+                  nullable: false
+                date:
+                  type: date
+                  description: 'Treatment date.'
+                  example: '2024-08-15'
+                  nullable: false
+    delete:
+      summary: 'Delete Treatment Plan'
+      operationId: deleteTreatmentPlan
+      description: 'Delete a treatment plan.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Treatment plan deleted successfully.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Treatment plan deleted successfully.'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Treatment plan not found\"\n}"
+      tags:
+        - Patients
+    parameters:
+      -
+        in: path
+        name: patientId
+        description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+      -
+        in: path
+        name: treatmentId
+        description: "The treatment's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
   '/api/patients/{patientId}/soft-tissue-records':
+    get:
+      summary: 'Get Soft Tissue Records'
+      operationId: getSoftTissueRecords
+      description: 'Retrieve all soft tissue examination findings for a specific patient.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Soft tissue records retrieved successfully.'
+                  data:
+                    -
+                      id: 1
+                      location: 'Right buccal mucosa'
+                      type: Ulcer
+                      description: 'Small aphthous ulcer, 3mm diameter'
+                      date: '2024-07-15'
+                properties:
+                  message:
+                    type: string
+                    example: 'Soft tissue records retrieved successfully.'
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        location: 'Right buccal mucosa'
+                        type: Ulcer
+                        description: 'Small aphthous ulcer, 3mm diameter'
+                        date: '2024-07-15'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        location:
+                          type: string
+                          example: 'Right buccal mucosa'
+                        type:
+                          type: string
+                          example: Ulcer
+                        description:
+                          type: string
+                          example: 'Small aphthous ulcer, 3mm diameter'
+                        date:
+                          type: string
+                          example: '2024-07-15'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     post:
       summary: 'Add Soft Tissue Record'
       operationId: addSoftTissueRecord
@@ -4681,7 +5734,204 @@ paths:
         required: true
         schema:
           type: string
+  '/api/patients/{patientId}/soft-tissue-records/{recordId}':
+    put:
+      summary: 'Update Soft Tissue Record'
+      operationId: updateSoftTissueRecord
+      description: 'Update an existing soft tissue examination record.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Soft tissue record updated successfully.'
+                  data:
+                    id: 1
+                    location: 'Left buccal mucosa'
+                    type: Lesion
+                    description: 'Healing aphthous ulcer, 2mm diameter'
+                    date: '2024-07-15'
+                properties:
+                  message:
+                    type: string
+                    example: 'Soft tissue record updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      location:
+                        type: string
+                        example: 'Left buccal mucosa'
+                      type:
+                        type: string
+                        example: Lesion
+                      description:
+                        type: string
+                        example: 'Healing aphthous ulcer, 2mm diameter'
+                      date:
+                        type: string
+                        example: '2024-07-15'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Soft tissue record not found\"\n}"
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                location:
+                  type: string
+                  description: 'Location of the finding.'
+                  example: 'Left buccal mucosa'
+                  nullable: false
+                type:
+                  type: string
+                  description: 'Type of finding.'
+                  example: Lesion
+                  nullable: false
+                description:
+                  type: string
+                  description: 'Detailed description.'
+                  example: 'Healing aphthous ulcer, 2mm diameter'
+                  nullable: false
+    delete:
+      summary: 'Delete Soft Tissue Record'
+      operationId: deleteSoftTissueRecord
+      description: 'Delete a soft tissue examination record.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Soft tissue record deleted successfully.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Soft tissue record deleted successfully.'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Soft tissue record not found\"\n}"
+      tags:
+        - Patients
+    parameters:
+      -
+        in: path
+        name: patientId
+        description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+      -
+        in: path
+        name: recordId
+        description: "The soft tissue record's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
   '/api/patients/{patientId}/orthodontic-records':
+    get:
+      summary: 'Get Orthodontic Records'
+      operationId: getOrthodonticRecords
+      description: 'Retrieve all orthodontic treatment records for a specific patient.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Orthodontic records retrieved successfully.'
+                  data:
+                    -
+                      id: 1
+                      appliance: Braces
+                      wire_size: '.016 Nickel Titanium'
+                      bracket_changes:
+                        - '14'
+                        - '24'
+                      notes: 'Good progress with alignment'
+                      date: '2024-07-15'
+                properties:
+                  message:
+                    type: string
+                    example: 'Orthodontic records retrieved successfully.'
+                  data:
+                    type: array
+                    example:
+                      -
+                        id: 1
+                        appliance: Braces
+                        wire_size: '.016 Nickel Titanium'
+                        bracket_changes:
+                          - '14'
+                          - '24'
+                        notes: 'Good progress with alignment'
+                        date: '2024-07-15'
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        appliance:
+                          type: string
+                          example: Braces
+                        wire_size:
+                          type: string
+                          example: '.016 Nickel Titanium'
+                        bracket_changes:
+                          type: array
+                          example:
+                            - '14'
+                            - '24'
+                          items:
+                            type: string
+                        notes:
+                          type: string
+                          example: 'Good progress with alignment'
+                        date:
+                          type: string
+                          example: '2024-07-15'
+        404:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: 'Patient not found'
+                properties:
+                  error:
+                    type: string
+                    example: 'Patient not found'
+      tags:
+        - Patients
     post:
       summary: 'Add Orthodontic Record'
       operationId: addOrthodonticRecord
@@ -4786,6 +6036,143 @@ paths:
         in: path
         name: patientId
         description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+  '/api/patients/{patientId}/orthodontic-records/{recordId}':
+    put:
+      summary: 'Update Orthodontic Record'
+      operationId: updateOrthodonticRecord
+      description: 'Update an existing orthodontic treatment record.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Orthodontic record updated successfully.'
+                  data:
+                    id: 1
+                    appliance: 'Clear Aligners'
+                    wire_size: '.018 Stainless Steel'
+                    bracket_changes:
+                      - '15'
+                      - '25'
+                    notes: 'Excellent progress, teeth aligned'
+                    date: '2024-07-15'
+                properties:
+                  message:
+                    type: string
+                    example: 'Orthodontic record updated successfully.'
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      appliance:
+                        type: string
+                        example: 'Clear Aligners'
+                      wire_size:
+                        type: string
+                        example: '.018 Stainless Steel'
+                      bracket_changes:
+                        type: array
+                        example:
+                          - '15'
+                          - '25'
+                        items:
+                          type: string
+                      notes:
+                        type: string
+                        example: 'Excellent progress, teeth aligned'
+                      date:
+                        type: string
+                        example: '2024-07-15'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Orthodontic record not found\"\n}"
+      tags:
+        - Patients
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                appliance:
+                  type: string
+                  description: 'Orthodontic appliance used.'
+                  example: 'Clear Aligners'
+                  nullable: false
+                wire_size:
+                  type: string
+                  description: 'Wire size used.'
+                  example: '.018 Stainless Steel'
+                  nullable: true
+                bracket_changes:
+                  type: array
+                  description: 'Brackets that were changed.'
+                  example:
+                    - '15'
+                    - '25'
+                  items:
+                    type: string
+                    nullable: true
+                notes:
+                  type: string
+                  description: 'Treatment notes.'
+                  example: 'Excellent progress, teeth aligned'
+                  nullable: true
+    delete:
+      summary: 'Delete Orthodontic Record'
+      operationId: deleteOrthodonticRecord
+      description: 'Delete an orthodontic treatment record.'
+      parameters: []
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  message: 'Orthodontic record deleted successfully.'
+                properties:
+                  message:
+                    type: string
+                    example: 'Orthodontic record deleted successfully.'
+        404:
+          description: ''
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "{\n  \"error\": \"Patient not found\" or \"Orthodontic record not found\"\n}"
+      tags:
+        - Patients
+    parameters:
+      -
+        in: path
+        name: patientId
+        description: "The patient's ID."
+        example: '1'
+        required: true
+        schema:
+          type: string
+      -
+        in: path
+        name: recordId
+        description: "The orthodontic record's ID."
         example: '1'
         required: true
         schema:

@@ -23,13 +23,48 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Patients
     Route::apiResource('patients', PatientController::class);
+
+    // Patient Images
+    Route::get('/patients/{patientId}/images', [PatientController::class, 'getImages']);
     Route::post('/patients/{patientId}/images', [PatientController::class, 'addImage']);
-    Route::post('/patients/{patientId}/dental-records', [PatientController::class, 'saveDentalRecord']);
+    Route::put('/patients/{patientId}/images/{imageId}', [PatientController::class, 'updateImage']);
+    Route::delete('/patients/{patientId}/images/{imageId}', [PatientController::class, 'deleteImage']);
+
+    // Odontogram/Dental Records
+    Route::get('/patients/{patientId}/odontogram-records', [PatientController::class, 'getDentalRecords']);
+    Route::post('/patients/{patientId}/odontogram-records', [PatientController::class, 'saveDentalRecord']);
+    Route::put('/patients/{patientId}/odontogram-records/{recordId}', [PatientController::class, 'updateDentalRecord']);
+    Route::delete('/patients/{patientId}/odontogram-records/{recordId}', [PatientController::class, 'deleteDentalRecord']);
+
+    // Periodontal Records
+    Route::get('/patients/{patientId}/periodontal-records', [PatientController::class, 'getPeriodontalRecords']);
     Route::post('/patients/{patientId}/periodontal-records', [PatientController::class, 'savePeriodontalRecords']);
+    Route::put('/patients/{patientId}/periodontal-records/{recordId}', [PatientController::class, 'updatePeriodontalRecord']);
+    Route::delete('/patients/{patientId}/periodontal-records/{recordId}', [PatientController::class, 'deletePeriodontalRecord']);
+
+    // Occlusal Records
+    Route::get('/patients/{patientId}/occlusal-records', [PatientController::class, 'getOcclusalRecords']);
     Route::post('/patients/{patientId}/occlusal-records', [PatientController::class, 'saveOcclusalRecord']);
+    Route::put('/patients/{patientId}/occlusal-records', [PatientController::class, 'updateOcclusalRecord']);
+    Route::delete('/patients/{patientId}/occlusal-records', [PatientController::class, 'deleteOcclusalRecord']);
+
+    // Treatment Plans
+    Route::get('/patients/{patientId}/treatments', [PatientController::class, 'getTreatments']);
     Route::post('/patients/{patientId}/treatments', [PatientController::class, 'addTreatment']);
+    Route::put('/patients/{patientId}/treatments/{treatmentId}', [PatientController::class, 'updateTreatment']);
+    Route::delete('/patients/{patientId}/treatments/{treatmentId}', [PatientController::class, 'deleteTreatment']);
+
+    // Soft Tissue Records
+    Route::get('/patients/{patientId}/soft-tissue-records', [PatientController::class, 'getSoftTissueRecords']);
     Route::post('/patients/{patientId}/soft-tissue-records', [PatientController::class, 'addSoftTissueRecord']);
+    Route::put('/patients/{patientId}/soft-tissue-records/{recordId}', [PatientController::class, 'updateSoftTissueRecord']);
+    Route::delete('/patients/{patientId}/soft-tissue-records/{recordId}', [PatientController::class, 'deleteSoftTissueRecord']);
+
+    // Orthodontic Records
+    Route::get('/patients/{patientId}/orthodontic-records', [PatientController::class, 'getOrthodonticRecords']);
     Route::post('/patients/{patientId}/orthodontic-records', [PatientController::class, 'addOrthodonticRecord']);
+    Route::put('/patients/{patientId}/orthodontic-records/{recordId}', [PatientController::class, 'updateOrthodonticRecord']);
+    Route::delete('/patients/{patientId}/orthodontic-records/{recordId}', [PatientController::class, 'deleteOrthodonticRecord']);
 
     // Appointments
     Route::apiResource('appointments', AppointmentController::class);

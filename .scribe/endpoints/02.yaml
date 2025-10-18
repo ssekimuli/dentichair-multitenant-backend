@@ -436,14 +436,24 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
-        name: name
-        description: "Patient's full name."
+      first_name:
+        name: first_name
+        description: 'Must not be greater than 255 characters.'
         required: false
-        example: 'John Smith Updated'
+        example: b
         type: string
         enumValues: []
-        exampleWasSpecified: true
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      last_name:
+        name: last_name
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
         nullable: false
         custom: []
       avatar:
@@ -466,6 +476,39 @@ endpoints:
         exampleWasSpecified: true
         nullable: false
         custom: []
+      phone:
+        name: phone
+        description: 'Must not be greater than 20 characters.'
+        required: false
+        example: ngzmiyvdljnikhwa
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        custom: []
+      address:
+        name: address
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: 'y'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        custom: []
+      gender:
+        name: gender
+        description: ''
+        required: false
+        example: Female
+        type: string
+        enumValues:
+          - Male
+          - Female
+          - Other
+        exampleWasSpecified: false
+        nullable: true
+        custom: []
       date_of_birth:
         name: date_of_birth
         description: "Patient's date of birth."
@@ -480,7 +523,7 @@ endpoints:
         name: last_visit
         description: 'Must be a valid date.'
         required: false
-        example: '2025-10-17T16:13:46'
+        example: '2025-10-18T13:50:38'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -494,7 +537,7 @@ endpoints:
         type: string
         enumValues: []
         exampleWasSpecified: true
-        nullable: false
+        nullable: true
         custom: []
       branch_id:
         name: branch_id
@@ -527,17 +570,32 @@ endpoints:
         exampleWasSpecified: false
         nullable: true
         custom: []
+      name:
+        name: name
+        description: "Patient's full name."
+        required: false
+        example: 'John Smith Updated'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
     cleanBodyParameters:
-      name: 'John Smith Updated'
+      first_name: b
+      last_name: 'n'
       avatar: architecto
       email: john.updated@example.com
+      phone: ngzmiyvdljnikhwa
+      address: 'y'
+      gender: Female
       date_of_birth: '1985-03-15'
-      last_visit: '2025-10-17T16:13:46'
+      last_visit: '2025-10-18T13:50:38'
       status: Inactive
       branch_id: b2
       history: 'Updated medical history'
       occlusal_records:
         - architecto
+      name: 'John Smith Updated'
     fileParameters: []
     responses:
       -
@@ -545,7 +603,7 @@ endpoints:
         content: |-
           {
             "id": "1",
-            "name": "John Smith Updated",
+            "first_name": "John Smith Updated",
             "email": "john.updated@example.com",
             "status": "Active",
             "branch_id": "b1"
@@ -612,6 +670,77 @@ endpoints:
         content: |-
           {
             "success": true
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/images'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Patient Images'
+      description: 'Retrieve all images for a specific patient (X-rays, clinical photos, etc.).'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Images retrieved successfully.",
+            "data": [
+              {
+                "id": 1,
+                "url": "https://picsum.photos/800/600",
+                "description": "Panoramic X-ray showing full dentition",
+                "date": "2024-07-15"
+              }
+            ]
           }
         headers: []
         description: ''
@@ -726,8 +855,8 @@ endpoints:
     custom: []
   -
     httpMethods:
-      - POST
-    uri: 'api/patients/{patientId}/dental-records'
+      - PUT
+    uri: 'api/patients/{patientId}/images/{imageId}'
     metadata:
       groupName: Patients
       groupDescription: |-
@@ -736,10 +865,184 @@ endpoints:
         Includes comprehensive dental record management with odontogram support.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update Dental Record for Tooth'
-      description: |-
-        Update or create a dental record for a specific tooth (odontogram update).
-        This is the primary endpoint for dental charting/odontogram updates.
+      title: 'Update Patient Image'
+      description: 'Update an existing patient image record.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      imageId:
+        name: imageId
+        description: "The image's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      imageId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      url:
+        name: url
+        description: 'The updated URL of the image.'
+        required: false
+        example: 'https://picsum.photos/800/700'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      description:
+        name: description
+        description: 'The updated description.'
+        required: false
+        example: 'Updated panoramic X-ray'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      url: 'https://picsum.photos/800/700'
+      description: 'Updated panoramic X-ray'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Image updated successfully.",
+            "data": {
+              "id": 1,
+              "url": "https://picsum.photos/800/700",
+              "description": "Updated panoramic X-ray",
+              "date": "2024-07-15"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Image not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/images/{imageId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Patient Image'
+      description: 'Delete a patient image record.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      imageId:
+        name: imageId
+        description: "The image's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      imageId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Image deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Image not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/odontogram-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Dental Records (Odontogram)'
+      description: "Retrieve all dental records for a specific patient's odontogram."
       authenticated: true
       deprecated: false
       custom: []
@@ -761,12 +1064,91 @@ endpoints:
       patientId: '1'
     queryParameters: []
     cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          [
+            {
+              "tooth_id": 11,
+              "condition": "Healthy",
+              "notes": ""
+            },
+            {
+              "tooth_id": 14,
+              "condition": "Filling",
+              "notes": "Composite filling placed on occlusal surface - 2023-06-15"
+            },
+            {
+              "tooth_id": 16,
+              "condition": "Caries",
+              "notes": "Moderate cavity detected on mesial surface"
+            }
+          ]
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - POST
+    uri: 'api/patients/{patientId}/odontogram-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Save Dental Record for Tooth'
+      description: |-
+        Create or update a dental record for a specific tooth (odontogram update).
+        This is the primary endpoint for dental charting/odontogram updates.
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '7'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '7'
+    queryParameters: []
+    cleanQueryParameters: []
     bodyParameters:
       tooth_id:
         name: tooth_id
-        description: 'The tooth number (1-32).'
+        description: 'The tooth number (11-18, 21-28, 31-38, 41-48).'
         required: true
-        example: 16
+        example: 13
         type: integer
         enumValues: []
         exampleWasSpecified: true
@@ -776,7 +1158,7 @@ endpoints:
         name: condition
         description: 'The dental condition.'
         required: true
-        example: Caries
+        example: Filling
         type: string
         enumValues: []
         exampleWasSpecified: true
@@ -786,7 +1168,119 @@ endpoints:
         name: notes
         description: 'Notes about the tooth condition.'
         required: false
-        example: 'Distal caries, requires attention.'
+        example: 'Amalgam filling - procedure completed'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
+    cleanBodyParameters:
+      tooth_id: 13
+      condition: Filling
+      notes: 'Amalgam filling - procedure completed'
+    fileParameters: []
+    responses:
+      -
+        status: 201
+        content: |-
+          {
+            "message": "Dental record saved successfully.",
+            "data": {
+              "tooth_id": 13,
+              "condition": "Filling",
+              "notes": "Amalgam filling - procedure completed"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PUT
+    uri: 'api/patients/{patientId}/odontogram-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Dental Record'
+      description: 'Update an existing dental record for a specific tooth.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The dental record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      tooth_id:
+        name: tooth_id
+        description: 'The tooth number (1-32).'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      condition:
+        name: condition
+        description: 'The dental condition.'
+        required: false
+        example: Filled
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      notes:
+        name: notes
+        description: 'Notes about the tooth condition.'
+        required: false
+        example: 'Composite filling completed'
         type: string
         enumValues: []
         exampleWasSpecified: true
@@ -794,21 +1288,174 @@ endpoints:
         custom: []
     cleanBodyParameters:
       tooth_id: 16
-      condition: Caries
-      notes: 'Distal caries, requires attention.'
+      condition: Filled
+      notes: 'Composite filling completed'
     fileParameters: []
     responses:
       -
         status: 200
         content: |-
           {
-            "id": "1",
-            "name": "John Doe",
-            "dental_records": [
+            "message": "Dental record updated successfully.",
+            "data": {
+              "id": 1,
+              "tooth_id": 16,
+              "condition": "Filled",
+              "notes": "Composite filling completed"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Dental record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/odontogram-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Dental Record'
+      description: 'Delete a dental record for a specific tooth.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The dental record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Dental record deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Dental record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/periodontal-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Periodontal Records'
+      description: 'Retrieve all periodontal records for a specific patient.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Periodontal records retrieved successfully.",
+            "data": [
               {
+                "id": 1,
                 "tooth_id": 16,
-                "condition": "Caries",
-                "notes": "Distal caries, requires attention."
+                "pockets": {
+                  "distobuccal": 3,
+                  "buccal": 2,
+                  "mesiobuccal": 3
+                },
+                "recession": 2,
+                "mobility": "1",
+                "furcation": "I",
+                "conditions": {
+                  "bleeding": true,
+                  "calculus": false
+                }
               }
             ]
           }
@@ -1041,6 +1688,310 @@ endpoints:
     custom: []
   -
     httpMethods:
+      - PUT
+    uri: 'api/patients/{patientId}/periodontal-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Periodontal Record'
+      description: 'Update an existing periodontal record for a specific tooth.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The periodontal record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      tooth_id:
+        name: tooth_id
+        description: 'Tooth number.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      pockets:
+        name: pockets
+        description: 'Pocket measurements'
+        required: false
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+      recession:
+        name: recession
+        description: 'Gingival recession measurement.'
+        required: false
+        example: 2
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      mobility:
+        name: mobility
+        description: 'Tooth mobility.'
+        required: false
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      furcation:
+        name: furcation
+        description: 'Furcation involvement.'
+        required: false
+        example: I
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
+      conditions:
+        name: conditions
+        description: 'Periodontal conditions'
+        required: false
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      tooth_id: 16
+      pockets:
+        - architecto
+      recession: 2
+      mobility: '1'
+      furcation: I
+      conditions:
+        - architecto
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Periodontal record updated successfully.",
+            "data": {
+              "id": 1,
+              "tooth_id": 16,
+              "pockets": {
+                "distobuccal": 3,
+                "buccal": 2,
+                "mesiobuccal": 3
+              },
+              "recession": 2,
+              "mobility": "1",
+              "furcation": "I",
+              "conditions": {
+                "bleeding": true,
+                "calculus": false
+              }
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Periodontal record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/periodontal-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Periodontal Record'
+      description: 'Delete a periodontal record for a specific tooth.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The periodontal record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Periodontal record deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Periodontal record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/occlusal-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Occlusal Records'
+      description: "Retrieve the patient's occlusal analysis record."
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Occlusal records retrieved successfully.",
+            "data": {
+              "overbite": 2,
+              "overjet": 3,
+              "crossbite": "None",
+              "openbite": "None",
+              "malocclusion": "Class I"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
       - POST
     uri: 'api/patients/{patientId}/occlusal-records'
     metadata:
@@ -1146,6 +2097,267 @@ endpoints:
               "openbite": "None",
               "malocclusion": "Class I"
             }
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PUT
+    uri: 'api/patients/{patientId}/occlusal-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Occlusal Record'
+      description: "Update the patient's occlusal analysis record."
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      overbite:
+        name: overbite
+        description: 'Overbite measurement in mm.'
+        required: false
+        example: 3
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      overjet:
+        name: overjet
+        description: 'Overjet measurement in mm.'
+        required: false
+        example: 4
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      crossbite:
+        name: crossbite
+        description: 'Crossbite description.'
+        required: false
+        example: Anterior
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      openbite:
+        name: openbite
+        description: 'Openbite description.'
+        required: false
+        example: None
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      malocclusion:
+        name: malocclusion
+        description: 'Malocclusion classification.'
+        required: false
+        example: 'Class II'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      overbite: 3
+      overjet: 4
+      crossbite: Anterior
+      openbite: None
+      malocclusion: 'Class II'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Occlusal record updated successfully.",
+            "data": {
+              "overbite": 3,
+              "overjet": 4,
+              "crossbite": "Anterior",
+              "openbite": "None",
+              "malocclusion": "Class II"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/occlusal-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Occlusal Record'
+      description: "Clear the patient's occlusal analysis record."
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Occlusal record deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/treatments'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Treatment Plans'
+      description: 'Retrieve all treatment plans for a specific patient.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Treatment plans retrieved successfully.",
+            "data": [
+              {
+                "id": 1,
+                "procedure": "Filling for #16",
+                "tooth": 16,
+                "status": "Proposed",
+                "cost": 250.00,
+                "date": "2024-08-01"
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
           }
         headers: []
         description: ''
@@ -1277,6 +2489,289 @@ endpoints:
     custom: []
   -
     httpMethods:
+      - PUT
+    uri: 'api/patients/{patientId}/treatments/{treatmentId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Treatment Plan'
+      description: 'Update an existing treatment plan.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      treatmentId:
+        name: treatmentId
+        description: "The treatment's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      treatmentId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      procedure:
+        name: procedure
+        description: 'The treatment procedure.'
+        required: false
+        example: 'Root canal for #16'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      tooth:
+        name: tooth
+        description: 'The tooth number.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
+      status:
+        name: status
+        description: 'Treatment status.'
+        required: false
+        example: Completed
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      cost:
+        name: cost
+        description: 'Cost of the treatment.'
+        required: false
+        example: 500.0
+        type: number
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      date:
+        name: date
+        description: 'Treatment date.'
+        required: false
+        example: '2024-08-15'
+        type: date
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      procedure: 'Root canal for #16'
+      tooth: 16
+      status: Completed
+      cost: 500.0
+      date: '2024-08-15'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Treatment plan updated successfully.",
+            "data": {
+              "id": 1,
+              "procedure": "Root canal for #16",
+              "tooth": 16,
+              "status": "Completed",
+              "cost": 500.00,
+              "date": "2024-08-15"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Treatment plan not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/treatments/{treatmentId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Treatment Plan'
+      description: 'Delete a treatment plan.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      treatmentId:
+        name: treatmentId
+        description: "The treatment's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      treatmentId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Treatment plan deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Treatment plan not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/soft-tissue-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Soft Tissue Records'
+      description: 'Retrieve all soft tissue examination findings for a specific patient.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Soft tissue records retrieved successfully.",
+            "data": [
+              {
+                "id": 1,
+                "location": "Right buccal mucosa",
+                "type": "Ulcer",
+                "description": "Small aphthous ulcer, 3mm diameter",
+                "date": "2024-07-15"
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
       - POST
     uri: 'api/patients/{patientId}/soft-tissue-records'
     metadata:
@@ -1361,6 +2856,267 @@ endpoints:
                 "date": "2024-07-15"
               }
             ]
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PUT
+    uri: 'api/patients/{patientId}/soft-tissue-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Soft Tissue Record'
+      description: 'Update an existing soft tissue examination record.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The soft tissue record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      location:
+        name: location
+        description: 'Location of the finding.'
+        required: false
+        example: 'Left buccal mucosa'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      type:
+        name: type
+        description: 'Type of finding.'
+        required: false
+        example: Lesion
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      description:
+        name: description
+        description: 'Detailed description.'
+        required: false
+        example: 'Healing aphthous ulcer, 2mm diameter'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanBodyParameters:
+      location: 'Left buccal mucosa'
+      type: Lesion
+      description: 'Healing aphthous ulcer, 2mm diameter'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Soft tissue record updated successfully.",
+            "data": {
+              "id": 1,
+              "location": "Left buccal mucosa",
+              "type": "Lesion",
+              "description": "Healing aphthous ulcer, 2mm diameter",
+              "date": "2024-07-15"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Soft tissue record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/soft-tissue-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Soft Tissue Record'
+      description: 'Delete a soft tissue examination record.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The soft tissue record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Soft tissue record deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Soft tissue record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - GET
+    uri: 'api/patients/{patientId}/orthodontic-records'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get Orthodontic Records'
+      description: 'Retrieve all orthodontic treatment records for a specific patient.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Orthodontic records retrieved successfully.",
+            "data": [
+              {
+                "id": 1,
+                "appliance": "Braces",
+                "wire_size": ".016 Nickel Titanium",
+                "bracket_changes": ["14", "24"],
+                "notes": "Good progress with alignment",
+                "date": "2024-07-15"
+              }
+            ]
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found"
           }
         headers: []
         description: ''
@@ -1473,6 +3229,210 @@ endpoints:
                 "date": "2024-07-15"
               }
             ]
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - PUT
+    uri: 'api/patients/{patientId}/orthodontic-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Update Orthodontic Record'
+      description: 'Update an existing orthodontic treatment record.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The orthodontic record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      appliance:
+        name: appliance
+        description: 'Orthodontic appliance used.'
+        required: false
+        example: 'Clear Aligners'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      wire_size:
+        name: wire_size
+        description: 'Wire size used.'
+        required: false
+        example: '.018 Stainless Steel'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
+      bracket_changes:
+        name: bracket_changes
+        description: 'Brackets that were changed.'
+        required: false
+        example:
+          - '15'
+          - '25'
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
+      notes:
+        name: notes
+        description: 'Treatment notes.'
+        required: false
+        example: 'Excellent progress, teeth aligned'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        custom: []
+    cleanBodyParameters:
+      appliance: 'Clear Aligners'
+      wire_size: '.018 Stainless Steel'
+      bracket_changes:
+        - '15'
+        - '25'
+      notes: 'Excellent progress, teeth aligned'
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Orthodontic record updated successfully.",
+            "data": {
+              "id": 1,
+              "appliance": "Clear Aligners",
+              "wire_size": ".018 Stainless Steel",
+              "bracket_changes": ["15", "25"],
+              "notes": "Excellent progress, teeth aligned",
+              "date": "2024-07-15"
+            }
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Orthodontic record not found"
+          }
+        headers: []
+        description: ''
+        custom: []
+    responseFields: []
+    auth: []
+    controller: null
+    method: null
+    route: null
+    custom: []
+  -
+    httpMethods:
+      - DELETE
+    uri: 'api/patients/{patientId}/orthodontic-records/{recordId}'
+    metadata:
+      groupName: Patients
+      groupDescription: |-
+
+        Endpoints for managing patient records, dental charting, and treatment planning.
+        Includes comprehensive dental record management with odontogram support.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Delete Orthodontic Record'
+      description: 'Delete an orthodontic treatment record.'
+      authenticated: true
+      deprecated: false
+      custom: []
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      patientId:
+        name: patientId
+        description: "The patient's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+      recordId:
+        name: recordId
+        description: "The orthodontic record's ID."
+        required: true
+        example: '1'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        custom: []
+    cleanUrlParameters:
+      patientId: '1'
+      recordId: '1'
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        status: 200
+        content: |-
+          {
+            "message": "Orthodontic record deleted successfully."
+          }
+        headers: []
+        description: ''
+        custom: []
+      -
+        status: 404
+        content: |-
+          {
+            "error": "Patient not found" or "Orthodontic record not found"
           }
         headers: []
         description: ''

@@ -10,7 +10,7 @@
     ],
     "info": {
         "name": "Laravel API Documentation",
-        "_postman_id": "b94592b6-82c4-4996-bc4a-fd16ca14869b",
+        "_postman_id": "d17da4bd-82bb-406e-8f19-72a49f00523a",
         "description": "",
         "schema": "https:\/\/schema.getpostman.com\/json\/collection\/v2.1.0\/collection.json"
     },
@@ -1484,7 +1484,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"employeeId\":\"architecto\",\"amount\":22,\"reason\":\"g\",\"branchId\":\"architecto\",\"date\":\"2025-10-17T16:13:46\"}"
+                            "raw": "{\"employeeId\":\"architecto\",\"amount\":22,\"reason\":\"g\",\"branchId\":\"architecto\",\"date\":\"2025-10-18T13:50:38\"}"
                         },
                         "description": "Employees can submit staff advance requests.",
                         "auth": {
@@ -1777,7 +1777,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"name\":\"John Smith Updated\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-17T16:13:46\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"]}"
+                            "raw": "{\"first_name\":\"b\",\"last_name\":\"n\",\"avatar\":\"architecto\",\"email\":\"john.updated@example.com\",\"phone\":\"ngzmiyvdljnikhwa\",\"address\":\"y\",\"gender\":\"Female\",\"date_of_birth\":\"1985-03-15\",\"last_visit\":\"2025-10-18T13:50:38\",\"status\":\"Inactive\",\"branch_id\":\"b2\",\"history\":\"Updated medical history\",\"occlusal_records\":[\"architecto\"],\"name\":\"John Smith Updated\"}"
                         },
                         "description": "Update an existing patient's information."
                     },
@@ -1785,7 +1785,7 @@
                         {
                             "header": [],
                             "code": 200,
-                            "body": "{\n  \"id\": \"1\",\n  \"name\": \"John Smith Updated\",\n  \"email\": \"john.updated@example.com\",\n  \"status\": \"Active\",\n  \"branch_id\": \"b1\"\n}",
+                            "body": "{\n  \"id\": \"1\",\n  \"first_name\": \"John Smith Updated\",\n  \"email\": \"john.updated@example.com\",\n  \"status\": \"Active\",\n  \"branch_id\": \"b1\"\n}",
                             "name": ""
                         },
                         {
@@ -1832,6 +1832,52 @@
                             "header": [],
                             "code": 200,
                             "body": "{\n  \"success\": true\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Patient Images",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/images",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/images",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all images for a specific patient (X-rays, clinical photos, etc.)."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Images retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"url\": \"https:\/\/picsum.photos\/800\/600\",\n      \"description\": \"Panoramic X-ray showing full dentition\",\n      \"date\": \"2024-07-15\"\n    }\n  ]\n}",
                             "name": ""
                         },
                         {
@@ -1892,18 +1938,171 @@
                     ]
                 },
                 {
-                    "name": "Update Dental Record for Tooth",
+                    "name": "Update Patient Image",
                     "request": {
                         "url": {
                             "host": "{{baseUrl}}",
-                            "path": "api\/patients\/:patientId\/dental-records",
+                            "path": "api\/patients\/:patientId\/images\/:imageId",
                             "query": [],
-                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/dental-records",
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/images\/:imageId",
                             "variable": [
                                 {
                                     "id": "patientId",
                                     "key": "patientId",
                                     "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "imageId",
+                                    "key": "imageId",
+                                    "value": "1",
+                                    "description": "The image's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"url\":\"https:\\\/\\\/picsum.photos\\\/800\\\/700\",\"description\":\"Updated panoramic X-ray\"}"
+                        },
+                        "description": "Update an existing patient image record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Image updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"url\": \"https:\/\/picsum.photos\/800\/700\",\n    \"description\": \"Updated panoramic X-ray\",\n    \"date\": \"2024-07-15\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Image not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Patient Image",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/images\/:imageId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/images\/:imageId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "imageId",
+                                    "key": "imageId",
+                                    "value": "1",
+                                    "description": "The image's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Delete a patient image record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Image deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Image not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Dental Records (Odontogram)",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/odontogram-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/odontogram-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all dental records for a specific patient's odontogram."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "[\n  {\n    \"tooth_id\": 11,\n    \"condition\": \"Healthy\",\n    \"notes\": \"\"\n  },\n  {\n    \"tooth_id\": 14,\n    \"condition\": \"Filling\",\n    \"notes\": \"Composite filling placed on occlusal surface - 2023-06-15\"\n  },\n  {\n    \"tooth_id\": 16,\n    \"condition\": \"Caries\",\n    \"notes\": \"Moderate cavity detected on mesial surface\"\n  }\n]",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Save Dental Record for Tooth",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/odontogram-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/odontogram-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "7",
                                     "description": "The patient's ID."
                                 }
                             ]
@@ -1921,15 +2120,168 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\"tooth_id\":16,\"condition\":\"Caries\",\"notes\":\"Distal caries, requires attention.\"}"
+                            "raw": "{\"tooth_id\":13,\"condition\":\"Filling\",\"notes\":\"Amalgam filling - procedure completed\"}"
                         },
-                        "description": "Update or create a dental record for a specific tooth (odontogram update).\nThis is the primary endpoint for dental charting\/odontogram updates."
+                        "description": "Create or update a dental record for a specific tooth (odontogram update).\nThis is the primary endpoint for dental charting\/odontogram updates."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 201,
+                            "body": "{\n  \"message\": \"Dental record saved successfully.\",\n  \"data\": {\n    \"tooth_id\": 13,\n    \"condition\": \"Filling\",\n    \"notes\": \"Amalgam filling - procedure completed\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Dental Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/odontogram-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/odontogram-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The dental record's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"tooth_id\":16,\"condition\":\"Filled\",\"notes\":\"Composite filling completed\"}"
+                        },
+                        "description": "Update an existing dental record for a specific tooth."
                     },
                     "response": [
                         {
                             "header": [],
                             "code": 200,
-                            "body": "{\n  \"id\": \"1\",\n  \"name\": \"John Doe\",\n  \"dental_records\": [\n    {\n      \"tooth_id\": 16,\n      \"condition\": \"Caries\",\n      \"notes\": \"Distal caries, requires attention.\"\n    }\n  ]\n}",
+                            "body": "{\n  \"message\": \"Dental record updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"tooth_id\": 16,\n    \"condition\": \"Filled\",\n    \"notes\": \"Composite filling completed\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Dental record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Dental Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/odontogram-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/odontogram-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The dental record's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Delete a dental record for a specific tooth."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Dental record deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Dental record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Periodontal Records",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/periodontal-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/periodontal-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all periodontal records for a specific patient."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Periodontal records retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"tooth_id\": 16,\n      \"pockets\": {\n        \"distobuccal\": 3,\n        \"buccal\": 2,\n        \"mesiobuccal\": 3\n      },\n      \"recession\": 2,\n      \"mobility\": \"1\",\n      \"furcation\": \"I\",\n      \"conditions\": {\n        \"bleeding\": true,\n        \"calculus\": false\n      }\n    }\n  ]\n}",
                             "name": ""
                         },
                         {
@@ -1984,6 +2336,159 @@
                     ]
                 },
                 {
+                    "name": "Update Periodontal Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/periodontal-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/periodontal-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The periodontal record's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"tooth_id\":16,\"pockets\":[\"architecto\"],\"recession\":2,\"mobility\":\"1\",\"furcation\":\"I\",\"conditions\":[\"architecto\"]}"
+                        },
+                        "description": "Update an existing periodontal record for a specific tooth."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Periodontal record updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"tooth_id\": 16,\n    \"pockets\": {\n      \"distobuccal\": 3,\n      \"buccal\": 2,\n      \"mesiobuccal\": 3\n    },\n    \"recession\": 2,\n    \"mobility\": \"1\",\n    \"furcation\": \"I\",\n    \"conditions\": {\n      \"bleeding\": true,\n      \"calculus\": false\n    }\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Periodontal record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Periodontal Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/periodontal-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/periodontal-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The periodontal record's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Delete a periodontal record for a specific tooth."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Periodontal record deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Periodontal record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Occlusal Records",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/occlusal-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/occlusal-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve the patient's occlusal analysis record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Occlusal records retrieved successfully.\",\n  \"data\": {\n    \"overbite\": 2,\n    \"overjet\": 3,\n    \"crossbite\": \"None\",\n    \"openbite\": \"None\",\n    \"malocclusion\": \"Class I\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
                     "name": "Save Occlusal Record",
                     "request": {
                         "url": {
@@ -2022,6 +2527,147 @@
                             "header": [],
                             "code": 200,
                             "body": "{\n  \"id\": \"1\",\n  \"name\": \"John Doe\",\n  \"occlusal_records\": {\n    \"overbite\": 2,\n    \"overjet\": 3,\n    \"crossbite\": \"None\",\n    \"openbite\": \"None\",\n    \"malocclusion\": \"Class I\"\n  }\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Occlusal Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/occlusal-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/occlusal-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"overbite\":3,\"overjet\":4,\"crossbite\":\"Anterior\",\"openbite\":\"None\",\"malocclusion\":\"Class II\"}"
+                        },
+                        "description": "Update the patient's occlusal analysis record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Occlusal record updated successfully.\",\n  \"data\": {\n    \"overbite\": 3,\n    \"overjet\": 4,\n    \"crossbite\": \"Anterior\",\n    \"openbite\": \"None\",\n    \"malocclusion\": \"Class II\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Occlusal Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/occlusal-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/occlusal-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Clear the patient's occlusal analysis record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Occlusal record deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Treatment Plans",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/treatments",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/treatments",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all treatment plans for a specific patient."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Treatment plans retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"procedure\": \"Filling for #16\",\n      \"tooth\": 16,\n      \"status\": \"Proposed\",\n      \"cost\": 250.00,\n      \"date\": \"2024-08-01\"\n    }\n  ]\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
                             "name": ""
                         }
                     ]
@@ -2070,6 +2716,159 @@
                     ]
                 },
                 {
+                    "name": "Update Treatment Plan",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/treatments\/:treatmentId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/treatments\/:treatmentId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "treatmentId",
+                                    "key": "treatmentId",
+                                    "value": "1",
+                                    "description": "The treatment's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"procedure\":\"Root canal for #16\",\"tooth\":16,\"status\":\"Completed\",\"cost\":500,\"date\":\"2024-08-15\"}"
+                        },
+                        "description": "Update an existing treatment plan."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Treatment plan updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"procedure\": \"Root canal for #16\",\n    \"tooth\": 16,\n    \"status\": \"Completed\",\n    \"cost\": 500.00,\n    \"date\": \"2024-08-15\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Treatment plan not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Treatment Plan",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/treatments\/:treatmentId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/treatments\/:treatmentId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "treatmentId",
+                                    "key": "treatmentId",
+                                    "value": "1",
+                                    "description": "The treatment's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Delete a treatment plan."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Treatment plan deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Treatment plan not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Soft Tissue Records",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/soft-tissue-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/soft-tissue-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all soft tissue examination findings for a specific patient."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Soft tissue records retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"location\": \"Right buccal mucosa\",\n      \"type\": \"Ulcer\",\n      \"description\": \"Small aphthous ulcer, 3mm diameter\",\n      \"date\": \"2024-07-15\"\n    }\n  ]\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
                     "name": "Add Soft Tissue Record",
                     "request": {
                         "url": {
@@ -2113,6 +2912,159 @@
                     ]
                 },
                 {
+                    "name": "Update Soft Tissue Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/soft-tissue-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/soft-tissue-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The soft tissue record's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"location\":\"Left buccal mucosa\",\"type\":\"Lesion\",\"description\":\"Healing aphthous ulcer, 2mm diameter\"}"
+                        },
+                        "description": "Update an existing soft tissue examination record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Soft tissue record updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"location\": \"Left buccal mucosa\",\n    \"type\": \"Lesion\",\n    \"description\": \"Healing aphthous ulcer, 2mm diameter\",\n    \"date\": \"2024-07-15\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Soft tissue record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Soft Tissue Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/soft-tissue-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/soft-tissue-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The soft tissue record's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Delete a soft tissue examination record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Soft tissue record deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Soft tissue record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Orthodontic Records",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/orthodontic-records",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/orthodontic-records",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Retrieve all orthodontic treatment records for a specific patient."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Orthodontic records retrieved successfully.\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"appliance\": \"Braces\",\n      \"wire_size\": \".016 Nickel Titanium\",\n      \"bracket_changes\": [\"14\", \"24\"],\n      \"notes\": \"Good progress with alignment\",\n      \"date\": \"2024-07-15\"\n    }\n  ]\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
                     "name": "Add Orthodontic Record",
                     "request": {
                         "url": {
@@ -2151,6 +3103,113 @@
                             "header": [],
                             "code": 200,
                             "body": "{\n  \"id\": \"1\",\n  \"name\": \"John Doe\",\n  \"orthodontic_records\": [\n    {\n      \"appliance\": \"Braces\",\n      \"wire_size\": \".016 Nickel Titanium\",\n      \"bracket_changes\": [\"14\", \"24\"],\n      \"notes\": \"Good progress with alignment\",\n      \"date\": \"2024-07-15\"\n    }\n  ]\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Orthodontic Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/orthodontic-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/orthodontic-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The orthodontic record's ID."
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"appliance\":\"Clear Aligners\",\"wire_size\":\".018 Stainless Steel\",\"bracket_changes\":[\"15\",\"25\"],\"notes\":\"Excellent progress, teeth aligned\"}"
+                        },
+                        "description": "Update an existing orthodontic treatment record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Orthodontic record updated successfully.\",\n  \"data\": {\n    \"id\": 1,\n    \"appliance\": \"Clear Aligners\",\n    \"wire_size\": \".018 Stainless Steel\",\n    \"bracket_changes\": [\"15\", \"25\"],\n    \"notes\": \"Excellent progress, teeth aligned\",\n    \"date\": \"2024-07-15\"\n  }\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Orthodontic record not found\"\n}",
+                            "name": ""
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Orthodontic Record",
+                    "request": {
+                        "url": {
+                            "host": "{{baseUrl}}",
+                            "path": "api\/patients\/:patientId\/orthodontic-records\/:recordId",
+                            "query": [],
+                            "raw": "{{baseUrl}}\/api\/patients\/:patientId\/orthodontic-records\/:recordId",
+                            "variable": [
+                                {
+                                    "id": "patientId",
+                                    "key": "patientId",
+                                    "value": "1",
+                                    "description": "The patient's ID."
+                                },
+                                {
+                                    "id": "recordId",
+                                    "key": "recordId",
+                                    "value": "1",
+                                    "description": "The orthodontic record's ID."
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application\/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application\/json"
+                            }
+                        ],
+                        "body": null,
+                        "description": "Delete an orthodontic treatment record."
+                    },
+                    "response": [
+                        {
+                            "header": [],
+                            "code": 200,
+                            "body": "{\n  \"message\": \"Orthodontic record deleted successfully.\"\n}",
+                            "name": ""
+                        },
+                        {
+                            "header": [],
+                            "code": 404,
+                            "body": "{\n  \"error\": \"Patient not found\" or \"Orthodontic record not found\"\n}",
                             "name": ""
                         }
                     ]

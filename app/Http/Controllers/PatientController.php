@@ -3,14 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Patient;
-use App\Models\DentalRecord;
-use App\Models\TreatmentPlan;
-use App\Models\PatientImage;
-use App\Models\PeriodontalRecord;
 use App\Models\SoftTissueRecord;
 use App\Models\OrthodonticRecord;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 /**
  * @group Patients
@@ -243,7 +238,7 @@ class PatientController extends Controller
      * 
      * @response 200 {
      *   "id": "1",
-     *   "name": "John Smith Updated",
+     *   "first_name": "John Smith Updated",
      *   "email": "john.updated@example.com",
      *   "status": "Active",
      *   "branch_id": "b1"
@@ -265,21 +260,29 @@ class PatientController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'sometimes|string',
+            'first_name' => 'sometimes|string|max:255',
+            'last_name' => 'sometimes|string|max:255',
             'avatar' => 'nullable|string',
-            'email' => 'sometimes|email',
+            'email' => 'sometimes|email|unique:patients,email,' . $id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'sometimes|date',
             'last_visit' => 'nullable|date',
-            'status' => 'sometimes|in:Active,Inactive',
+            'status' => 'nullable|in:Active,Inactive',
             'branch_id' => 'sometimes|exists:branches,id',
             'history' => 'nullable|string',
-            'occlusal_records' => 'nullable|array',
+            'occlusal_records' => 'nullable|json',
         ]);
 
         $patient->update($validated);
 
-        return response()->json($patient->load(['dentalRecords', 'treatmentPlans', 'images']));
+        return response()->json([
+            'message' => 'Patient updated successfully.',
+            'data' => $patient
+        ], 200);
     }
+
 
     /**
      * Delete Patient
@@ -314,16 +317,57 @@ class PatientController extends Controller
     }
 
     /**
-     * Add Patient Image
-     * 
-     * Add a new image to patient's records (X-rays, clinical photos, etc.).
-     * 
+     * Get Patient Images
+     *
+     * Retrieve all images for a specific patient (X-rays, clinical photos, etc.).
+     *
      * @authenticated
-     * 
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Images retrieved successfully.",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "url": "https://picsum.photos/800/600",
+     *       "description": "Panoramic X-ray showing full dentition",
+     *       "date": "2024-07-15"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getImages($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Images retrieved successfully.',
+            'data' => $patient->images
+        ]);
+    }
+
+    /**
+     * Add Patient Image
+     *
+     * Add a new image to patient's records (X-rays, clinical photos, etc.).
+     *
+     * @authenticated
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam url string required URL of the image. Example: https://picsum.photos/800/600
      * @bodyParam description string required Description of the image. Example: Panoramic X-ray showing full dentition
-     * 
+     *
      * @response 200 {
      *   "id": "1",
      *   "name": "John Doe",
@@ -338,7 +382,7 @@ class PatientController extends Controller
      * @response 404 {
      *   "error": "Patient not found"
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -356,7 +400,7 @@ class PatientController extends Controller
             'description' => 'required|string',
         ]);
 
-        $image = $patient->images()->create([
+        $patient->images()->create([
             ...$validated,
             'date' => now()->format('Y-m-d'),
         ]);
@@ -365,33 +409,182 @@ class PatientController extends Controller
     }
 
     /**
-     * Update Dental Record for Tooth
-     * 
-     * Update or create a dental record for a specific tooth (odontogram update).
-     * This is the primary endpoint for dental charting/odontogram updates.
-     * 
+     * Update Patient Image
+     *
+     * Update an existing patient image record.
+     *
      * @authenticated
-     * 
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
-     * @bodyParam tooth_id integer required The tooth number (1-32). Example: 16
-     * @bodyParam condition string required The dental condition. Example: Caries
-     * @bodyParam notes string Notes about the tooth condition. Example: Distal caries, requires attention.
-     * 
+     * @urlParam imageId string required The image's ID. Example: 1
+     * @bodyParam url string The updated URL of the image. Example: https://picsum.photos/800/700
+     * @bodyParam description string The updated description. Example: Updated panoramic X-ray
+     *
      * @response 200 {
-     *   "id": "1",
-     *   "name": "John Doe",
-     *   "dental_records": [
-     *     {
-     *       "tooth_id": 16,
-     *       "condition": "Caries",
-     *       "notes": "Distal caries, requires attention."
-     *     }
-     *   ]
+     *   "message": "Image updated successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "url": "https://picsum.photos/800/700",
+     *     "description": "Updated panoramic X-ray",
+     *     "date": "2024-07-15"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Image not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $imageId Image ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateImage(Request $request, $patientId, $imageId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $image = $patient->images()->find($imageId);
+
+        if (!$image) {
+            return response()->json(['error' => 'Image not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'url' => 'sometimes|string',
+            'description' => 'sometimes|string',
+        ]);
+
+        $image->update($validated);
+
+        return response()->json([
+            'message' => 'Image updated successfully.',
+            'data' => $image
+        ]);
+    }
+
+    /**
+     * Delete Patient Image
+     *
+     * Delete a patient image record.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam imageId string required The image's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Image deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Image not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @param string $imageId Image ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteImage($patientId, $imageId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $image = $patient->images()->find($imageId);
+
+        if (!$image) {
+            return response()->json(['error' => 'Image not found'], 404);
+        }
+
+        $image->delete();
+
+        return response()->json([
+            'message' => 'Image deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Get Dental Records (Odontogram)
+     *
+     * Retrieve all dental records for a specific patient's odontogram.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 [
+     *   {
+     *     "tooth_id": 11,
+     *     "condition": "Healthy",
+     *     "notes": ""
+     *   },
+     *   {
+     *     "tooth_id": 14,
+     *     "condition": "Filling",
+     *     "notes": "Composite filling placed on occlusal surface - 2023-06-15"
+     *   },
+     *   {
+     *     "tooth_id": 16,
+     *     "condition": "Caries",
+     *     "notes": "Moderate cavity detected on mesial surface"
+     *   }
+     * ]
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getDentalRecords($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        // Return only the array of dental records with tooth_id, condition, and notes
+        $records = $patient->dentalRecords->map(function ($record) {
+            return [
+                'tooth_id' => $record->tooth_id,
+                'condition' => $record->condition,
+                'notes' => $record->notes ?? '',
+            ];
+        });
+
+        return response()->json($records);
+    }
+
+    /**
+     * Save Dental Record for Tooth
+     *
+     * Create or update a dental record for a specific tooth (odontogram update).
+     * This is the primary endpoint for dental charting/odontogram updates.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 7
+     * @bodyParam tooth_id integer required The tooth number (11-18, 21-28, 31-38, 41-48). Example: 13
+     * @bodyParam condition string required The dental condition. Example: Filling
+     * @bodyParam notes string Notes about the tooth condition. Example: Amalgam filling - procedure completed
+     *
+     * @response 201 {
+     *   "message": "Dental record saved successfully.",
+     *   "data": {
+     *     "tooth_id": 13,
+     *     "condition": "Filling",
+     *     "notes": "Amalgam filling - procedure completed"
+     *   }
      * }
      * @response 404 {
      *   "error": "Patient not found"
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -410,27 +603,194 @@ class PatientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Find existing record for this tooth
         $existingRecord = $patient->dentalRecords()
             ->where('tooth_id', $validated['tooth_id'])
             ->first();
 
         if ($existingRecord) {
+            // Update existing record
             $existingRecord->update($validated);
+            $record = $existingRecord;
+            $message = 'Dental record updated successfully.';
+            $statusCode = 200;
         } else {
-            $patient->dentalRecords()->create($validated);
+            // Create new record
+            $record = $patient->dentalRecords()->create($validated);
+            $message = 'Dental record created successfully.';
+            $statusCode = 201;
         }
 
-        return response()->json($patient->load('dentalRecords'));
+        return response()->json([
+            'message' => $message,
+            'data' => [
+                'tooth_id' => $record->tooth_id,
+                'condition' => $record->condition,
+                'notes' => $record->notes ?? '',
+            ]
+        ], $statusCode);
+    }
+
+    /**
+     * Update Dental Record
+     *
+     * Update an existing dental record for a specific tooth.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The dental record's ID. Example: 1
+     * @bodyParam tooth_id integer The tooth number (1-32). Example: 16
+     * @bodyParam condition string The dental condition. Example: Filled
+     * @bodyParam notes string Notes about the tooth condition. Example: Composite filling completed
+     *
+     * @response 200 {
+     *   "message": "Dental record updated successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "tooth_id": 16,
+     *     "condition": "Filled",
+     *     "notes": "Composite filling completed"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Dental record not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateDentalRecord(Request $request, $patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->dentalRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Dental record not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'tooth_id' => 'sometimes|integer',
+            'condition' => 'sometimes|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $record->update($validated);
+
+        return response()->json([
+            'message' => 'Dental record updated successfully.',
+            'data' => $record
+        ]);
+    }
+
+    /**
+     * Delete Dental Record
+     *
+     * Delete a dental record for a specific tooth.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The dental record's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Dental record deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Dental record not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteDentalRecord($patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->dentalRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Dental record not found'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'message' => 'Dental record deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Get Periodontal Records
+     *
+     * Retrieve all periodontal records for a specific patient.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Periodontal records retrieved successfully.",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "tooth_id": 16,
+     *       "pockets": {
+     *         "distobuccal": 3,
+     *         "buccal": 2,
+     *         "mesiobuccal": 3
+     *       },
+     *       "recession": 2,
+     *       "mobility": "1",
+     *       "furcation": "I",
+     *       "conditions": {
+     *         "bleeding": true,
+     *         "calculus": false
+     *       }
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPeriodontalRecords($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Periodontal records retrieved successfully.',
+            'data' => $patient->periodontalRecords
+        ]);
     }
 
     /**
      * Save Periodontal Records
-     * 
+     *
      * Save or update periodontal records for multiple teeth.
      * Replaces all existing periodontal records for the patient.
-     * 
+     *
      * @authenticated
-     * 
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam records array required Array of periodontal records
      * @bodyParam records.*.tooth_id integer required Tooth number. Example: 16
@@ -439,7 +799,7 @@ class PatientController extends Controller
      * @bodyParam records.*.mobility string required Tooth mobility. Example: 1
      * @bodyParam records.*.furcation string Furcation involvement. Example: I
      * @bodyParam records.*.conditions array required Periodontal conditions
-     * 
+     *
      * @response 200 {
      *   "id": "1",
      *   "name": "John Doe",
@@ -461,7 +821,7 @@ class PatientController extends Controller
      *     }
      *   ]
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -494,19 +854,176 @@ class PatientController extends Controller
     }
 
     /**
-     * Save Occlusal Record
-     * 
-     * Update the patient's occlusal analysis record.
-     * 
+     * Update Periodontal Record
+     *
+     * Update an existing periodontal record for a specific tooth.
+     *
      * @authenticated
-     * 
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The periodontal record's ID. Example: 1
+     * @bodyParam tooth_id integer Tooth number. Example: 16
+     * @bodyParam pockets array Pocket measurements
+     * @bodyParam recession integer Gingival recession measurement. Example: 2
+     * @bodyParam mobility string Tooth mobility. Example: 1
+     * @bodyParam furcation string Furcation involvement. Example: I
+     * @bodyParam conditions array Periodontal conditions
+     *
+     * @response 200 {
+     *   "message": "Periodontal record updated successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "tooth_id": 16,
+     *     "pockets": {
+     *       "distobuccal": 3,
+     *       "buccal": 2,
+     *       "mesiobuccal": 3
+     *     },
+     *     "recession": 2,
+     *     "mobility": "1",
+     *     "furcation": "I",
+     *     "conditions": {
+     *       "bleeding": true,
+     *       "calculus": false
+     *     }
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Periodontal record not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updatePeriodontalRecord(Request $request, $patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->periodontalRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Periodontal record not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'tooth_id' => 'sometimes|integer',
+            'pockets' => 'sometimes|array',
+            'recession' => 'sometimes|integer',
+            'mobility' => 'sometimes|string',
+            'furcation' => 'nullable|string',
+            'conditions' => 'sometimes|array',
+        ]);
+
+        $record->update($validated);
+
+        return response()->json([
+            'message' => 'Periodontal record updated successfully.',
+            'data' => $record
+        ]);
+    }
+
+    /**
+     * Delete Periodontal Record
+     *
+     * Delete a periodontal record for a specific tooth.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The periodontal record's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Periodontal record deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Periodontal record not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deletePeriodontalRecord($patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->periodontalRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Periodontal record not found'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'message' => 'Periodontal record deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Get Occlusal Records
+     *
+     * Retrieve the patient's occlusal analysis record.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Occlusal records retrieved successfully.",
+     *   "data": {
+     *     "overbite": 2,
+     *     "overjet": 3,
+     *     "crossbite": "None",
+     *     "openbite": "None",
+     *     "malocclusion": "Class I"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getOcclusalRecords($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Occlusal records retrieved successfully.',
+            'data' => $patient->occlusal_records
+        ]);
+    }
+
+    /**
+     * Save Occlusal Record
+     *
+     * Update the patient's occlusal analysis record.
+     *
+     * @authenticated
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam overbite integer required Overbite measurement in mm. Example: 2
      * @bodyParam overjet integer required Overjet measurement in mm. Example: 3
      * @bodyParam crossbite string required Crossbite description. Example: None
      * @bodyParam openbite string required Openbite description. Example: None
      * @bodyParam malocclusion string required Malocclusion classification. Example: Class I
-     * 
+     *
      * @response 200 {
      *   "id": "1",
      *   "name": "John Doe",
@@ -518,7 +1035,7 @@ class PatientController extends Controller
      *     "malocclusion": "Class I"
      *   }
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -545,19 +1062,155 @@ class PatientController extends Controller
     }
 
     /**
-     * Add Treatment Plan
-     * 
-     * Create a new treatment plan for a patient.
-     * 
+     * Update Occlusal Record
+     *
+     * Update the patient's occlusal analysis record.
+     *
      * @authenticated
-     * 
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @bodyParam overbite integer Overbite measurement in mm. Example: 3
+     * @bodyParam overjet integer Overjet measurement in mm. Example: 4
+     * @bodyParam crossbite string Crossbite description. Example: Anterior
+     * @bodyParam openbite string Openbite description. Example: None
+     * @bodyParam malocclusion string Malocclusion classification. Example: Class II
+     *
+     * @response 200 {
+     *   "message": "Occlusal record updated successfully.",
+     *   "data": {
+     *     "overbite": 3,
+     *     "overjet": 4,
+     *     "crossbite": "Anterior",
+     *     "openbite": "None",
+     *     "malocclusion": "Class II"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateOcclusalRecord(Request $request, $patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'overbite' => 'sometimes|integer',
+            'overjet' => 'sometimes|integer',
+            'crossbite' => 'sometimes|string',
+            'openbite' => 'sometimes|string',
+            'malocclusion' => 'sometimes|string',
+        ]);
+
+        $currentRecords = $patient->occlusal_records ?? [];
+        $updatedRecords = array_merge($currentRecords, $validated);
+
+        $patient->update(['occlusal_records' => $updatedRecords]);
+
+        return response()->json([
+            'message' => 'Occlusal record updated successfully.',
+            'data' => $patient->occlusal_records
+        ]);
+    }
+
+    /**
+     * Delete Occlusal Record
+     *
+     * Clear the patient's occlusal analysis record.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Occlusal record deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteOcclusalRecord($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $patient->update(['occlusal_records' => null]);
+
+        return response()->json([
+            'message' => 'Occlusal record deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Get Treatment Plans
+     *
+     * Retrieve all treatment plans for a specific patient.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Treatment plans retrieved successfully.",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "procedure": "Filling for #16",
+     *       "tooth": 16,
+     *       "status": "Proposed",
+     *       "cost": 250.00,
+     *       "date": "2024-08-01"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getTreatments($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Treatment plans retrieved successfully.',
+            'data' => $patient->treatmentPlans
+        ]);
+    }
+
+    /**
+     * Add Treatment Plan
+     *
+     * Create a new treatment plan for a patient.
+     *
+     * @authenticated
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam procedure string required The treatment procedure. Example: Filling for #16
      * @bodyParam tooth integer The tooth number if procedure is tooth-specific. Example: 16
      * @bodyParam status string required Treatment status. Example: Proposed
      * @bodyParam cost number required Cost of the treatment. Example: 250.00
      * @bodyParam date date required Treatment date. Example: 2024-08-01
-     * 
+     *
      * @response 200 {
      *   "id": "1",
      *   "name": "John Doe",
@@ -571,7 +1224,7 @@ class PatientController extends Controller
      *     }
      *   ]
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -592,26 +1245,172 @@ class PatientController extends Controller
             'date' => 'required|date',
         ]);
 
-        $treatment = $patient->treatmentPlans()->create([
-            ...$validated,
-            'id' => 'tp' . (TreatmentPlan::count() + 1),
-        ]);
+        $patient->treatmentPlans()->create($validated);
 
         return response()->json($patient->load('treatmentPlans'));
     }
 
     /**
-     * Add Soft Tissue Record
-     * 
-     * Record soft tissue examination findings.
-     * 
+     * Update Treatment Plan
+     *
+     * Update an existing treatment plan.
+     *
      * @authenticated
-     * 
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam treatmentId string required The treatment's ID. Example: 1
+     * @bodyParam procedure string The treatment procedure. Example: Root canal for #16
+     * @bodyParam tooth integer The tooth number. Example: 16
+     * @bodyParam status string Treatment status. Example: Completed
+     * @bodyParam cost number Cost of the treatment. Example: 500.00
+     * @bodyParam date date Treatment date. Example: 2024-08-15
+     *
+     * @response 200 {
+     *   "message": "Treatment plan updated successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "procedure": "Root canal for #16",
+     *     "tooth": 16,
+     *     "status": "Completed",
+     *     "cost": 500.00,
+     *     "date": "2024-08-15"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Treatment plan not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $treatmentId Treatment ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateTreatment(Request $request, $patientId, $treatmentId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $treatment = $patient->treatmentPlans()->find($treatmentId);
+
+        if (!$treatment) {
+            return response()->json(['error' => 'Treatment plan not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'procedure' => 'sometimes|string',
+            'tooth' => 'nullable|integer',
+            'status' => 'sometimes|in:Proposed,Completed',
+            'cost' => 'sometimes|numeric',
+            'date' => 'sometimes|date',
+        ]);
+
+        $treatment->update($validated);
+
+        return response()->json([
+            'message' => 'Treatment plan updated successfully.',
+            'data' => $treatment
+        ]);
+    }
+
+    /**
+     * Delete Treatment Plan
+     *
+     * Delete a treatment plan.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam treatmentId string required The treatment's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Treatment plan deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Treatment plan not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @param string $treatmentId Treatment ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteTreatment($patientId, $treatmentId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $treatment = $patient->treatmentPlans()->find($treatmentId);
+
+        if (!$treatment) {
+            return response()->json(['error' => 'Treatment plan not found'], 404);
+        }
+
+        $treatment->delete();
+
+        return response()->json([
+            'message' => 'Treatment plan deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Get Soft Tissue Records
+     *
+     * Retrieve all soft tissue examination findings for a specific patient.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Soft tissue records retrieved successfully.",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "location": "Right buccal mucosa",
+     *       "type": "Ulcer",
+     *       "description": "Small aphthous ulcer, 3mm diameter",
+     *       "date": "2024-07-15"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getSoftTissueRecords($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Soft tissue records retrieved successfully.',
+            'data' => $patient->softTissueRecords
+        ]);
+    }
+
+    /**
+     * Add Soft Tissue Record
+     *
+     * Record soft tissue examination findings.
+     *
+     * @authenticated
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam location string required Location of the finding. Example: Right buccal mucosa
      * @bodyParam type string required Type of finding. Example: Ulcer
      * @bodyParam description string required Detailed description. Example: Small aphthous ulcer, 3mm diameter
-     * 
+     *
      * @response 200 {
      *   "id": "1",
      *   "name": "John Doe",
@@ -624,7 +1423,7 @@ class PatientController extends Controller
      *     }
      *   ]
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -643,7 +1442,7 @@ class PatientController extends Controller
             'description' => 'required|string',
         ]);
 
-        $record = $patient->softTissueRecords()->create([
+        $patient->softTissueRecords()->create([
             ...$validated,
             'id' => 'st' . (SoftTissueRecord::count() + 1),
             'date' => now()->format('Y-m-d'),
@@ -653,18 +1452,163 @@ class PatientController extends Controller
     }
 
     /**
-     * Add Orthodontic Record
-     * 
-     * Record orthodontic treatment progress or consultation.
-     * 
+     * Update Soft Tissue Record
+     *
+     * Update an existing soft tissue examination record.
+     *
      * @authenticated
-     * 
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The soft tissue record's ID. Example: 1
+     * @bodyParam location string Location of the finding. Example: Left buccal mucosa
+     * @bodyParam type string Type of finding. Example: Lesion
+     * @bodyParam description string Detailed description. Example: Healing aphthous ulcer, 2mm diameter
+     *
+     * @response 200 {
+     *   "message": "Soft tissue record updated successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "location": "Left buccal mucosa",
+     *     "type": "Lesion",
+     *     "description": "Healing aphthous ulcer, 2mm diameter",
+     *     "date": "2024-07-15"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Soft tissue record not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateSoftTissueRecord(Request $request, $patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->softTissueRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Soft tissue record not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'location' => 'sometimes|string',
+            'type' => 'sometimes|string',
+            'description' => 'sometimes|string',
+        ]);
+
+        $record->update($validated);
+
+        return response()->json([
+            'message' => 'Soft tissue record updated successfully.',
+            'data' => $record
+        ]);
+    }
+
+    /**
+     * Delete Soft Tissue Record
+     *
+     * Delete a soft tissue examination record.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The soft tissue record's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Soft tissue record deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Soft tissue record not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteSoftTissueRecord($patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->softTissueRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Soft tissue record not found'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'message' => 'Soft tissue record deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Get Orthodontic Records
+     *
+     * Retrieve all orthodontic treatment records for a specific patient.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Orthodontic records retrieved successfully.",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "appliance": "Braces",
+     *       "wire_size": ".016 Nickel Titanium",
+     *       "bracket_changes": ["14", "24"],
+     *       "notes": "Good progress with alignment",
+     *       "date": "2024-07-15"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getOrthodonticRecords($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Orthodontic records retrieved successfully.',
+            'data' => $patient->orthodonticRecords
+        ]);
+    }
+
+    /**
+     * Add Orthodontic Record
+     *
+     * Record orthodontic treatment progress or consultation.
+     *
+     * @authenticated
+     *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam appliance string required Orthodontic appliance used. Example: Braces
      * @bodyParam wire_size string Wire size used. Example: .016 Nickel Titanium
      * @bodyParam bracket_changes array Brackets that were changed. Example: ["14", "24"]
      * @bodyParam notes string Treatment notes. Example: Good progress with alignment
-     * 
+     *
      * @response 200 {
      *   "id": "1",
      *   "name": "John Doe",
@@ -678,7 +1622,7 @@ class PatientController extends Controller
      *     }
      *   ]
      * }
-     * 
+     *
      * @param Request $request
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
@@ -698,12 +1642,117 @@ class PatientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $record = $patient->orthodonticRecords()->create([
+        $patient->orthodonticRecords()->create([
             ...$validated,
             'id' => 'or' . (OrthodonticRecord::count() + 1),
             'date' => now()->format('Y-m-d'),
         ]);
 
         return response()->json($patient->load('orthodonticRecords'));
+    }
+
+    /**
+     * Update Orthodontic Record
+     *
+     * Update an existing orthodontic treatment record.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The orthodontic record's ID. Example: 1
+     * @bodyParam appliance string Orthodontic appliance used. Example: Clear Aligners
+     * @bodyParam wire_size string Wire size used. Example: .018 Stainless Steel
+     * @bodyParam bracket_changes array Brackets that were changed. Example: ["15", "25"]
+     * @bodyParam notes string Treatment notes. Example: Excellent progress, teeth aligned
+     *
+     * @response 200 {
+     *   "message": "Orthodontic record updated successfully.",
+     *   "data": {
+     *     "id": 1,
+     *     "appliance": "Clear Aligners",
+     *     "wire_size": ".018 Stainless Steel",
+     *     "bracket_changes": ["15", "25"],
+     *     "notes": "Excellent progress, teeth aligned",
+     *     "date": "2024-07-15"
+     *   }
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Orthodontic record not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateOrthodonticRecord(Request $request, $patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->orthodonticRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Orthodontic record not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'appliance' => 'sometimes|string',
+            'wire_size' => 'nullable|string',
+            'bracket_changes' => 'nullable|array',
+            'notes' => 'nullable|string',
+        ]);
+
+        $record->update($validated);
+
+        return response()->json([
+            'message' => 'Orthodontic record updated successfully.',
+            'data' => $record
+        ]);
+    }
+
+    /**
+     * Delete Orthodontic Record
+     *
+     * Delete an orthodontic treatment record.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @urlParam recordId string required The orthodontic record's ID. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Orthodontic record deleted successfully."
+     * }
+     * @response 404 {
+     *   "error": "Patient not found" or "Orthodontic record not found"
+     * }
+     *
+     * @param string $patientId Patient ID
+     * @param string $recordId Record ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteOrthodonticRecord($patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->orthodonticRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Orthodontic record not found'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'message' => 'Orthodontic record deleted successfully.'
+        ]);
     }
 }

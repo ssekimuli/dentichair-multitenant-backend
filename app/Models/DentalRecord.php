@@ -6,5 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 
 class DentalRecord extends Model
 {
-    //
+    protected $fillable = [
+        'patient_id',
+        'tooth_id',
+        'condition',
+        'notes',
+    ];
+
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+        'patient_id',
+    ];
+
+    /**
+     * Get the patient that owns the dental record.
+     */
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class);
+    }
 }

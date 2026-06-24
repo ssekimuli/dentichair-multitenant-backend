@@ -259,8 +259,8 @@ class InvoiceController extends Controller
     /**
      * Update Invoice
      * 
-     * Update an existing invoice's details. Can update basic information but not treatments or charges.
-     * For adding treatments or charges, create a new invoice instead.
+     * Update an existing invoice's details including basic information, treatments, and charges.
+     * When treatments or charges are provided, existing ones are replaced with the new data.
      * 
      * @authenticated
      * 
@@ -274,6 +274,12 @@ class InvoiceController extends Controller
      * @bodyParam due_date date Invoice due date. Example: 2024-06-10
      * @bodyParam branch_id string Branch ID. Example: b1
      * @bodyParam payment_method string Payment method used. Example: Credit Card
+     * @bodyParam treatments array Optional array of treatment procedures to update
+     * @bodyParam treatments.*.procedure string required Treatment procedure description. Example: Root Canal for #16
+     * @bodyParam treatments.*.cost number required Treatment cost. Example: 1500.00
+     * @bodyParam other_charges array Optional array of additional charges to update
+     * @bodyParam other_charges.*.description string required Charge description. Example: Consultation Fee
+     * @bodyParam other_charges.*.amount number required Charge amount. Example: 50.00
      * 
      * @response 200 {
      *   "id": "inv1",
@@ -288,11 +294,16 @@ class InvoiceController extends Controller
      *   "payment_method": "Credit Card",
      *   "treatments": [
      *     {
-     *       "procedure": "Filling for #16",
-     *       "cost": 250.00
+     *       "procedure": "Root Canal for #16",
+     *       "cost": 1500.00
      *     }
      *   ],
-     *   "other_charges": [],
+     *   "other_charges": [
+     *     {
+     *       "description": "Consultation Fee",
+     *       "amount": 50.00
+     *     }
+     *   ],
      *   "transactions": [
      *     {
      *       "id": "txn1",
@@ -328,9 +339,33 @@ class InvoiceController extends Controller
             'due_date' => 'sometimes|date',
             'branch_id' => 'sometimes|exists:branches,id',
             'payment_method' => 'nullable|string',
+            'treatments' => 'sometimes|array',
+            'treatments.*.procedure' => 'required|string',
+            'treatments.*.cost' => 'required|numeric',
+            'other_charges' => 'sometimes|array',
+            'other_charges.*.description' => 'required|string',
+            'other_charges.*.amount' => 'required|numeric',
         ]);
 
-        $invoice->update($validated);
+        // Update basic invoice details (excluding treatments and other_charges)
+        $invoiceData = collect($validated)->except(['treatments', 'other_charges'])->toArray();
+        $invoice->update($invoiceData);
+
+        // Update treatments if provided
+        if (isset($validated['treatments'])) {
+            $invoice->treatments()->delete();
+            foreach ($validated['treatments'] as $treatment) {
+                $invoice->treatments()->create($treatment);
+            }
+        }
+
+        // Update other charges if provided
+        if (isset($validated['other_charges'])) {
+            $invoice->otherCharges()->delete();
+            foreach ($validated['other_charges'] as $charge) {
+                $invoice->otherCharges()->create($charge);
+            }
+        }
 
         return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions']));
     }
@@ -404,7 +439,6 @@ class InvoiceController extends Controller
 
         $transaction = $invoice->transactions()->create([
             ...$validated,
-            'id' => 'txn' . (PaymentTransaction::count() + 1),
             'date' => now()->format('Y-m-d'),
         ]);
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\RolePermissionController;
@@ -23,6 +24,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Patients
     Route::apiResource('patients', PatientController::class);
+    Route::get('/patients-list', [PatientController::class, 'patientList']);
+
 
     // Patient Images
     Route::get('/patients/{patientId}/images', [PatientController::class, 'getImages']);
@@ -73,6 +76,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Invoices
     Route::apiResource('invoices', InvoiceController::class);
     Route::post('/invoices/{id}/payments', [InvoiceController::class, 'addPayment']);
+
+    // Procedures
+    Route::apiResource('procedures', ProcedureController::class);
 
     // Employees
     Route::apiResource('employees', EmployeeController::class);

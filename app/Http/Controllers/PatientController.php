@@ -84,6 +84,32 @@ class PatientController extends Controller
         ]);
     }
 
+    public function patientList(Request $request)
+    {
+        $query = Patient::query();
+
+        // Optional filters
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        $patients = $query->orderBy('first_name')->get();
+
+        return response()->json([
+            'message' => 'Patients retrieved successfully.',
+            'data' => $patients
+        ]);
+    }
+
+
 
     /**
      * Get Patient by ID

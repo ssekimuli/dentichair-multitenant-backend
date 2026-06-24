@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentTransaction extends Model
 {
-    //
+    protected $fillable = ['amount', 'method', 'date'];
 }

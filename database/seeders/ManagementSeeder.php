@@ -16,13 +16,13 @@ class ManagementSeeder extends Seeder
 {
     public function run()
     {
-        $this->createPayrolls();
-        $this->createInventory();
-        $this->createLabOrders();
-        $this->createLeaveRequests();
-        $this->createStaffAdvances();
-        $this->createExpenses();
-        $this->createChartData();
+        // $this->createPayrolls();
+        // $this->createInventory();
+        // $this->createLabOrders();
+        // $this->createLeaveRequests();
+        // $this->createStaffAdvances();
+        // $this->createExpenses();
+        // $this->createChartData();
         $this->createRoles();
     }
 

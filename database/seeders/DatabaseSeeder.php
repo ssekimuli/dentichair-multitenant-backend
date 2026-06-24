@@ -29,11 +29,11 @@ class DatabaseSeeder extends Seeder
             BranchSeeder::class,
             TreatmentSeeder::class,
             EmployeeSeeder::class,
-            PatientSeeder::class,
-            PeriodontalSeeder::class,
-            OdontogramSeeder::class,
-            AppointmentSeeder::class,
-            InvoiceSeeder::class,
+            // PatientSeeder::class,
+            // PeriodontalSeeder::class,
+            // OdontogramSeeder::class,
+            // AppointmentSeeder::class,
+            // InvoiceSeeder::class,
             ManagementSeeder::class,
         ]);
     }

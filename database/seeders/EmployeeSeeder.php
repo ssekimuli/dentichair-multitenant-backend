@@ -52,7 +52,7 @@ class EmployeeSeeder extends Seeder
                 'status' => 'Active', 
                 'salary' => 50000, 
                 'hire_date' => '2022-07-01', 
-                'branch_id' => 2
+                'branch_id' => 1
             ],
             [
                 'id' => 4,
@@ -65,7 +65,7 @@ class EmployeeSeeder extends Seeder
                 'status' => 'On Leave', 
                 'salary' => 55000, 
                 'hire_date' => '2021-09-10', 
-                'branch_id' => 2
+                'branch_id' => 1
             ],
             [
                 'id' => 5,
@@ -78,7 +78,7 @@ class EmployeeSeeder extends Seeder
                 'status' => 'Active', 
                 'salary' => 120000, 
                 'hire_date' => '2019-08-01', 
-                'branch_id' => 2
+                'branch_id' => 1
             ],
         ];
 

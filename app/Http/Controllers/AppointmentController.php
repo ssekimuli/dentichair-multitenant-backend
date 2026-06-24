@@ -155,7 +155,6 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::create([
             ...$validated,
-            'id' => 'apt' . (Appointment::count() + 1),
             'status' => 'Scheduled',
             'token_number' => 'T' . Str::random(6),
         ]);

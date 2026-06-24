@@ -385,4 +385,71 @@ class EmployeeController extends Controller
 
         return response()->json(['roles' => $roles]);
     }
+
+    /**
+     * Get All Doctors
+     * 
+     * Retrieve a list of all doctors (dentists and medical practitioners) with optional filtering.
+     * Includes doctors with roles like Dentist, Doctor, Orthodontist, etc.
+     * 
+     * @authenticated
+     * 
+     * @queryParam branch_id string Filter doctors by branch ID. Example: b1
+     * 
+     * @response 200 {
+     *   "data": [
+     *     {
+     *       "id": "emp2",
+     *       "name": "Dr. Gregory House",
+     *       "avatar": "https://picsum.photos/seed/emp2/200/200",
+     *       "email": "gregory.house@example.com",
+     *       "role": "Dentist",
+     *       "status": "Active",
+     *       "salary": 120000.00,
+     *       "hire_date": "2021-03-10",
+     *       "branch_id": "b1",
+     *       "branch": {
+     *         "id": "b1",
+     *         "name": "Downtown Clinic",
+     *         "address": "123 Main St, Cityville"
+     *       }
+     *     },
+     *     {
+     *       "id": "emp3",
+     *       "name": "Dr. Allison Cameron",
+     *       "avatar": "https://picsum.photos/seed/emp3/200/200",
+     *       "email": "allison.cameron@example.com",
+     *       "role": "Orthodontist",
+     *       "status": "Active",
+     *       "salary": 110000.00,
+     *       "hire_date": "2022-05-20",
+     *       "branch_id": "b1",
+     *       "branch": {
+     *         "id": "b1",
+     *         "name": "Downtown Clinic",
+     *         "address": "123 Main St, Cityville"
+     *       }
+     *     }
+     *   ]
+     * }
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getDoctors(Request $request)
+    {
+        $query = Employee::with(['branch'])->whereIn('role', [
+            'Dentist', 'Doctor', 'Orthodontist', 'Dental Hygienist', 
+            'Prosthodontist', 'Endodontist', 'Periodontist'
+        ]);
+
+        if ($request->has('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $doctors = $query->where('status', 'Active')->get();
+
+        return response()->json(['data' => $doctors]);
+    }
 }
+

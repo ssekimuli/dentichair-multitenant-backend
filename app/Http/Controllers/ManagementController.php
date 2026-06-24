@@ -11,6 +11,10 @@ use App\Models\StaffAdvance;
 use App\Models\Expense;
 use App\Models\ChartData;
 use App\Models\Employee;
+use App\Models\Invoice;
+use App\Models\Appointment;
+use App\Models\Patient;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 /**
@@ -522,5 +526,237 @@ public function markAttendance(Request $request)
         $query = ChartData::with(['branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
         return response()->json($query->get());
+    }
+
+    /**
+     * Get Practice Trends
+     *
+     * Retrieve revenue and activity trends for the selected branch.
+     *
+     * @authenticated
+     *
+     * @queryParam branch_id integer Optional branch filter. Example: 1
+     */
+    public function getPracticeTrends(Request $request)
+    {
+        $branchId = $request->branch_id;
+        $today = Carbon::today();
+        $startDate = $today->copy()->subDays(29);
+
+        $revenueTrend = Invoice::query()
+            ->selectRaw('DATE(issue_date) as date, SUM(paid_amount) as total_revenue')
+            ->whereBetween('issue_date', [$startDate, $today])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $appointmentsTrend = Appointment::query()
+            ->selectRaw('DATE(date) as date, COUNT(*) as total_appointments')
+            ->whereBetween('date', [$startDate, $today])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $newPatientsTrend = Patient::query()
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as new_patients')
+            ->whereBetween('created_at', [$startDate, $today])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $trendData = [];
+        for ($date = $startDate->copy(); $date->lte($today); $date->addDay()) {
+            $formattedDate = $date->toDateString();
+            $trendData[] = [
+                'date' => $formattedDate,
+                'revenue' => $revenueTrend->get($formattedDate)->total_revenue ?? 0,
+                'appointments' => $appointmentsTrend->get($formattedDate)->total_appointments ?? 0,
+                'new_patients' => $newPatientsTrend->get($formattedDate)->new_patients ?? 0,
+            ];
+        }
+
+        return response()->json([
+            'branch_id' => $branchId,
+            'from' => $startDate->toDateString(),
+            'to' => $today->toDateString(),
+            'trend' => $trendData,
+        ]);
+    }
+
+    /**
+     * Get Financial Summary
+     *
+     * Retrieve total income, total expenses, net profit, and income vs expenses
+     * over the last 6 months for the selected branch.
+     *
+     * @authenticated
+     *
+     * @queryParam branch_id integer Optional branch filter. Example: 1
+     */
+    public function getFinancialSummary(Request $request)
+    {
+        $branchId = $request->branch_id;
+        $today = Carbon::today();
+        $startDate = $today->copy()->subMonthsNoOverflow(5)->startOfMonth();
+        $endDate = $today->copy()->endOfMonth();
+
+        $incomeQuery = Invoice::query()
+            ->whereBetween('issue_date', [$startDate, $endDate])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+
+        $expenseQuery = Expense::query()
+            ->whereBetween('date', [$startDate, $endDate])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+
+        $payrollQuery = Payroll::query()
+            ->whereBetween('pay_date', [$startDate, $endDate])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+
+        $totalIncome = $incomeQuery->sum('paid_amount');
+        $totalOtherExpenses = $expenseQuery->sum('amount');
+        $totalPayroll = $payrollQuery->sum('net_pay');
+        $totalExpenses = $totalOtherExpenses + $totalPayroll;
+        $netProfit = $totalIncome - $totalExpenses;
+
+        $incomeByMonth = $incomeQuery
+            ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as month, SUM(paid_amount) as income")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $otherExpensesByMonth = $expenseQuery
+            ->selectRaw("DATE_FORMAT(date, '%Y-%m') as month, SUM(amount) as expense")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $payrollByMonth = $payrollQuery
+            ->selectRaw("DATE_FORMAT(pay_date, '%Y-%m') as month, SUM(net_pay) as payroll")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $financialSummary = [];
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addMonthNoOverflow()) {
+            $monthKey = $date->format('Y-m');
+            $income = $incomeByMonth->get($monthKey)->income ?? 0;
+            $expenses = ($otherExpensesByMonth->get($monthKey)->expense ?? 0)
+                + ($payrollByMonth->get($monthKey)->payroll ?? 0);
+
+            $financialSummary[] = [
+                'month' => $monthKey,
+                'income' => number_format($income, 2, '.', ''),
+                'expenses' => number_format($expenses, 2, '.', ''),
+                'net_profit' => number_format($income - $expenses, 2, '.', ''),
+            ];
+        }
+
+        return response()->json([
+            'branch_id' => $branchId,
+            'total_income' => number_format($totalIncome, 2, '.', ''),
+            'total_expenses' => number_format($totalExpenses, 2, '.', ''),
+            'net_profit' => number_format($netProfit, 2, '.', ''),
+            'from' => $startDate->toDateString(),
+            'to' => $endDate->toDateString(),
+            'financial_summary' => $financialSummary,
+        ]);
+    }
+
+    /**
+     * Get Practice Summary
+     *
+     * Retrieve dashboard metrics for a selected branch, including total revenue,
+     * active patients, appointments in the last 30 days, and new patients.
+     * Also returns upcoming appointments for today and recent patients.
+     *
+     * @authenticated
+     *
+     * @queryParam branch_id integer Optional branch filter. Example: 1
+     *
+     * @response 200 {
+     *   "total_revenue": 1200.00,
+     *   "active_patients": 45,
+     *   "appointments_last_30_days": 28,
+     *   "new_patients_last_30_days": 6,
+     *   "upcoming_appointments": [
+     *     {
+     *       "id": "a12",
+     *       "patient_name": "John Doe",
+     *       "doctor_name": "Dr. Lisa Cuddy",
+     *       "time": "09:30 AM",
+     *       "status": "Scheduled"
+     *     }
+     *   ],
+     *   "recent_patients": [
+     *     {
+     *       "id": 7,
+     *       "first_name": "Jane",
+     *       "last_name": "Smith",
+     *       "last_visit": "2026-06-20"
+     *     }
+     *   ]
+     * }
+     */
+    public function getPracticeSummary(Request $request)
+    {
+        $branchId = $request->branch_id;
+        $today = Carbon::today();
+        $last30Days = $today->copy()->subDays(30);
+
+        $invoiceQuery = Invoice::query();
+        $patientQuery = Patient::query();
+        $appointmentQuery = Appointment::query();
+
+        if ($branchId) {
+            $invoiceQuery->where('branch_id', $branchId);
+            $patientQuery->where('branch_id', $branchId);
+            $appointmentQuery->where('branch_id', $branchId);
+        }
+
+        $totalRevenue = $invoiceQuery->sum('paid_amount');
+        $activePatients = $patientQuery->where('status', 'Active')->count();
+        $appointmentsLast30Days = $appointmentQuery->whereBetween('date', [$last30Days, $today])->count();
+        $newPatientsLast30Days = $patientQuery->where('created_at', '>=', $last30Days)->count();
+
+        $upcomingAppointments = Appointment::with(['patient', 'doctor'])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereDate('date', $today)
+            ->where('status', 'Scheduled')
+            ->orderBy('time')
+            ->get()
+            ->map(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'patient_name' => $appointment->patient_name,
+                    'doctor_name' => $appointment->doctor_name,
+                    'date' => $appointment->date->toDateString(),
+                    'time' => $appointment->time,
+                    'status' => $appointment->status,
+                ];
+            });
+
+        $recentPatients = Patient::when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderByDesc('last_visit')
+            ->take(5)
+            ->get(['id', 'first_name', 'last_name', 'last_visit']);
+
+        return response()->json([
+            'total_revenue' => number_format($totalRevenue, 2, '.', ''),
+            'active_patients' => $activePatients,
+            'appointments_last_30_days' => $appointmentsLast30Days,
+            'new_patients_last_30_days' => $newPatientsLast30Days,
+            'practice_overview' => 'A summary of your practice’s performance.',
+            'upcoming_appointments' => $upcomingAppointments,
+            'recent_patients' => $recentPatients,
+        ]);
     }
 }

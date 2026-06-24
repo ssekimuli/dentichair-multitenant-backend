@@ -178,6 +178,117 @@ class PatientController extends Controller
     }
 
     /**
+     * Get Patient History
+     *
+     * Retrieve the complete history for a patient, including medical history notes,
+     * treatment plans, appointment history, invoices, lab orders, and dental records.
+     *
+     * @authenticated
+     *
+     * @urlParam id string required The patient's ID. Example: 1
+     *
+     * @response 200 {
+     *   "id": "1",
+     *   "first_name": "John",
+     *   "last_name": "Doe",
+     *   "history": "Patient has a history of grinding teeth.",
+     *   "appointments": [
+     *     {
+     *       "id": "a1",
+     *       "doctor_name": "Dr. Lisa Cuddy",
+     *       "date": "2024-07-20",
+     *       "time": "10:00 AM",
+     *       "status": "Scheduled"
+     *     }
+     *   ],
+     *   "treatment_plans": [
+     *     {
+     *       "procedure": "Filling for #16",
+     *       "status": "Proposed",
+     *       "cost": 250.00
+     *     }
+     *   ],
+     *   "invoices": [
+     *     {
+     *       "id": "inv1",
+     *       "amount": 250.00,
+     *       "status": "Pending"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param string $id Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getHistory($id)
+    {
+        $patient = Patient::with([
+            'appointments',
+            'treatmentPlans',
+            'invoices',
+            'labOrders',
+            'dentalRecords',
+            'images',
+            'periodontalRecords',
+            'softTissueRecords',
+            'orthodonticRecords',
+            'branch',
+        ])->find($id);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $history = [
+            'id' => $patient->id,
+            'first_name' => $patient->first_name,
+            'last_name' => $patient->last_name,
+            'email' => $patient->email,
+            'phone' => $patient->phone,
+            'address' => $patient->address,
+            'gender' => $patient->gender,
+            'date_of_birth' => $patient->date_of_birth,
+            'last_visit' => $patient->last_visit,
+            'status' => $patient->status,
+            'branch' => $patient->branch,
+            'history' => $patient->history,
+            'appointments' => $patient->appointments->map(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'doctor_name' => $appointment->doctor_name,
+                    'treatment' => $appointment->treatment,
+                    'status' => $appointment->status,
+                    'date' => $appointment->date,
+                    'time' => $appointment->time,
+                    'branch_id' => $appointment->branch_id,
+                ];
+            }),
+            'treatment_plans' => $patient->treatmentPlans,
+            'invoices' => $patient->invoices->map(function ($invoice) {
+                return [
+                    'id' => $invoice->id,
+                    'amount' => $invoice->amount,
+                    'paid_amount' => $invoice->paid_amount,
+                    'status' => $invoice->status,
+                    'issue_date' => $invoice->issue_date,
+                    'due_date' => $invoice->due_date,
+                ];
+            }),
+            'lab_orders' => $patient->labOrders,
+            'dental_records' => $patient->dentalRecords,
+            'images' => $patient->images,
+            'periodontal_records' => $patient->periodontalRecords,
+            'soft_tissue_records' => $patient->softTissueRecords,
+            'orthodontic_records' => $patient->orthodonticRecords,
+        ];
+
+        return response()->json($history);
+    }
+
+    /**
      * Store a newly created patient.
      *
      * This endpoint allows you to create a new patient record in the system.

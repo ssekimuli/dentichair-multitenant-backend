@@ -14,7 +14,7 @@ class Appointment extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'patient_name', 'patient_id', 'doctor_name', 'doctor_id',
+        'patient_name', 'patient_id', 'doctor_name', 'doctor_id',
         'treatment', 'status', 'date', 'time', 'branch_id', 'token_number'
     ];
 

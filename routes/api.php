@@ -33,6 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/patients/{patientId}/images/{imageId}', [PatientController::class, 'updateImage']);
     Route::delete('/patients/{patientId}/images/{imageId}', [PatientController::class, 'deleteImage']);
 
+    // Patient history
+    Route::get('/patients/{id}/history', [PatientController::class, 'getHistory']);
+
     // Odontogram/Dental Records
     Route::get('/patients/{patientId}/odontogram-records', [PatientController::class, 'getDentalRecords']);
     Route::post('/patients/{patientId}/odontogram-records', [PatientController::class, 'saveDentalRecord']);
@@ -82,6 +85,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Employees
     Route::apiResource('employees', EmployeeController::class);
+    Route::get('/doctors', [EmployeeController::class, 'getDoctors']);
+
+    // Dashboard summary
+    Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
+    Route::get('/practice-trends', [ManagementController::class, 'getPracticeTrends']);
+    Route::get('/financial-summary', [ManagementController::class, 'getFinancialSummary']);
 
     // Management
     Route::prefix('management')->group(function () {
@@ -116,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Chart Data
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);
+        Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
     });
 
     // Get all roles with permissions (Super Admin only)

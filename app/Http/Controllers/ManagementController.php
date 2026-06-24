@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\LaboratoryOrder;
 use App\Models\LeaveRequest;
 use App\Models\StaffAdvance;
+use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\ChartData;
 use App\Models\Employee;
@@ -512,6 +513,84 @@ public function markAttendance(Request $request)
         $query = Expense::with(['branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
         return response()->json($query->get());
+    }
+
+    /**
+     * Get Expense Records
+     *
+     * Retrieve all payroll and operational expenses for the selected branch.
+     *
+     * @authenticated
+     *
+     * @queryParam branch_id integer Optional branch filter. Example: 1
+     */
+    public function getExpenseRecords(Request $request)
+    {
+        $branch = null;
+        if ($request->filled('branch_id')) {
+            $branch = Branch::find($request->branch_id);
+        }
+
+        $payrollRecords = Payroll::with(['employee', 'branch'])
+            ->when($request->filled('branch_id'), fn($q) => $q->where('branch_id', $request->branch_id))
+            ->orderByDesc('pay_date')
+            ->get()
+            ->map(function ($record) {
+                return [
+                    'type' => 'payroll',
+                    'id' => $record->id,
+                    'employee_id' => $record->employee_id,
+                    'employee_name' => $record->employee_name,
+                    'pay_period' => $record->pay_period,
+                    'net_pay' => $record->net_pay,
+                    'deductions' => $record->deductions,
+                    'pay_date' => $record->pay_date->toDateString(),
+                    'branch_id' => $record->branch_id,
+                    'branch' => $record->branch ? [
+                        'id' => $record->branch->id,
+                        'name' => $record->branch->name,
+                    ] : null,
+                ];
+            });
+
+        $operationalRecords = Expense::with(['branch'])
+            ->when($request->filled('branch_id'), fn($q) => $q->where('branch_id', $request->branch_id))
+            ->orderByDesc('date')
+            ->get()
+            ->map(function ($record) {
+                return [
+                    'type' => 'operation',
+                    'id' => $record->id,
+                    'category' => $record->category,
+                    'description' => $record->description,
+                    'amount' => $record->amount,
+                    'date' => $record->date->toDateString(),
+                    'branch_id' => $record->branch_id,
+                    'branch' => $record->branch ? [
+                        'id' => $record->branch->id,
+                        'name' => $record->branch->name,
+                    ] : null,
+                ];
+            });
+
+        $records = $payrollRecords->concat($operationalRecords)->sortByDesc(function ($record) {
+            return $record['type'] === 'payroll' ? $record['pay_date'] : $record['date'];
+        })->values();
+
+        $totalPayroll = $payrollRecords->sum('net_pay');
+        $totalOperational = $operationalRecords->sum('amount');
+        $totalExpenses = $totalPayroll + $totalOperational;
+
+        return response()->json([
+            'branch' => $branch ? [
+                'id' => $branch->id,
+                'name' => $branch->name,
+            ] : null,
+            'total' => number_format($totalExpenses, 2, '.', ''),
+            'total_payroll' => number_format($totalPayroll, 2, '.', ''),
+            'total_operational_expenses' => number_format($totalOperational, 2, '.', ''),
+            'records' => $records,
+        ]);
     }
 
     /**

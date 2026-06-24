@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\InvoiceTreatment;
 use App\Models\InvoiceOtherCharge;
@@ -87,6 +88,71 @@ class InvoiceController extends Controller
         $invoices = $query->get();
 
         return response()->json($invoices);
+    }
+
+    /**
+     * Get Income Records
+     *
+     * Retrieve all paid invoices for the selected branch.
+     *
+     * @authenticated
+     *
+     * @queryParam branch_id string Optional branch ID filter. Example: b1
+     *
+     * @response 200 {
+     *   "data": [
+     *     {
+     *       "id": "inv1",
+     *       "patient_name": "John Doe",
+     *       "patient_id": "1",
+     *       "amount": 250.00,
+     *       "paid_amount": 250.00,
+     *       "status": "Paid",
+     *       "issue_date": "2024-05-10",
+     *       "due_date": "2024-06-10",
+     *       "branch_id": "b1",
+     *       "payment_method": "Insurance",
+     *       "treatments": [
+     *         {
+     *           "procedure": "Filling for #16",
+     *           "cost": 250.00
+     *         }
+     *       ],
+     *       "other_charges": [],
+     *       "transactions": [
+     *         {
+     *           "id": "txn1",
+     *           "date": "2024-05-12",
+     *           "amount": 250.00,
+     *           "method": "Insurance"
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     */
+    public function getIncomeRecords(Request $request)
+    {
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])
+            ->where('status', 'Paid');
+
+        $branch = null;
+        if ($request->has('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+            $branch = Branch::find($request->branch_id);
+        }
+
+        $invoices = $query->get();
+        $totalPaid = $invoices->sum('paid_amount');
+
+        return response()->json([
+            'branch' => $branch ? [
+                'id' => $branch->id,
+                'name' => $branch->name,
+            ] : null,
+            'total' => number_format($totalPaid, 2, '.', ''),
+            'records' => $invoices,
+        ]);
     }
 
     /**

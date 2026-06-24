@@ -78,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Invoices
     Route::apiResource('invoices', InvoiceController::class);
+    Route::get('/income-records', [InvoiceController::class, 'getIncomeRecords']);
     Route::post('/invoices/{id}/payments', [InvoiceController::class, 'addPayment']);
 
     // Procedures
@@ -91,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
     Route::get('/practice-trends', [ManagementController::class, 'getPracticeTrends']);
     Route::get('/financial-summary', [ManagementController::class, 'getFinancialSummary']);
+    Route::get('/expense-records', [ManagementController::class, 'getExpenseRecords']);
 
     // Management
     Route::prefix('management')->group(function () {

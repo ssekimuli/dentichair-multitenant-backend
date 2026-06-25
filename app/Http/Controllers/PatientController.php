@@ -1383,6 +1383,25 @@ class PatientController extends Controller
         ]);
 
         $patient->treatmentPlans()->create($validated);
+        if (isset($request->condition)) {
+            // Find existing record for this tooth
+        $existingRecord = $patient->dentalRecords()
+            ->where('tooth_id', $validated['tooth_id'])
+            ->first();
+
+        if ($existingRecord) {
+            // Update existing record
+            $existingRecord->update([
+                'condition' => $request->condition,
+                'tooth_id' => $validated['tooth_id'],
+                'notes' => $validated['notes'] ?? $existingRecord->notes
+            ]);
+            $record = $existingRecord;
+        } else {
+            // Create new record
+            $record = $patient->dentalRecords()->create($validated);
+        }
+            }
 
         return response()->json($patient->load('treatmentPlans'));
     }

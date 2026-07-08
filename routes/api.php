@@ -21,6 +21,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/profile', [AuthController::class, 'getProfileData']);
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
+    Route::post('/branches', [ManagementController::class, 'createBranch']);
+    Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
+    Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
 
     // Patients
     Route::apiResource('patients', PatientController::class);
@@ -106,10 +109,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Inventory
         Route::get('/inventory', [ManagementController::class, 'getInventory']);
+        Route::post('/inventory', [ManagementController::class, 'createInventoryItem']);
         Route::patch('/inventory/{id}', [ManagementController::class, 'updateInventory']);
 
         // Laboratory
         Route::get('/lab-orders', [ManagementController::class, 'getLabOrders']);
+        Route::post('/lab-orders', [ManagementController::class, 'createLabOrder']);
         Route::patch('/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus']);
 
         // Leave Requests
@@ -124,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Expenses
         Route::get('/expenses', [ManagementController::class, 'getExpenses']);
+        Route::post('/expenses', [ManagementController::class, 'createExpense']);
 
         // Chart Data
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);
@@ -132,6 +138,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Get all roles with permissions (Super Admin only)
     Route::get('/settings/roles', [RolePermissionController::class, 'getAllRolesWithPermissions']);
+    Route::post('/settings/roles', [RolePermissionController::class, 'createRole']);
+    Route::patch('/settings/roles/{role_id}', [RolePermissionController::class, 'updateRoleName']);
+    Route::delete('/settings/roles/{role_id}', [RolePermissionController::class, 'deleteRole']);
     
     // Update role permissions (Super Admin only)
     Route::put('/settings/roles/{role_id}', [RolePermissionController::class, 'updateRolePermissions']);

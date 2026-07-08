@@ -838,4 +838,124 @@ public function markAttendance(Request $request)
             'recent_patients' => $recentPatients,
         ]);
     }
+
+    public function createLabOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'patientId' => 'required|exists:patients,id',
+            'lab' => 'required|string',
+            'item' => 'required|string',
+            'tooth' => 'nullable|integer',
+            'status' => 'required|in:Sent,Received,Completed,Cancelled',
+            'sentDate' => 'required|date',
+            'dueDate' => 'required|date',
+            'branchId' => 'required|exists:branches,id',
+        ]);
+
+        $patient = Patient::find($validated['patientId']);
+
+        $labOrder = LaboratoryOrder::create([
+            'patient_id' => $validated['patientId'],
+            'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+            'lab' => $validated['lab'],
+            'item' => $validated['item'],
+            'tooth' => $validated['tooth'] ?? null,
+            'status' => $validated['status'],
+            'sent_date' => $validated['sentDate'],
+            'due_date' => $validated['dueDate'],
+            'branch_id' => $validated['branchId'],
+        ]);
+
+        return response()->json($labOrder->load(['patient', 'branch']), 201);
+    }
+
+    public function createInventoryItem(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'supplier' => 'required|string',
+            'stock' => 'required|integer',
+            'reorderLevel' => 'required|integer',
+            'price' => 'required|numeric',
+            'branchId' => 'required|exists:branches,id',
+        ]);
+
+        $item = InventoryItem::create([
+            'name' => $validated['name'],
+            'supplier' => $validated['supplier'],
+            'stock' => $validated['stock'],
+            'reorder_level' => $validated['reorderLevel'],
+            'price' => $validated['price'],
+            'branch_id' => $validated['branchId'],
+            'status' => $validated['stock'] <= 0
+                ? 'Out of Stock'
+                : ($validated['stock'] <= $validated['reorderLevel'] ? 'Low Stock' : 'In Stock'),
+        ]);
+
+        return response()->json($item->load('branch'), 201);
+    }
+
+    public function createBranch(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+        ]);
+
+        $branch = Branch::create($validated);
+
+        return response()->json($branch, 201);
+    }
+
+    public function createExpense(Request $request)
+    {
+        $validated = $request->validate([
+            'branchId' => 'required|exists:branches,id',
+            'date' => 'required|date',
+            'category' => 'required|string',
+            'description' => 'required|string',
+            'amount' => 'required|numeric',
+        ]);
+
+        $expense = Expense::create([
+            'branch_id' => $validated['branchId'],
+            'date' => $validated['date'],
+            'category' => $validated['category'],
+            'description' => $validated['description'],
+            'amount' => $validated['amount'],
+        ]);
+
+        return response()->json($expense->load('branch'), 201);
+    }
+
+    public function updateBranch(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+        ]);
+
+        $branch = Branch::find($id);
+
+        if (!$branch) {
+            return response()->json(['message' => 'Branch not found'], 404);
+        }
+
+        $branch->update($validated);
+
+        return response()->json($branch);
+    }
+
+    public function deleteBranch($id)
+    {
+        $branch = Branch::find($id);
+
+        if (!$branch) {
+            return response()->json(['message' => 'Branch not found'], 404);
+        }
+
+        $branch->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

@@ -258,4 +258,65 @@ class RolePermissionController extends Controller
             'data' => $role
         ]);
     }
+
+    public function createRole(Request $request): JsonResponse
+    {
+        // Check if user has Super Admin role
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|unique:role_permissions,name|max:255',
+        ]);
+
+        $role = RolePermission::create([
+            'name' => $validated['name'],
+            'permissions' => [],
+        ]);
+
+        return response()->json($role, 201);
+    }
+
+    public function updateRoleName(Request $request, int $role_id): JsonResponse
+    {
+        // Check if user has Super Admin role
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|unique:role_permissions,name,' . $role_id . '|max:255',
+        ]);
+
+        $role = RolePermission::find($role_id);
+
+        if (!$role) {
+            return response()->json(['message' => 'Role not found'], 404);
+        }
+
+        $role->update([
+            'name' => $validated['name'],
+        ]);
+
+        return response()->json($role);
+    }
+
+    public function deleteRole(int $role_id): JsonResponse
+    {
+        // Check if user has Super Admin role
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
+        }
+
+        $role = RolePermission::find($role_id);
+
+        if (!$role) {
+            return response()->json(['message' => 'Role not found'], 404);
+        }
+
+        $role->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

@@ -235,7 +235,7 @@ class AppointmentController extends Controller
             'doctor_name' => 'sometimes|string',
             'doctor_id' => 'sometimes|exists:employees,id',
             'treatment' => 'sometimes|string',
-            'status' => 'sometimes|in:Scheduled,Completed,Cancelled,Waiting',
+            'status' => 'sometimes|in:Scheduled,Completed,Cancelled,Waiting,In Session,On Hold',
             'date' => 'sometimes|date',
             'time' => 'sometimes|string',
             'branch_id' => 'sometimes|exists:branches,id',
@@ -328,7 +328,7 @@ class AppointmentController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => 'required|in:Scheduled,Completed,Cancelled,Waiting',
+            'status' => 'required|in:Scheduled,Completed,Cancelled,Waiting,In Session,On Hold',
         ]);
 
         $appointment->update($validated);

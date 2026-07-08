@@ -139,210 +139,7 @@ class AuthController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function forgotPassword(Request $request)
-    {
-        $request->validate([
-            'email' => 'sometimes|required_without:phone|email',
-            'phone' => 'sometimes|required_without:email|string',
-        ]);
 
-        // Check if at least one field is provided
-        if (empty($request->email) && empty($request->phone)) {
-            return response()->json(['error' => 'Either email or phone number is required'], 400);
-        }
-
-        // Find user by email or phone
-        $employee = null;
-        $identifier = null;
-        $method = null;
-
-        if (!empty($request->email)) {
-            $employee = Employee::where('email', $request->email)->first();
-            $identifier = $request->email;
-            $method = 'email';
-        } elseif (!empty($request->phone)) {
-            $employee = Employee::where('phone', $request->phone)->first();
-            $identifier = $request->phone;
-            $method = 'sms';
-        }
-
-        if (!$employee) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
-
-        // Generate 6-digit OTP
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Store OTP in cache with 10 minutes expiration
-        $cacheKey = 'password_reset_' . $identifier;
-        Cache::put($cacheKey, [
-            'otp' => $otp,
-            'user_id' => $employee->id,
-            'method' => $method
-        ], now()->addMinutes(10));
-
-        // Send OTP based on method
-        $response = [];
-
-        if ($method === 'email') {
-            $this->sendOtpEmail($employee->email, $otp, $employee->name);
-
-            // Mask email for response
-            $emailParts = explode('@', $employee->email);
-            $maskedEmail = substr($emailParts[0], 0, 1) . '***@' . $emailParts[1];
-
-            $response = [
-                'message' => 'OTP sent successfully to your email',
-                'method' => 'email',
-                'masked_email' => $maskedEmail,
-            ];
-        } elseif ($method === 'sms') {
-            $this->sendOtpSms($employee->phone, $otp);
-
-            // Mask phone for response
-            $phone = $employee->phone;
-            $maskedPhone = substr($phone, 0, 2) . '******' . substr($phone, -2);
-
-            $response = [
-                'message' => 'OTP sent successfully to your phone',
-                'method' => 'sms',
-                'masked_phone' => $maskedPhone,
-            ];
-        }
-
-        // For development/testing, include OTP in response
-        if (app()->environment('local')) {
-            $response['otp'] = $otp;
-        }
-
-        return response()->json($response);
-    }
-
-    /**
-     * Verify OTP and Reset Password
-     * 
-     * Verify the OTP and reset user's password.
-     * User can provide either email or phone number used to request OTP.
-     * 
-     * @bodyParam email string optional The user's email address. Example: lisa.cuddy@example.com
-     * @bodyParam phone string optional The user's phone number. Example: +1234567890
-     * @bodyParam otp string required The OTP received by user. Example: 123456
-     * @bodyParam password string required The new password. Example: newpassword123
-     * @bodyParam password_confirmation string required The password confirmation. Example: newpassword123
-     * 
-     * @response 200 {
-     *   "message": "Password reset successfully"
-     * }
-     * @response 400 {
-     *   "error": "Invalid or expired OTP"
-     * }
-     * @response 400 {
-     *   "error": "Either email or phone number is required"
-     * }
-     * @response 404 {
-     *   "error": "User not found"
-     * }
-     * @response 422 {
-     *   "message": "The given data was invalid.",
-     *   "errors": {
-     *     "email": ["The email must be a valid email address."],
-     *     "phone": ["The phone must be a valid phone number."],
-     *     "otp": ["The otp field is required."],
-     *     "password": ["The password field is required."]
-     *   }
-     * }
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function resetPassword(Request $request)
-    {
-        $request->validate([
-            'email' => 'sometimes|required_without:phone|email',
-            'phone' => 'sometimes|required_without:email|string',
-            'otp' => 'required|string|size:6',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        // Check if at least one field is provided
-        if (empty($request->email) && empty($request->phone)) {
-            return response()->json(['error' => 'Either email or phone number is required'], 400);
-        }
-
-        // Find user by email or phone
-        $employee = null;
-        $identifier = null;
-
-        if (!empty($request->email)) {
-            $employee = Employee::where('email', $request->email)->first();
-            $identifier = $request->email;
-        } elseif (!empty($request->phone)) {
-            $employee = Employee::where('phone', $request->phone)->first();
-            $identifier = $request->phone;
-        }
-
-        if (!$employee) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
-
-        // Verify OTP
-        $cacheKey = 'password_reset_' . $identifier;
-        $storedData = Cache::get($cacheKey);
-
-        if (!$storedData || $storedData['otp'] !== $request->otp || $storedData['user_id'] !== $employee->id) {
-            return response()->json(['error' => 'Invalid or expired OTP'], 400);
-        }
-
-        // Update password
-        // For prototype, we'll store as plain text, but in production use Hash::make()
-        $employee->password =  Hash::make($request->password);
-        $employee->save();
-
-        // Clear OTP from cache
-        Cache::forget($cacheKey);
-
-        return response()->json(['message' => 'Password reset successfully']);
-    }
-
-    /**
-     * Resend OTP
-     * 
-     * Resend OTP for password reset using either email or phone.
-     * 
-     * @bodyParam email string optional The user's email address. Example: lisa.cuddy@example.com
-     * @bodyParam phone string optional The user's phone number. Example: +1234567890
-     * 
-     * @response 200 {
-     *   "message": "OTP resent successfully",
-     *   "method": "email",
-     *   "masked_email": "l***@example.com"
-     * }
-     * @response 200 {
-     *   "message": "OTP resent successfully",
-     *   "method": "sms",
-     *   "masked_phone": "+1*******90"
-     * }
-     * @response 400 {
-     *   "error": "Either email or phone number is required"
-     * }
-     * @response 404 {
-     *   "error": "User not found"
-     * }
-     * @response 422 {
-     *   "message": "The given data was invalid.",
-     *   "errors": {
-     *     "email": ["The email must be a valid email address."],
-     *     "phone": ["The phone must be a valid phone number."]
-     *   }
-     * }
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function resendOtp(Request $request)
-    {
-        return $this->forgotPassword($request);
-    }
 
     /**
      * User Logout
@@ -645,7 +442,7 @@ class AuthController extends Controller
         ]);
 
         $identifier = $request->identifier;
-        $employee = Employee::where('email', $identifier)->orWhere('phone', $identifier)->first();
+        $employee = Employee::where('email', $identifier)->first();
 
         if (!$employee) {
             return response()->json([
@@ -657,8 +454,6 @@ class AuthController extends Controller
         $otp = strval(rand(100000, 999999));
         Cache::put('otp_' . $identifier, $otp, now()->addMinutes(15));
 
-        // For convenience/testing, we log the OTP and return it in the response
-        \Illuminate\Support\Facades\Log::info("OTP for {$identifier}: {$otp}");
 
         return response()->json([
             'message' => 'OTP sent successfully.',
@@ -708,7 +503,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $employee = Employee::where('email', $identifier)->orWhere('phone', $identifier)->first();
+        $employee = Employee::where('email', $identifier)->first();
 
         if (!$employee) {
             return response()->json([

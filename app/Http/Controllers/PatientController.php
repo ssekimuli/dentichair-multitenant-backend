@@ -1380,28 +1380,36 @@ class PatientController extends Controller
             'status' => 'required|in:Proposed,Completed',
             'cost' => 'required|numeric',
             'date' => 'required|date',
+            'condition' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $patient->treatmentPlans()->create($validated);
+
         if (isset($request->condition)) {
             // Find existing record for this tooth
-        $existingRecord = $patient->dentalRecords()
-            ->where('tooth_id', $validated['tooth_id'])
-            ->first();
+            $existingRecord = $patient->dentalRecords()
+                ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'
+                ->first();
 
-        if ($existingRecord) {
-            // Update existing record
-            $existingRecord->update([
-                'condition' => $request->condition,
-                'tooth_id' => $validated['tooth_id'],
-                'notes' => $validated['notes'] ?? $existingRecord->notes
-            ]);
-            $record = $existingRecord;
-        } else {
-            // Create new record
-            $record = $patient->dentalRecords()->create($validated);
-        }
+            if ($existingRecord) {
+                // Update existing record
+                $existingRecord->update([
+                    'condition' => $request->condition,
+                    'tooth_id' => $validated['tooth'], // Changed from 'tooth_id' to 'tooth'
+                    'notes' => $validated['notes'] ?? $existingRecord->notes
+                ]);
+                $record = $existingRecord;
+            } else {
+                // Create new record - you need to map 'tooth' to 'tooth_id'
+                $recordData = [
+                    'condition' => $request->condition,
+                    'tooth_id' => $validated['tooth'],
+                    'notes' => $validated['notes'] ?? null
+                ];
+                $record = $patient->dentalRecords()->create($recordData);
             }
+        }
 
         return response()->json($patient->load('treatmentPlans'));
     }

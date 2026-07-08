@@ -77,9 +77,17 @@ class AppointmentController extends Controller
             $query->where('status', $request->status);
         }
 
-        $appointments = $query->get();
+        $appointments = $query->paginate($request->input('per_page', 10));
 
-        return response()->json($appointments);
+        return response()->json([
+            'data' => $appointments->items(),
+            'meta' => [
+                'current_page' => $appointments->currentPage(),
+                'last_page' => $appointments->lastPage(),
+                'per_page' => $appointments->perPage(),
+                'total' => $appointments->total(),
+            ]
+        ]);
     }
 
     /**

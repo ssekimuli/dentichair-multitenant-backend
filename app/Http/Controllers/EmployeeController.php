@@ -118,6 +118,12 @@ class EmployeeController extends Controller
      */
     public function store(Request $request)
     {
+        if (!$request->has('role') && $request->has('role_id')) {
+            $request->merge(['role' => $request->role_id]);
+        } elseif ($request->has('role') && !$request->has('role_id')) {
+            $request->merge(['role_id' => $request->role]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string',
             'avatar' => 'nullable|string',
@@ -141,7 +147,8 @@ class EmployeeController extends Controller
             'hire_date' => $validated['hire_date'],
             'branch_id' => $validated['branch_id'],
             'status' => 'Active',
-            'password' => Hash::make('DE' . rand(1000, 9999)),
+            'password' => Hash::make('password'),
+            // 'password' => Hash::make('DE' . rand(1000, 9999)),
         ]);
 
         return response()->json($employee->load('branch'), 201);
@@ -286,6 +293,12 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
+        if (!$request->has('role') && $request->has('role_id')) {
+            $request->merge(['role' => $request->role_id]);
+        } elseif ($request->has('role') && !$request->has('role_id')) {
+            $request->merge(['role_id' => $request->role]);
+        }
+
         $validated = $request->validate([
             'name' => 'sometimes|string',
             'avatar' => 'nullable|string',
@@ -299,9 +312,9 @@ class EmployeeController extends Controller
 
         // Auto-fetch role name if provided
         if (isset($validated['role'])) {
-
             $role = RolePermission::find($validated['role']);
-            $validated['role_id'] = $role->name ?? $employee->role;
+            $validated['role_id'] = $validated['role'];
+            $validated['role'] = $role->name ?? $employee->role;
         }
 
         // Hash password if provided

@@ -76,11 +76,17 @@ class PatientController extends Controller
             $query->where('gender', $request->gender);
         }
 
-        $patients = $query->orderBy('first_name')->get();
+        $patients = $query->orderBy('first_name')->paginate($request->input('per_page', 10));
 
         return response()->json([
             'message' => 'Patients retrieved successfully.',
-            'data' => $patients
+            'data' => $patients->items(),
+            'meta' => [
+                'current_page' => $patients->currentPage(),
+                'last_page' => $patients->lastPage(),
+                'per_page' => $patients->perPage(),
+                'total' => $patients->total(),
+            ]
         ]);
     }
 

@@ -85,9 +85,17 @@ class InvoiceController extends Controller
             $query->where('status', $request->status);
         }
 
-        $invoices = $query->get();
+        $invoices = $query->paginate($request->input('per_page', 10));
 
-        return response()->json($invoices);
+        return response()->json([
+            'data' => $invoices->items(),
+            'meta' => [
+                'current_page' => $invoices->currentPage(),
+                'last_page' => $invoices->lastPage(),
+                'per_page' => $invoices->perPage(),
+                'total' => $invoices->total(),
+            ]
+        ]);
     }
 
     /**

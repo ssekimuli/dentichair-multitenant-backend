@@ -207,7 +207,16 @@ public function markAttendance(Request $request)
     {
         $query = InventoryItem::with(['branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        return response()->json($query->get());
+        $inventory = $query->paginate($request->input('per_page', 10));
+        return response()->json([
+            'data' => $inventory->items(),
+            'meta' => [
+                'current_page' => $inventory->currentPage(),
+                'last_page' => $inventory->lastPage(),
+                'per_page' => $inventory->perPage(),
+                'total' => $inventory->total(),
+            ]
+        ]);
     }
 
     /**
@@ -251,7 +260,16 @@ public function markAttendance(Request $request)
     {
         $query = LaboratoryOrder::with(['patient', 'branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        return response()->json($query->get());
+        $orders = $query->paginate($request->input('per_page', 10));
+        return response()->json([
+            'data' => $orders->items(),
+            'meta' => [
+                'current_page' => $orders->currentPage(),
+                'last_page' => $orders->lastPage(),
+                'per_page' => $orders->perPage(),
+                'total' => $orders->total(),
+            ]
+        ]);
     }
 
     /**
@@ -512,7 +530,16 @@ public function markAttendance(Request $request)
     {
         $query = Expense::with(['branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        return response()->json($query->get());
+        $expenses = $query->paginate($request->input('per_page', 10));
+        return response()->json([
+            'data' => $expenses->items(),
+            'meta' => [
+                'current_page' => $expenses->currentPage(),
+                'last_page' => $expenses->lastPage(),
+                'per_page' => $expenses->perPage(),
+                'total' => $expenses->total(),
+            ]
+        ]);
     }
 
     /**

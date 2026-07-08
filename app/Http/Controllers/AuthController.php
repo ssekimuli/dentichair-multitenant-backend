@@ -637,4 +637,93 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+        ]);
+
+        $identifier = $request->identifier;
+        $employee = Employee::where('email', $identifier)->orWhere('phone', $identifier)->first();
+
+        if (!$employee) {
+            return response()->json([
+                'message' => 'No account found with that email or phone number.'
+            ], 404);
+        }
+
+        // Generate 6-digit OTP
+        $otp = strval(rand(100000, 999999));
+        Cache::put('otp_' . $identifier, $otp, now()->addMinutes(15));
+
+        // For convenience/testing, we log the OTP and return it in the response
+        \Illuminate\Support\Facades\Log::info("OTP for {$identifier}: {$otp}");
+
+        return response()->json([
+            'message' => 'OTP sent successfully.',
+            'debug_otp' => $otp // return for testing convenience
+        ]);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+            'otp' => 'required|string',
+        ]);
+
+        $identifier = $request->identifier;
+        $otp = $request->otp;
+
+        $cachedOtp = Cache::get('otp_' . $identifier);
+
+        if (!$cachedOtp || $cachedOtp !== $otp) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP.'
+            ], 422);
+        }
+
+        // Mark as verified for password reset
+        Cache::put('verified_otp_' . $identifier, true, now()->addMinutes(15));
+
+        return response()->json([
+            'message' => 'OTP verified successfully.'
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $identifier = $request->identifier;
+        $password = $request->password;
+
+        if (!Cache::has('verified_otp_' . $identifier)) {
+            return response()->json([
+                'message' => 'Please verify OTP first.'
+            ], 403);
+        }
+
+        $employee = Employee::where('email', $identifier)->orWhere('phone', $identifier)->first();
+
+        if (!$employee) {
+            return response()->json([
+                'message' => 'Employee not found.'
+            ], 404);
+        }
+
+        $employee->password = Hash::make($password);
+        $employee->save();
+
+        Cache::forget('verified_otp_' . $identifier);
+        Cache::forget('otp_' . $identifier);
+
+        return response()->json([
+            'message' => 'Password reset successfully.'
+        ]);
+    }
 }

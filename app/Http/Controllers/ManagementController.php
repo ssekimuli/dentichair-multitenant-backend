@@ -927,6 +927,7 @@ public function markAttendance(Request $request)
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:255',
+            'currency' => 'sometimes|string|max:10',
         ]);
 
         $branch = Branch::create($validated);
@@ -958,8 +959,9 @@ public function markAttendance(Request $request)
     public function updateBranch(Request $request, $id)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'address' => 'required|string|max:255',
+            'name' => 'sometimes|required|string|max:255',
+            'address' => 'sometimes|required|string|max:255',
+            'currency' => 'sometimes|required|string|max:10',
         ]);
 
         $branch = Branch::find($id);

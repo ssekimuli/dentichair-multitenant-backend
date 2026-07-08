@@ -13,7 +13,7 @@ class Branch extends Model
     // protected $keyType = 'string';
     // public $incrementing = false;
 
-    protected $fillable = ['id', 'name', 'address'];
+    protected $fillable = ['id', 'name', 'address', 'currency'];
 
     public function patients(): HasMany
     {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * @group Appointments
@@ -167,7 +168,29 @@ class AppointmentController extends Controller
             'token_number' => 'T' . Str::random(6),
         ]);
 
-        return response()->json($appointment->load(['patient', 'doctor', 'branch']), 201);
+        $appointment->load(['patient', 'doctor', 'branch']);
+
+        // Send Email notification to patient if they have an email
+        if ($appointment->patient && $appointment->patient->email) {
+            try {
+                Mail::send('emails.appointment-confirmation', [
+                    'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+                    'tokenNumber' => $appointment->token_number,
+                    'doctorName' => $appointment->doctor_name,
+                    'treatment' => $appointment->treatment,
+                    'date' => $appointment->date->toDateString(),
+                    'time' => $appointment->time,
+                    'branchName' => $appointment->branch->name ?? 'Dental Clinic',
+                ], function ($message) use ($appointment) {
+                    $message->to($appointment->patient->email)
+                            ->subject('Appointment Scheduled - Dental Management System');
+                });
+            } catch (\Exception $e) {
+                logger()->error("Failed to send appointment confirmation email: " . $e->getMessage());
+            }
+        }
+
+        return response()->json($appointment, 201);
     }
 
     /**
@@ -241,7 +264,30 @@ class AppointmentController extends Controller
             'branch_id' => 'sometimes|exists:branches,id',
         ]);
 
+        $oldStatus = $appointment->status;
         $appointment->update($validated);
+
+        if (isset($validated['status']) && $oldStatus !== $appointment->status) {
+            $appointment->load(['patient', 'doctor']);
+            if ($appointment->patient && $appointment->patient->email) {
+                try {
+                    Mail::send('emails.appointment-status', [
+                        'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+                        'status' => $appointment->status,
+                        'tokenNumber' => $appointment->token_number,
+                        'doctorName' => $appointment->doctor_name,
+                        'treatment' => $appointment->treatment,
+                        'date' => $appointment->date->toDateString(),
+                        'time' => $appointment->time,
+                    ], function ($message) use ($appointment) {
+                        $message->to($appointment->patient->email)
+                                ->subject('Appointment Status Update - Dental Management System');
+                    });
+                } catch (\Exception $e) {
+                    logger()->error("Failed to send appointment status update email: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json($appointment->load(['patient', 'doctor', 'branch']));
     }
@@ -331,7 +377,30 @@ class AppointmentController extends Controller
             'status' => 'required|in:Scheduled,Completed,Cancelled,Waiting,In Session,On Hold',
         ]);
 
+        $oldStatus = $appointment->status;
         $appointment->update($validated);
+
+        if ($oldStatus !== $appointment->status) {
+            $appointment->load(['patient', 'doctor']);
+            if ($appointment->patient && $appointment->patient->email) {
+                try {
+                    Mail::send('emails.appointment-status', [
+                        'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
+                        'status' => $appointment->status,
+                        'tokenNumber' => $appointment->token_number,
+                        'doctorName' => $appointment->doctor_name,
+                        'treatment' => $appointment->treatment,
+                        'date' => $appointment->date->toDateString(),
+                        'time' => $appointment->time,
+                    ], function ($message) use ($appointment) {
+                        $message->to($appointment->patient->email)
+                                ->subject('Appointment Status Update - Dental Management System');
+                    });
+                } catch (\Exception $e) {
+                    logger()->error("Failed to send appointment status update email: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json($appointment);
     }

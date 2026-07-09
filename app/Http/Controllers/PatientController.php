@@ -6,6 +6,7 @@ use App\Models\Patient;
 use App\Models\SoftTissueRecord;
 use App\Models\OrthodonticRecord;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * @group Patients
@@ -354,6 +355,22 @@ class PatientController extends Controller
         ]);
 
         $patient = Patient::create($validated);
+        $patient->load('branch');
+
+        if ($patient->email) {
+            try {
+                Mail::send('emails.patient-welcome', [
+                    'name' => $patient->first_name . ' ' . $patient->last_name,
+                    'email' => $patient->email,
+                    'branchName' => $patient->branch->name ?? 'Dental Clinic',
+                ], function ($message) use ($patient) {
+                    $message->to($patient->email)
+                            ->subject('Welcome to Our Practice! - Dental Management System');
+                });
+            } catch (\Exception $e) {
+                logger()->error("Failed to send patient welcome email: " . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'Patient created successfully.',

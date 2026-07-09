@@ -349,18 +349,10 @@ class AuthController extends Controller
      */
     private function sendOtpEmail($email, $otp, $name)
     {
-        // For prototype, we'll log the OTP instead of actually sending email
-        // In production, integrate with your email service (Mailgun, SendGrid, etc.)
-
-        // \Log::info("OTP sent to {$email}: {$otp} for user {$name}");
-
-        // Example of actual email sending (uncomment in production):
-        /*
         Mail::send('emails.password-reset', ['otp' => $otp, 'name' => $name], function ($message) use ($email) {
             $message->to($email)
                     ->subject('Password Reset OTP - Dental Management System');
         });
-        */
     }
 
     /**
@@ -454,6 +446,8 @@ class AuthController extends Controller
         $otp = strval(rand(100000, 999999));
         Cache::put('otp_' . $identifier, $otp, now()->addMinutes(15));
 
+        // Send OTP email
+        $this->sendOtpEmail($employee->email, $otp, $employee->name);
 
         return response()->json([
             'message' => 'OTP sent successfully.',

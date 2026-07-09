@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * @group Employees
@@ -148,10 +149,28 @@ class EmployeeController extends Controller
             'branch_id' => $validated['branch_id'],
             'status' => 'Active',
             'password' => Hash::make('password'),
-            // 'password' => Hash::make('DE' . rand(1000, 9999)),
         ]);
 
-        return response()->json($employee->load('branch'), 201);
+        $employee->load('branch');
+
+        if ($employee->email) {
+            try {
+                Mail::send('emails.employee-welcome', [
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                    'temporaryPassword' => 'password',
+                    'role' => $employee->role,
+                    'branchName' => $employee->branch->name ?? 'Dental Clinic',
+                ], function ($message) use ($employee) {
+                    $message->to($employee->email)
+                            ->subject('Welcome to the Team! - Dental Management System');
+                });
+            } catch (\Exception $e) {
+                logger()->error("Failed to send employee welcome email: " . $e->getMessage());
+            }
+        }
+
+        return response()->json($employee, 201);
     }
 
 

@@ -37,7 +37,7 @@ class ImportController extends Controller
     public function parseHeaders(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|max:20480', // limit to 20MB
+            'file' => 'required|file|max:204800', // limit to 200MB
             'type' => 'required|string|in:patients,employees,treatments',
         ]);
 

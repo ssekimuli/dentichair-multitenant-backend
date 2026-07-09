@@ -1,0 +1,6 @@
+First Name,Last Name,Email,Phone Number,Gender,Birth Date,Address,Status,Medical History
+John,Doe,john.doe.sample@example.com,+256700111222,Male,1995-05-12,123 Kampala Rd,Active,Has grinding teeth history
+Jane,Smith,jane.smith.sample@example.com,+256700333444,Female,1988-11-23,45 Jinja Rd,Active,Penicillin allergy
+Mike,Johnson,mike.johnson.sample@example.com,+256700555666,Male,1990-07-08,88 Entebbe Rd,Inactive,No major issues
+Sarah,Brown,sarah.brown.sample@example.com,+256700777888,Female,2002-02-14,12 Wandegeya St,Active,Asthma history
+David,Wilson,david.wilson.sample@example.com,+256700999000,Male,1975-09-30,55 Gulu Rd,Active,High blood pressure

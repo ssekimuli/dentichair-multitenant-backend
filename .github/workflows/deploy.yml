@@ -28,6 +28,16 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
             
+            # Ensure correct file permissions for Laravel directories
+            chgrp -R www-data storage bootstrap/cache
+            chmod -R ug+rwx storage bootstrap/cache
+            
+            # Set secure file/directory permissions for safety
+            find . -type f -exec chmod 644 {} \;
+            find . -type d -exec chmod 755 {} \;
+            chmod -R 775 storage bootstrap/cache
+
+            
             # Install PHP dependencies
             composer install --no-dev --optimize-autoloader
             

@@ -37,13 +37,49 @@ class ImportController extends Controller
     public function parseHeaders(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:20480', // limit to 20MB
+            'file' => 'required|file|max:20480', // limit to 20MB
             'type' => 'required|string|in:patients,employees,treatments',
         ]);
 
         $type = $request->input('type');
-        $path = $request->file('file')->store('imports');
+        $uploadedFile = $request->file('file');
+        
+        // Get file extension
+        $extension = strtolower($uploadedFile->getClientOriginalExtension());
+        if (!in_array($extension, ['csv', 'txt', 'xlsx'])) {
+            return response()->json(['error' => 'Only CSV, TXT, and XLSX (Excel) files are supported.'], 422);
+        }
+
+        $path = $uploadedFile->store('imports');
         $fullPath = Storage::path($path);
+
+        // If it is an Excel (xlsx) file, convert it to CSV via Python on the fly
+        if ($extension === 'xlsx') {
+            $csvPath = 'imports/' . Str::uuid() . '.csv';
+            $fullCsvPath = Storage::path($csvPath);
+            $pythonScript = base_path('app/Utils/excel_to_csv.py');
+
+            // Construct command with escaped arguments for safety
+            $command = "python " . escapeshellarg($pythonScript) . " " . escapeshellarg($fullPath) . " " . escapeshellarg($fullCsvPath);
+            
+            // Execute conversion
+            $output = [];
+            $resultCode = 0;
+            exec($command, $output, $resultCode);
+
+            // Clean up the original xlsx file
+            Storage::delete($path);
+
+            if ($resultCode !== 0) {
+                return response()->json([
+                    'error' => 'Failed to parse Excel file. Make sure it is a valid .xlsx file.'
+                ], 400);
+            }
+
+            // Update path to point to the newly converted CSV file
+            $path = $csvPath;
+            $fullPath = $fullCsvPath;
+        }
 
         // Read the first line (headers)
         $file = fopen($fullPath, 'r');
@@ -52,7 +88,7 @@ class ImportController extends Controller
 
         if (!$headers) {
             Storage::delete($path);
-            return response()->json(['error' => 'Unable to parse CSV headers. The file might be empty.'], 400);
+            return response()->json(['error' => 'Unable to parse file headers. The file might be empty.'], 400);
         }
 
         // Clean headers (trim whitespace)

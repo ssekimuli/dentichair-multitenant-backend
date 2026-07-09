@@ -8,6 +8,7 @@ use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\ImportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +25,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/profile', [AuthController::class, 'getProfileData']);
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
+
+    // Imports
+    Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);
+    Route::post('/import/start', [ImportController::class, 'startImport']);
+    Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
+    Route::get('/import/templates', [ImportController::class, 'listTemplates']);
+    Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
     Route::post('/branches', [ManagementController::class, 'createBranch']);
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
@@ -153,4 +161,11 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Get simple roles list (Super Admin & HR)
     Route::get('/roles', [RolePermissionController::class, 'getRolesList']);
+
+    // Imports & Templates
+    Route::post('/import/parse', [ImportController::class, 'parseHeaders']);
+    Route::post('/import/start', [ImportController::class, 'startImport']);
+    Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
+    Route::get('/import/templates', [ImportController::class, 'listTemplates']);
+    Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 });

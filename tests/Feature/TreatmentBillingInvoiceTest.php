@@ -9,6 +9,7 @@ use App\Models\TreatmentPlan;
 use App\Models\Appointment;
 use App\Models\Treatment;
 use App\Models\Employee;
+use App\Models\RolePermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -199,10 +200,17 @@ class TreatmentBillingInvoiceTest extends TestCase
     /** @test */
     public function it_creates_treatment_plan_and_invoice_when_appointment_is_completed()
     {
+        // Create a role first
+        $role = RolePermission::create([
+            'name' => 'Doctor',
+            'permissions' => ['appointments:read'],
+        ]);
+
         // Create a doctor (Employee)
         $doctor = Employee::create([
             'name' => 'Dr. Smith',
             'role' => 'Doctor',
+            'role_id' => $role->id,
             'status' => 'Active',
             'branch_id' => $this->branch->id,
             'email' => 'smith@example.com',
@@ -256,10 +264,17 @@ class TreatmentBillingInvoiceTest extends TestCase
     /** @test */
     public function it_creates_treatment_plan_and_invoice_when_appointment_is_updated_to_completed()
     {
+        // Create a role first
+        $role = RolePermission::create([
+            'name' => 'Doctor',
+            'permissions' => ['appointments:read'],
+        ]);
+
         // Create a doctor (Employee)
         $doctor = Employee::create([
             'name' => 'Dr. Smith',
             'role' => 'Doctor',
+            'role_id' => $role->id,
             'status' => 'Active',
             'branch_id' => $this->branch->id,
             'email' => 'smith@example.com',

@@ -231,6 +231,7 @@ class TreatmentBillingInvoiceTest extends TestCase
             'date' => '2026-07-08',
             'time' => '10:00 AM',
             'branch_id' => $this->branch->id,
+            'token_number' => 'T123456',
         ]);
 
         $this->assertDatabaseCount('invoices', 0);
@@ -291,6 +292,7 @@ class TreatmentBillingInvoiceTest extends TestCase
             'date' => '2026-07-08',
             'time' => '10:00 AM',
             'branch_id' => $this->branch->id,
+            'token_number' => 'T654321',
         ]);
 
         $this->assertDatabaseCount('invoices', 0);

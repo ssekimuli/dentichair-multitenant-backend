@@ -206,16 +206,12 @@ class TreatmentBillingInvoiceTest extends TestCase
             'permissions' => ['appointments:read'],
         ]);
 
-        // Create a doctor (Employee)
-        $doctor = Employee::create([
+        // Create a doctor (Employee) using factory
+        $doctor = Employee::factory()->create([
             'name' => 'Dr. Smith',
             'role' => 'Doctor',
             'role_id' => $role->id,
-            'status' => 'Active',
             'branch_id' => $this->branch->id,
-            'email' => 'smith@example.com',
-            'salary' => 5000.00,
-            'hire_date' => '2020-01-01',
         ]);
 
         // Create the treatment procedure cost metadata
@@ -241,7 +237,7 @@ class TreatmentBillingInvoiceTest extends TestCase
         $this->assertDatabaseCount('treatment_plans', 0);
 
         // Update appointment status to Completed
-        $response = $this->patchJson("/api/appointments/{$appointment->id}/status", [
+        $response = $this->actingAs($doctor)->patchJson("/api/appointments/{$appointment->id}/status", [
             'status' => 'Completed',
         ]);
 
@@ -270,16 +266,12 @@ class TreatmentBillingInvoiceTest extends TestCase
             'permissions' => ['appointments:read'],
         ]);
 
-        // Create a doctor (Employee)
-        $doctor = Employee::create([
+        // Create a doctor (Employee) using factory
+        $doctor = Employee::factory()->create([
             'name' => 'Dr. Smith',
             'role' => 'Doctor',
             'role_id' => $role->id,
-            'status' => 'Active',
             'branch_id' => $this->branch->id,
-            'email' => 'smith@example.com',
-            'salary' => 5000.00,
-            'hire_date' => '2020-01-01',
         ]);
 
         // Create the treatment procedure cost metadata
@@ -304,7 +296,7 @@ class TreatmentBillingInvoiceTest extends TestCase
         $this->assertDatabaseCount('invoices', 0);
 
         // Update appointment via put request
-        $response = $this->putJson("/api/appointments/{$appointment->id}", [
+        $response = $this->actingAs($doctor)->putJson("/api/appointments/{$appointment->id}", [
             'status' => 'Completed',
         ]);
 

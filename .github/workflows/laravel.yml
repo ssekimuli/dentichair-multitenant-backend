@@ -17,7 +17,7 @@ jobs:
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.3'
+        php-version: '8.4'
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv
         coverage: none
 
@@ -55,22 +55,28 @@ jobs:
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
     - name: Deploy to Server via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        port: ${{ secrets.SSH_PORT || 22 }}
-        script: |
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+        SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh -i ~/.ssh/id_rsa -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << 'EOF'
           cd /home/poslycloud-dentalapi/htdocs/dentalapi.poslycloud.com
-          git pull origin master
-          composer install --no-interaction --prefer-dist --optimize-autoloader
+          git fetch origin master
+          git reset --hard origin/master
+          composer install --no-dev --optimize-autoloader
           php artisan migrate --force
-          php artisan config:cache
-          php artisan route:cache
-          npm install
-          npm run build
+          php artisan optimize
+          
+          if [ -f "package.json" ]; then
+            if command -v npm &> /dev/null; then
+              npm install
+              npm run build
+            fi
+          fi
+        EOF

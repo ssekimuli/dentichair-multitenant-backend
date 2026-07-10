@@ -149,116 +149,24 @@ class ImportController extends Controller
             ], 422);
         }
 
-        // Increase limits for synchronous heavy bulk processing
-        ini_set('memory_limit', '512M');
-        set_time_limit(600); // 10 minutes
+        $importId = (string) Str::uuid();
 
-        $startTime = microtime(true);
+        // Initialize progress status in cache
+        Cache::put('import_progress_' . $importId, [
+            'status' => 'queued',
+            'total_rows' => 0,
+            'processed_rows' => 0,
+            'errors' => []
+        ], now()->addHours(2));
 
-        $file = fopen($fullPath, 'r');
-        $headers = fgetcsv($file);
-
-        if (!$headers) {
-            fclose($file);
-            Storage::delete($filePath);
-            return response()->json(['error' => 'CSV file is empty or invalid.'], 400);
-        }
-
-        $headers = array_map('trim', $headers);
-        fclose($file);
-
-        $defaultBranchId = DB::table('branches')->first()?->id ?? 1;
-        $defaultPassword = Hash::make('password');
-        $now = now();
-
-        $processedRows = 0;
-        $importMethod = '';
-        $success = false;
-
-        // 1. Try MySQL LOAD DATA LOCAL INFILE (Lightning fast: 1M records in ~4 seconds)
-        if (DB::connection()->getDriverName() === 'mysql') {
-            try {
-                $processedRows = $this->importViaLoadDataLocal($fullPath, $type, $mapping, $headers, $defaultBranchId, $defaultPassword, $now);
-                $importMethod = 'MySQL LOAD DATA';
-                $success = true;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("LOAD DATA LOCAL INFILE failed, falling back to chunked upserts. Error: " . $e->getMessage());
-            }
-        }
-
-        // 2. Fallback: Highly optimized chunked transactional query builder upserts
-        if (!$success) {
-            $file = fopen($fullPath, 'r');
-            fgetcsv($file); // skip header
-            
-            $chunkSize = 5000;
-            $chunk = [];
-            $nowString = $now->toDateTimeString();
-
-            DB::beginTransaction();
-
-            try {
-                while (($row = fgetcsv($file)) !== false) {
-                    if (empty($row) || (count($row) === 1 && empty($row[0]))) {
-                        continue;
-                    }
-
-                    if (count($row) < count($headers)) {
-                        $row = array_pad($row, count($headers), '');
-                    }
-
-                    $rowData = array_combine($headers, array_slice($row, 0, count($headers)));
-                    
-                    $mappedRow = [];
-                    foreach ($mapping as $dbColumn => $csvHeader) {
-                        $mappedRow[$dbColumn] = isset($rowData[$csvHeader]) ? trim($rowData[$csvHeader]) : null;
-                    }
-
-                    $chunk[] = $mappedRow;
-
-                    if (count($chunk) >= $chunkSize) {
-                        $this->processSynchronousChunk($chunk, $type, $defaultBranchId, $defaultPassword, $nowString);
-                        $processedRows += count($chunk);
-                        $chunk = [];
-                    }
-                }
-
-                if (!empty($chunk)) {
-                    $this->processSynchronousChunk($chunk, $type, $defaultBranchId, $defaultPassword, $nowString);
-                    $processedRows += count($chunk);
-                }
-
-                fclose($file);
-                DB::commit();
-                
-                $importMethod = 'Chunked Upserts';
-                $success = true;
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-                if (is_resource($file)) {
-                    fclose($file);
-                }
-                Storage::delete($filePath);
-                
-                return response()->json([
-                    'error' => 'Import failed: ' . $e->getMessage()
-                ], 500);
-            }
-        }
-
-        // Clean up temporary file
-        Storage::delete($filePath);
-
-        $duration = round(microtime(true) - $startTime, 2);
+        // Dispatch background job
+        ProcessImportJob::dispatch($importId, $fullPath, $type, $mapping);
 
         return response()->json([
-            'status' => 'success',
-            'processed_rows' => $processedRows,
-            'duration_seconds' => $duration,
-            'method_used' => $importMethod,
-            'message' => "Imported {$processedRows} records successfully in {$duration} seconds using {$importMethod}."
-        ], 200);
+            'import_id' => $importId,
+            'status' => 'queued',
+            'message' => 'Import started successfully in background.'
+        ], 202);
     }
 
     protected function importViaLoadDataLocal($fullPath, $type, $mapping, $headers, $defaultBranchId, $defaultPassword, $now)

@@ -99,7 +99,7 @@ class ImportControllerTest extends TestCase
         $this->assertNotNull($importId);
 
         // Check if job is dispatched
-        Queue::assertDispatched(\App\Jobs\ProcessImportJob::class);
+        Queue::assertPushed(\App\Jobs\ProcessImportJob::class);
 
         // Check initial progress status in cache
         $progress = Cache::get('import_progress_' . $importId);

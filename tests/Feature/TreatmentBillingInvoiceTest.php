@@ -6,6 +6,9 @@ use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\Patient;
 use App\Models\TreatmentPlan;
+use App\Models\Appointment;
+use App\Models\Treatment;
+use App\Models\Employee;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -191,5 +194,117 @@ class TreatmentBillingInvoiceTest extends TestCase
         $newInvoice = Invoice::first();
         $this->assertEquals('2026-07-09', $newInvoice->issue_date->format('Y-m-d'));
         $this->assertEquals('inv' . $newInvoice->id, $treatment->fresh()->invoice_id);
+    }
+
+    /** @test */
+    public function it_creates_treatment_plan_and_invoice_when_appointment_is_completed()
+    {
+        // Create a doctor (Employee)
+        $doctor = Employee::create([
+            'name' => 'Dr. Smith',
+            'role' => 'Doctor',
+            'status' => 'Active',
+            'branch_id' => $this->branch->id,
+            'email' => 'smith@example.com',
+            'salary' => 5000.00,
+            'hire_date' => '2020-01-01',
+        ]);
+
+        // Create the treatment procedure cost metadata
+        Treatment::create([
+            'procedure' => 'Root Canal',
+            'cost' => 500.00,
+        ]);
+
+        // Create a scheduled appointment
+        $appointment = Appointment::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $this->patient->id,
+            'doctor_name' => 'Dr. Smith',
+            'doctor_id' => $doctor->id,
+            'treatment' => 'Root Canal',
+            'status' => 'Scheduled',
+            'date' => '2026-07-08',
+            'time' => '10:00 AM',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $this->assertDatabaseCount('invoices', 0);
+        $this->assertDatabaseCount('treatment_plans', 0);
+
+        // Update appointment status to Completed
+        $response = $this->patchJson("/api/appointments/{$appointment->id}/status", [
+            'status' => 'Completed',
+        ]);
+
+        $response->assertStatus(200);
+
+        // A TreatmentPlan should have been generated with status Completed and the correct cost
+        $this->assertDatabaseCount('treatment_plans', 1);
+        $treatmentPlan = TreatmentPlan::first();
+        $this->assertEquals('Root Canal', $treatmentPlan->procedure);
+        $this->assertEquals(500.00, $treatmentPlan->cost);
+        $this->assertEquals('Completed', $treatmentPlan->status);
+
+        // An invoice should have been generated automatically
+        $this->assertDatabaseCount('invoices', 1);
+        $invoice = Invoice::first();
+        $this->assertEquals(500.00, $invoice->amount);
+        $this->assertEquals('Pending', $invoice->status);
+    }
+
+    /** @test */
+    public function it_creates_treatment_plan_and_invoice_when_appointment_is_updated_to_completed()
+    {
+        // Create a doctor (Employee)
+        $doctor = Employee::create([
+            'name' => 'Dr. Smith',
+            'role' => 'Doctor',
+            'status' => 'Active',
+            'branch_id' => $this->branch->id,
+            'email' => 'smith@example.com',
+            'salary' => 5000.00,
+            'hire_date' => '2020-01-01',
+        ]);
+
+        // Create the treatment procedure cost metadata
+        Treatment::create([
+            'procedure' => 'Teeth Cleaning',
+            'cost' => 150.00,
+        ]);
+
+        // Create a scheduled appointment
+        $appointment = Appointment::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $this->patient->id,
+            'doctor_name' => 'Dr. Smith',
+            'doctor_id' => $doctor->id,
+            'treatment' => 'Teeth Cleaning',
+            'status' => 'Scheduled',
+            'date' => '2026-07-08',
+            'time' => '10:00 AM',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $this->assertDatabaseCount('invoices', 0);
+
+        // Update appointment via put request
+        $response = $this->putJson("/api/appointments/{$appointment->id}", [
+            'status' => 'Completed',
+        ]);
+
+        $response->assertStatus(200);
+
+        // A TreatmentPlan should have been generated
+        $this->assertDatabaseCount('treatment_plans', 1);
+        $treatmentPlan = TreatmentPlan::first();
+        $this->assertEquals('Teeth Cleaning', $treatmentPlan->procedure);
+        $this->assertEquals(150.00, $treatmentPlan->cost);
+        $this->assertEquals('Completed', $treatmentPlan->status);
+
+        // An invoice should have been generated automatically
+        $this->assertDatabaseCount('invoices', 1);
+        $invoice = Invoice::first();
+        $this->assertEquals(150.00, $invoice->amount);
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\TreatmentPlan;
+use App\Models\Treatment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
@@ -271,6 +273,9 @@ class AppointmentController extends Controller
 
         if (isset($validated['status']) && $oldStatus !== $appointment->status) {
             $appointment->load(['patient', 'doctor']);
+            if ($appointment->status === 'Completed') {
+                $this->generateInvoiceForCompletedAppointment($appointment);
+            }
             if ($appointment->patient && $appointment->patient->email) {
                 try {
                     Mail::send('emails.appointment-status', [
@@ -384,6 +389,9 @@ class AppointmentController extends Controller
 
         if ($oldStatus !== $appointment->status) {
             $appointment->load(['patient', 'doctor']);
+            if ($appointment->status === 'Completed') {
+                $this->generateInvoiceForCompletedAppointment($appointment);
+            }
             if ($appointment->patient && $appointment->patient->email) {
                 try {
                     Mail::send('emails.appointment-status', [
@@ -405,5 +413,43 @@ class AppointmentController extends Controller
         }
 
         return response()->json($appointment);
+    }
+
+    /**
+     * Generate a completed treatment plan and invoice for a completed appointment.
+     *
+     * @param \App\Models\Appointment $appointment
+     * @return void
+     */
+    private function generateInvoiceForCompletedAppointment($appointment)
+    {
+        // 1. Check if a completed TreatmentPlan already exists for this patient, procedure, and date
+        $exists = TreatmentPlan::where('patient_id', $appointment->patient_id)
+            ->where('procedure', $appointment->treatment)
+            ->whereDate('date', $appointment->date)
+            ->where('status', 'Completed')
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        // 2. Find the cost of the treatment (procedure)
+        $treatmentCost = 0.00;
+        if ($appointment->treatment) {
+            $treatment = Treatment::where('procedure', $appointment->treatment)->first();
+            if ($treatment) {
+                $treatmentCost = $treatment->cost;
+            }
+        }
+
+        // 3. Create the completed treatment plan
+        TreatmentPlan::create([
+            'patient_id' => $appointment->patient_id,
+            'procedure' => $appointment->treatment,
+            'cost' => $treatmentCost,
+            'status' => 'Completed',
+            'date' => $appointment->date ? $appointment->date->format('Y-m-d') : now()->format('Y-m-d'),
+        ]);
     }
 }

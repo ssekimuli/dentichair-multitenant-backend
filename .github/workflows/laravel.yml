@@ -46,7 +46,7 @@ jobs:
     - name: Execute tests
       env:
         DB_CONNECTION: sqlite
-        DB_DATABASE: :memory:
+        DB_DATABASE: ':memory:'
       run: php artisan test
 
   deploy:

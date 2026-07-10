@@ -65,6 +65,8 @@ jobs:
         mkdir -p ~/.ssh
         echo "MD5 Checksum of secret key:"
         echo -n "$SSH_PRIVATE_KEY" | md5sum
+        echo "Secret Key details:"
+        python3 -c "import os; key = os.environ['SSH_PRIVATE_KEY'].strip(); print(f'Length: {len(key)}'); print(f'Lines count: {len(key.splitlines())}'); print(f'First line: {key.splitlines()[0] if key.splitlines() else None}'); print(f'Last line: {key.splitlines()[-1] if key.splitlines() else None}')"
         python3 -c "import os; open(os.path.expanduser('~/.ssh/id_rsa'), 'w').write(os.environ['SSH_PRIVATE_KEY'].strip() + '\n')"
         chmod 600 ~/.ssh/id_rsa
         ssh -i ~/.ssh/id_rsa -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << 'EOF'

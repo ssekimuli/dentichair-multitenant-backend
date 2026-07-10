@@ -160,12 +160,13 @@ class AppointmentController extends Controller
             'date' => 'required|date',
             'time' => 'required|string',
             'branch_id' => 'required|exists:branches,id',
+            'token_number' => 'nullable|string',
         ]);
 
         $appointment = Appointment::create([
             ...$validated,
             'status' => 'Scheduled',
-            'token_number' => 'T' . Str::random(6),
+            'token_number' => empty($validated['token_number']) ? 'T' . Str::random(6) : $validated['token_number'],
         ]);
 
         $appointment->load(['patient', 'doctor', 'branch']);
@@ -262,6 +263,7 @@ class AppointmentController extends Controller
             'date' => 'sometimes|date',
             'time' => 'sometimes|string',
             'branch_id' => 'sometimes|exists:branches,id',
+            'token_number' => 'sometimes|nullable|string',
         ]);
 
         $oldStatus = $appointment->status;

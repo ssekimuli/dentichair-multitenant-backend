@@ -1410,7 +1410,8 @@ class PatientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $patient->treatmentPlans()->create($validated);
+        $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date']);
+        $patient->treatmentPlans()->create($treatmentData);
 
         if (isset($request->condition) && !empty($validated['tooth'])) {
             // Find existing record for this tooth

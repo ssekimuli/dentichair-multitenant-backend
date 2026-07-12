@@ -73,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/patients/{patientId}/treatments', [PatientController::class, 'getTreatments']);
     Route::post('/patients/{patientId}/treatments', [PatientController::class, 'addTreatment']);
     Route::put('/patients/{patientId}/treatments/{treatmentId}', [PatientController::class, 'updateTreatment']);
+    Route::patch('/patients/{patientId}/treatments/{treatmentId}/status', [PatientController::class, 'updateTreatmentStatus']);
     Route::delete('/patients/{patientId}/treatments/{treatmentId}', [PatientController::class, 'deleteTreatment']);
 
     // Soft Tissue Records

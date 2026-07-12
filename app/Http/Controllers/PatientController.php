@@ -1507,6 +1507,44 @@ class PatientController extends Controller
     }
 
     /**
+     * Update Treatment Plan Status
+     *
+     * Update only the status of an existing treatment plan.
+     *
+     * @authenticated
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @param string $treatmentId Treatment ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateTreatmentStatus(Request $request, $patientId, $treatmentId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $treatment = $patient->treatmentPlans()->find($treatmentId);
+
+        if (!$treatment) {
+            return response()->json(['error' => 'Treatment plan not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:Proposed,Completed',
+        ]);
+
+        $treatment->update(['status' => $validated['status']]);
+
+        return response()->json([
+            'message' => 'Treatment plan status updated successfully.',
+            'data' => $treatment
+        ]);
+    }
+
+    /**
      * Delete Treatment Plan
      *
      * Delete a treatment plan.

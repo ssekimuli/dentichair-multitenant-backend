@@ -49,7 +49,7 @@ class Patient extends Model
 
     public function treatmentPlans(): HasMany
     {
-        return $this->hasMany(TreatmentPlan::class);
+        return $this->hasMany(TreatmentPlan::class)->orderBy('id', 'desc');
     }
 
     public function images(): HasMany

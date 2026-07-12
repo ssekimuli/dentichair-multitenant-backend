@@ -10,6 +10,7 @@ class DentalRecord extends Model
         'patient_id',
         'tooth_id',
         'condition',
+        'root_condition',
         'notes',
     ];
 

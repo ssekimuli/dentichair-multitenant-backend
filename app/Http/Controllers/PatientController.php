@@ -708,11 +708,12 @@ class PatientController extends Controller
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        // Return only the array of dental records with tooth_id, condition, and notes
+        // Return only the array of dental records with tooth_id, condition, root_condition, and notes
         $records = $patient->dentalRecords->map(function ($record) {
             return [
                 'tooth_id' => $record->tooth_id,
                 'condition' => $record->condition,
+                'root_condition' => $record->root_condition,
                 'notes' => $record->notes ?? '',
             ];
         });
@@ -760,6 +761,7 @@ class PatientController extends Controller
         $validated = $request->validate([
             'tooth_id' => 'required|integer',
             'condition' => 'required|string',
+            'root_condition' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
 
@@ -786,6 +788,7 @@ class PatientController extends Controller
             'data' => [
                 'tooth_id' => $record->tooth_id,
                 'condition' => $record->condition,
+                'root_condition' => $record->root_condition,
                 'notes' => $record->notes ?? '',
             ]
         ], $statusCode);

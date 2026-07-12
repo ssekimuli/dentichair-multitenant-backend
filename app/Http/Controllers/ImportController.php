@@ -233,7 +233,7 @@ class ImportController extends Controller
             $keyword = "REPLACE";
 
         } elseif ($type === 'treatments') {
-            $cols = ['procedure', 'cost'];
+            $cols = ['procedure', 'cost', 'category'];
             foreach ($cols as $col) {
                 if (isset($mapping[$col]) && isset($headerIndices[$mapping[$col]])) {
                     $idx = $headerIndices[$mapping[$col]];
@@ -370,7 +370,7 @@ class ImportController extends Controller
             Case 'employees':
                 Return ['name', 'avatar', 'email', 'role', 'role_id', 'salary', 'hire_date', 'branch_id', 'status'];
             Case 'treatments':
-                Return ['procedure', 'cost'];
+                Return ['procedure', 'cost', 'category'];
             Default:
                 Return [];
         }

@@ -9,7 +9,7 @@ class Treatment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['procedure', 'cost'];
+    protected $fillable = ['procedure', 'cost', 'category'];
 
     protected $casts = [
         'cost' => 'decimal:2',

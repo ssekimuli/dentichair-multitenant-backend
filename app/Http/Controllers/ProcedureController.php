@@ -37,6 +37,7 @@ class ProcedureController extends Controller
         $validated = $request->validate([
             'procedure' => 'required|string|max:255',
             'cost' => 'required|numeric|min:0',
+            'category' => 'nullable|string|max:255',
         ]);
 
         $procedure = Treatment::create($validated);
@@ -58,6 +59,7 @@ class ProcedureController extends Controller
         $validated = $request->validate([
             'procedure' => 'sometimes|required|string|max:255',
             'cost' => 'sometimes|required|numeric|min:0',
+            'category' => 'nullable|string|max:255',
         ]);
 
         $procedure->update($validated);

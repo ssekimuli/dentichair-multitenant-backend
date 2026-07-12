@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/patients/{patientId}/odontogram-records', [PatientController::class, 'saveDentalRecord']);
     Route::put('/patients/{patientId}/odontogram-records/{recordId}', [PatientController::class, 'updateDentalRecord']);
     Route::delete('/patients/{patientId}/odontogram-records/{recordId}', [PatientController::class, 'deleteDentalRecord']);
+    Route::get('/patients/{patientId}/tooth/{toothId}/history', [PatientController::class, 'getToothHistory']);
 
     // Periodontal Records
     Route::get('/patients/{patientId}/periodontal-records', [PatientController::class, 'getPeriodontalRecords']);

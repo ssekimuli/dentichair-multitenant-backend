@@ -1942,4 +1942,51 @@ class PatientController extends Controller
             'message' => 'Orthodontic record deleted successfully.'
         ]);
     }
+    public function getToothHistory($patientId, $toothId)
+    {
+        $patient = Patient::find($patientId);
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        // Get dental records for this tooth
+        $dentalRecords = $patient->dentalRecords()->where('tooth_id', $toothId)->get();
+
+        // Get treatments for this tooth
+        $treatments = $patient->treatmentPlans()->where('tooth', $toothId)->get();
+
+        // Combine and sort by date
+        $history = collect();
+
+        foreach ($dentalRecords as $record) {
+            $history->push([
+                'id' => 'record_' . $record->id,
+                'type' => 'Condition',
+                'date' => $record->created_at->toIso8601String(),
+                'details' => $record->condition,
+                'notes' => $record->notes,
+                'user' => 'System', // Placeholder if user relation not available
+            ]);
+        }
+
+        foreach ($treatments as $treatment) {
+            $history->push([
+                'id' => 'treatment_' . $treatment->id,
+                'type' => 'Treatment',
+                'date' => $treatment->date . ' ' . ($treatment->time ?? '00:00:00'),
+                'details' => $treatment->procedure,
+                'status' => $treatment->status,
+                'cost' => $treatment->cost,
+                'notes' => $treatment->notes,
+                'user' => 'System',
+            ]);
+        }
+
+        $sortedHistory = $history->sortByDesc('date')->values();
+
+        return response()->json([
+            'toothId' => $toothId,
+            'history' => $sortedHistory
+        ]);
+    }
 }

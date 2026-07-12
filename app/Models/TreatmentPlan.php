@@ -8,7 +8,7 @@ class TreatmentPlan extends Model
 {
     //
     // procedure
-    protected $fillable = ['procedure', 'cost', 'treatment_id', 'appointment_id', 'patient_id', 'doctor_id', 'branch_id', 'status', 'notes', 'date', 'time', 'token_number'];
+    protected $fillable = ['procedure', 'cost', 'treatment_id', 'appointment_id', 'patient_id', 'doctor_id', 'branch_id', 'status', 'notes', 'date', 'time', 'token_number', 'tooth'];
 
     protected static function booted()
     {

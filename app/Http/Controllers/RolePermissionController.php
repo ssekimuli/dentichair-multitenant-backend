@@ -65,7 +65,7 @@ class RolePermissionController extends Controller
             return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
         }
 
-        $roles = RolePermission::all();
+        $roles = RolePermission::latest()->get();
         
         return response()->json([
             'data' => $roles
@@ -198,7 +198,7 @@ class RolePermissionController extends Controller
             return response()->json(['message' => 'Unauthorized. Super Admin or HR access required.'], 403);
         }
 
-        $roles = RolePermission::select('id', 'name')->get();
+        $roles = RolePermission::select('id', 'name')->latest()->get();
         
         return response()->json([
             'data' => $roles

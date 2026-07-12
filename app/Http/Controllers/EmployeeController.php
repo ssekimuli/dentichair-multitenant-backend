@@ -65,7 +65,7 @@ class EmployeeController extends Controller
             $query->where('role', $request->role);
         }
 
-        $employees = $query->get();
+        $employees = $query->latest()->get();
 
         return response()->json($employees);
     }
@@ -479,7 +479,7 @@ class EmployeeController extends Controller
             $query->where('branch_id', $request->branch_id);
         }
 
-        $doctors = $query->where('status', 'Active')->get();
+        $doctors = $query->where('status', 'Active')->latest()->get();
 
         return response()->json(['data' => $doctors]);
     }

@@ -80,7 +80,7 @@ class AppointmentController extends Controller
             $query->where('status', $request->status);
         }
 
-        $appointments = $query->paginate($request->input('per_page', 10));
+        $appointments = $query->latest()->paginate($request->input('per_page', 10));
 
         return response()->json([
             'data' => $appointments->items(),

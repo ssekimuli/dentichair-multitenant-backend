@@ -86,7 +86,7 @@ class InvoiceController extends Controller
             $query->where('status', $request->status);
         }
 
-        $invoices = $query->paginate($request->input('per_page', 10));
+        $invoices = $query->latest()->paginate($request->input('per_page', 10));
 
         return response()->json([
             'data' => $invoices->items(),
@@ -151,7 +151,7 @@ class InvoiceController extends Controller
             $branch = Branch::find($request->branch_id);
         }
 
-        $invoices = $query->get();
+        $invoices = $query->latest()->get();
         $totalPaid = $invoices->sum('paid_amount');
 
         return response()->json([

@@ -12,7 +12,7 @@ class ProcedureController extends Controller
      */
     public function index()
     {
-        return response()->json(Treatment::orderBy('procedure')->get());
+        return response()->json(Treatment::latest()->get());
     }
 
     /**

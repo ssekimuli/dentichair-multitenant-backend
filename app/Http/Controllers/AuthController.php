@@ -417,7 +417,7 @@ class AuthController extends Controller
     {
         try {
 
-            $branches = Branch::all();
+            $branches = Branch::latest()->get();
             return response()->json($branches);
 
         } catch (\Exception $e) {

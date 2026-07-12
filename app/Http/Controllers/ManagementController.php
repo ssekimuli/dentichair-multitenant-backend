@@ -47,7 +47,7 @@ class ManagementController extends Controller
         if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
-        return response()->json($query->get());
+        return response()->json($query->latest()->get());
     }
 
     /**
@@ -109,7 +109,7 @@ class ManagementController extends Controller
         $query = AttendanceRecord::with(['employee', 'branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
         if ($request->filled('date')) $query->where('date', $request->date);
-        return response()->json($query->get());
+        return response()->json($query->latest()->get());
     }
 
 /**
@@ -208,7 +208,7 @@ public function markAttendance(Request $request)
     {
         $query = InventoryItem::with(['branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        $inventory = $query->paginate($request->input('per_page', 10));
+        $inventory = $query->latest()->paginate($request->input('per_page', 10));
         return response()->json([
             'data' => $inventory->items(),
             'meta' => [
@@ -261,7 +261,7 @@ public function markAttendance(Request $request)
     {
         $query = LaboratoryOrder::with(['patient', 'branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        $orders = $query->paginate($request->input('per_page', 10));
+        $orders = $query->latest()->paginate($request->input('per_page', 10));
         return response()->json([
             'data' => $orders->items(),
             'meta' => [
@@ -306,7 +306,7 @@ public function markAttendance(Request $request)
         if ($request->filled('start_date')) $query->where('start_date', '>=', $request->start_date);
         if ($request->filled('end_date')) $query->where('end_date', '<=', $request->end_date);
 
-        return response()->json($query->get());
+        return response()->json($query->latest()->get());
     }
 
     /**
@@ -483,7 +483,7 @@ public function markAttendance(Request $request)
             $query->where('date', '<=', $request->end_date);
         }
 
-        return response()->json($query->get());
+        return response()->json($query->latest()->get());
     }
 
     /**
@@ -571,7 +571,7 @@ public function markAttendance(Request $request)
     {
         $query = Expense::with(['branch']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        $expenses = $query->paginate($request->input('per_page', 10));
+        $expenses = $query->latest()->paginate($request->input('per_page', 10));
         return response()->json([
             'data' => $expenses->items(),
             'meta' => [

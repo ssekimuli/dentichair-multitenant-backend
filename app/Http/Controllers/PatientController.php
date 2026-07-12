@@ -55,12 +55,12 @@ class PatientController extends Controller
     public function index(Request $request)
     {
         $query = Patient::with([
-            'dentalRecords',
-            'treatmentPlans',
-            'images',
-            'periodontalRecords',
-            'softTissueRecords',
-            'orthodonticRecords',
+            'dentalRecords' => fn($q) => $q->latest(),
+            'treatmentPlans' => fn($q) => $q->latest(),
+            'images' => fn($q) => $q->latest(),
+            'periodontalRecords' => fn($q) => $q->latest(),
+            'softTissueRecords' => fn($q) => $q->latest(),
+            'orthodonticRecords' => fn($q) => $q->latest(),
             'branch'
         ]);
 
@@ -77,7 +77,7 @@ class PatientController extends Controller
             $query->where('gender', $request->gender);
         }
 
-        $patients = $query->orderBy('first_name')->paginate($request->input('per_page', 10));
+        $patients = $query->latest()->paginate($request->input('per_page', 10));
 
         return response()->json([
             'message' => 'Patients retrieved successfully.',
@@ -108,7 +108,7 @@ class PatientController extends Controller
             $query->where('gender', $request->gender);
         }
 
-        $patients = $query->orderBy('first_name')->get();
+        $patients = $query->latest()->get();
 
         return response()->json([
             'message' => 'Patients retrieved successfully.',
@@ -169,12 +169,12 @@ class PatientController extends Controller
     public function show($id)
     {
         $patient = Patient::with([
-            'dentalRecords',
-            'treatmentPlans',
-            'images',
-            'periodontalRecords',
-            'softTissueRecords',
-            'orthodonticRecords'
+            'dentalRecords' => fn($q) => $q->latest(),
+            'treatmentPlans' => fn($q) => $q->latest(),
+            'images' => fn($q) => $q->latest(),
+            'periodontalRecords' => fn($q) => $q->latest(),
+            'softTissueRecords' => fn($q) => $q->latest(),
+            'orthodonticRecords' => fn($q) => $q->latest()
         ])->find($id);
 
         if (!$patient) {
@@ -233,15 +233,15 @@ class PatientController extends Controller
     public function getHistory($id)
     {
         $patient = Patient::with([
-            'appointments',
-            'treatmentPlans',
-            'invoices',
-            'labOrders',
-            'dentalRecords',
-            'images',
-            'periodontalRecords',
-            'softTissueRecords',
-            'orthodonticRecords',
+            'appointments' => fn($q) => $q->latest(),
+            'treatmentPlans' => fn($q) => $q->latest(),
+            'invoices' => fn($q) => $q->latest(),
+            'labOrders' => fn($q) => $q->latest(),
+            'dentalRecords' => fn($q) => $q->latest(),
+            'images' => fn($q) => $q->latest(),
+            'periodontalRecords' => fn($q) => $q->latest(),
+            'softTissueRecords' => fn($q) => $q->latest(),
+            'orthodonticRecords' => fn($q) => $q->latest(),
             'branch',
         ])->find($id);
 
@@ -513,7 +513,7 @@ class PatientController extends Controller
 
         return response()->json([
             'message' => 'Images retrieved successfully.',
-            'data' => $patient->images
+            'data' => $patient->images()->latest()->get()
         ]);
     }
 
@@ -709,7 +709,7 @@ class PatientController extends Controller
         }
 
         // Return only the array of dental records with tooth_id, condition, root_condition, and notes
-        $records = $patient->dentalRecords->map(function ($record) {
+        $records = $patient->dentalRecords()->latest()->get()->map(function ($record) {
             return [
                 'tooth_id' => $record->tooth_id,
                 'condition' => $record->condition,
@@ -942,7 +942,7 @@ class PatientController extends Controller
 
         return response()->json([
             'message' => 'Periodontal records retrieved successfully.',
-            'data' => $patient->periodontalRecords
+            'data' => $patient->periodontalRecords()->latest()->get()
         ]);
     }
 
@@ -1355,8 +1355,8 @@ class PatientController extends Controller
         }
 
         return response()->json([
-            'message' => 'Treatment plans retrieved successfully.',
-            'data' => $patient->treatmentPlans
+            'message' => 'Treatments retrieved successfully.',
+            'data' => $patient->treatmentPlans()->latest()->get()
         ]);
     }
 
@@ -1624,7 +1624,7 @@ class PatientController extends Controller
 
         return response()->json([
             'message' => 'Soft tissue records retrieved successfully.',
-            'data' => $patient->softTissueRecords
+            'data' => $patient->softTissueRecords()->latest()->get()
         ]);
     }
 
@@ -1821,7 +1821,7 @@ class PatientController extends Controller
 
         return response()->json([
             'message' => 'Orthodontic records retrieved successfully.',
-            'data' => $patient->orthodonticRecords
+            'data' => $patient->orthodonticRecords()->latest()->get()
         ]);
     }
 

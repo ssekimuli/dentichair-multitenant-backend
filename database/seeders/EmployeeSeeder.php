@@ -83,7 +83,7 @@ class EmployeeSeeder extends Seeder
         ];
 
         foreach ($employees as $employee) {
-            Employee::create($employee);
+            Employee::updateOrCreate(['id' => $employee['id']], $employee);
         }
     }
 }

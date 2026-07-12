@@ -61,7 +61,7 @@ class ManagementSeeder extends Seeder
         ];
 
         foreach ($roles as $role) {
-            RolePermission::create($role);
+            RolePermission::updateOrCreate(['name' => $role['name']], $role);
         }
     }
 }

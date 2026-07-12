@@ -31,7 +31,10 @@ class TreatmentSeeder extends Seeder
         ];
 
         foreach ($treatments as $treatment) {
-            Treatment::create($treatment);
+            Treatment::updateOrCreate(
+                ['procedure' => $treatment['procedure']],
+                $treatment
+            );
         }
     }
 }

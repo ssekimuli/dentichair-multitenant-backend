@@ -1412,7 +1412,7 @@ class PatientController extends Controller
 
         $patient->treatmentPlans()->create($validated);
 
-        if (isset($request->condition)) {
+        if (isset($request->condition) && !empty($validated['tooth'])) {
             // Find existing record for this tooth
             $existingRecord = $patient->dentalRecords()
                 ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'

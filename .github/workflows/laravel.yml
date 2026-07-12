@@ -68,6 +68,11 @@ jobs:
         ssh -i ~/.ssh/id_rsa -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USERNAME@$SSH_HOST" << 'EOF'
           set -e
           cd /home/poslycloud-dentalapi/htdocs/dentalapi.poslycloud.com
+          
+          # Add github.com to known_hosts to prevent host key verification failure
+          mkdir -p ~/.ssh
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+          
           git fetch origin master
           git reset --hard origin/master
           composer install --no-dev --optimize-autoloader

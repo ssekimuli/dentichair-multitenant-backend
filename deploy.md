@@ -1,0 +1,163 @@
+# CloudPanel Laravel Site Deployment Guide
+
+This guide describes how to deploy a new instance of the **Dental API (chart-backend)** codebase on your CloudPanel server from start to finish.
+
+---
+
+## Prerequisites
+
+Before starting, prepare the following details for your new deployment:
+* **Domain Name**: e.g., `newsite.poslycloud.com`
+* **Site User**: e.g., `poslycloud-newsite`
+* **Database Name**: e.g., `newsite_db`
+* **Database Username**: e.g., `newsite_user`
+
+---
+
+## Step 1: Create the Site via CloudPanel CLI
+
+Run the following command as the **`root`** user to add the PHP site. This command configures the system user, creates directories, and sets up Nginx with the Laravel Virtual Host template (which maps requests to the `/public` folder).
+
+```bash
+clpctl site:add:php \
+  --domainName=newsite.poslycloud.com \
+  --phpVersion=8.4 \
+  --vhostTemplate='Laravel 12' \
+  --siteUser=poslycloud-newsite \
+  --siteUserPassword='!StrongPassword!'
+```
+
+---
+
+## Step 2: Create the Database
+
+Provision a new database and database user via the CloudPanel CLI:
+
+```bash
+clpctl db:add \
+  --domainName=newsite.poslycloud.com \
+  --databaseName=newsite_db \
+  --databaseUserName=newsite_user \
+  --databaseUserPassword='!StrongDBPassword!'
+```
+
+---
+
+## Step 3: Clone the Codebase
+
+1. Switch to the newly created site user:
+   ```bash
+   sudo su - poslycloud-newsite
+   ```
+
+2. Navigate to your site's document root directory and clean out any placeholder files created by CloudPanel:
+   ```bash
+   cd htdocs/newsite.poslycloud.com
+   rm -rf * .[^.]*
+   ```
+
+3. Clone your Git repository directly into the directory:
+   ```bash
+   git clone git@github.com:ssekimuli/chart-backend.git .
+   ```
+
+---
+
+## Step 4: Configure the Environment (`.env`)
+
+1. Copy the example configuration file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` to configure your database connection and environment parameters:
+   ```ini
+   APP_NAME="Dental API"
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=https://newsite.poslycloud.com
+
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=newsite_db
+   DB_USERNAME=newsite_user
+   DB_PASSWORD=!StrongDBPassword!
+   ```
+
+---
+
+## Step 5: Install Dependencies and Build Assets
+
+Run the following commands as the **site user** (`poslycloud-newsite`) within `/home/poslycloud-newsite/htdocs/newsite.poslycloud.com`:
+
+1. Install PHP dependencies:
+   ```bash
+   composer install --no-dev --optimize-autoloader
+   ```
+
+2. Generate the unique application key:
+   ```bash
+   php artisan key:generate
+   ```
+
+3. Run migrations and seed default database records:
+   ```bash
+   php artisan migrate --force
+   php artisan db:seed --force
+   ```
+
+4. Install frontend assets and build the production bundle:
+   ```bash
+   npm install
+   npm run build
+   ```
+
+5. Correct storage and cache folder permissions:
+   ```bash
+   chmod -R 775 storage bootstrap/cache
+   ```
+
+---
+
+## Step 6: Configure the Cron Scheduler
+
+To automate scheduled tasks (like overdue invoice marking and appointment reminders), configure the cron job for your new site user:
+
+1. Open the user's crontab editor:
+   ```bash
+   crontab -e
+   ```
+
+2. Paste the following line:
+   ```text
+   * * * * * cd /home/poslycloud-newsite/htdocs/newsite.poslycloud.com && php artisan schedule:run >> /dev/null 2>&1
+   ```
+
+3. Save and close the editor.
+
+---
+
+## Step 7: Install Let's Encrypt SSL Certificate
+
+Exit back to the **`root`** shell and install a trusted Let's Encrypt SSL certificate:
+
+1. Exit the site user shell:
+   ```bash
+   exit
+   ```
+
+2. Issue and configure the certificate:
+   ```bash
+   clpctl lets-encrypt:install:certificate --domainName=newsite.poslycloud.com
+   ```
+
+---
+
+## Verification
+
+Test the setup by sending a GET request to verify the service is running:
+```bash
+curl -I https://newsite.poslycloud.com/api/patients
+```
+*(Should return `HTTP/2 200` or `401 Unauthenticated` instead of any SSL or database connection errors)*.

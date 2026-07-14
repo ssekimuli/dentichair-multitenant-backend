@@ -471,7 +471,28 @@ class PatientController extends Controller
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        $patient->delete();
+        \DB::transaction(function () use ($patient) {
+            // Delete related invoices and their sub-records
+            foreach ($patient->invoices as $invoice) {
+                $invoice->treatments()->delete();
+                $invoice->otherCharges()->delete();
+                $invoice->transactions()->delete();
+                $invoice->delete();
+            }
+
+            // Delete other related records
+            $patient->dentalRecords()->delete();
+            $patient->treatmentPlans()->delete();
+            $patient->images()->delete();
+            $patient->periodontalRecords()->delete();
+            $patient->softTissueRecords()->delete();
+            $patient->orthodonticRecords()->delete();
+            $patient->appointments()->delete();
+            $patient->labOrders()->delete();
+
+            // Delete the patient
+            $patient->delete();
+        });
 
         return response()->json(['success' => true]);
     }

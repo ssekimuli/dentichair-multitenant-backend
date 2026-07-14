@@ -174,7 +174,9 @@ class PatientController extends Controller
             'images' => fn($q) => $q->latest(),
             'periodontalRecords' => fn($q) => $q->latest(),
             'softTissueRecords' => fn($q) => $q->latest(),
-            'orthodonticRecords' => fn($q) => $q->latest()
+            'orthodonticRecords' => fn($q) => $q->latest(),
+            'paidInvoices' => fn($q) => $q->latest(),
+            'unpaidInvoices' => fn($q) => $q->latest()
         ])->find($id);
 
         if (!$patient) {
@@ -2051,5 +2053,19 @@ class PatientController extends Controller
             'toothId' => $toothId,
             'history' => $sortedHistory
         ]);
+    }
+
+    /**
+     * Get all invoices of a patient.
+     */
+    public function getInvoices($id)
+    {
+        $patient = Patient::find($id);
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $invoices = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions'])->latest()->get();
+        return response()->json($invoices);
     }
 }

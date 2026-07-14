@@ -19,7 +19,7 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Protected routes
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
@@ -35,10 +35,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/branches', [ManagementController::class, 'createBranch']);
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
+    Route::get('/currencies', [ManagementController::class, 'getCurrencies']);
 
     // Patients
     Route::apiResource('patients', PatientController::class);
     Route::get('/patients-list', [PatientController::class, 'patientList']);
+    Route::get('/patients/{id}/invoices', [PatientController::class, 'getInvoices']);
 
 
     // Patient Images
@@ -103,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Employees
     Route::apiResource('employees', EmployeeController::class);
     Route::get('/doctors', [EmployeeController::class, 'getDoctors']);
+    Route::post('/attendance', [ManagementController::class, 'markAttendance']);
 
     // Dashboard summary
     Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
@@ -115,6 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Payroll
         Route::get('/payrolls', [ManagementController::class, 'getPayrolls']);
         Route::post('/payrolls', [ManagementController::class, 'createPayroll']);
+        Route::patch('/payrolls/{id}/approve', [ManagementController::class, 'approvePayroll']);
 
         // Attendance
         Route::get('/attendance', [ManagementController::class, 'getAttendance']);

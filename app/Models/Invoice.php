@@ -36,6 +36,16 @@ class Invoice extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    public function scopePaid($query)
+    {
+        return $query->where('status', 'Paid');
+    }
+
+    public function scopeUnpaid($query)
+    {
+        return $query->whereIn('status', ['Pending', 'Overdue']);
+    }
+
     public function treatments(): HasMany
     {
         return $this->hasMany(InvoiceTreatment::class);

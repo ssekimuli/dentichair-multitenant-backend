@@ -312,10 +312,13 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
-        if (!$request->has('role') && $request->has('role_id')) {
-            $request->merge(['role' => $request->role_id]);
-        } elseif ($request->has('role') && !$request->has('role_id')) {
-            $request->merge(['role_id' => $request->role]);
+        if ($request->has('role') || $request->has('role_id')) {
+            return response()->json([
+                'message' => 'Role modifications are restricted',
+                'errors' => [
+                    'role' => ['Role modifications are restricted']
+                ]
+            ], 422);
         }
 
         $validated = $request->validate([

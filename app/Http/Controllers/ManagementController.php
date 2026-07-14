@@ -177,62 +177,76 @@ class ManagementController extends Controller
  *   }
  * ]
  */
-public function markAttendance(Request $request)
-{
-    if (!$request->has('employee_id')) {
-        $request->merge(['employee_id' => auth()->id()]);
-    }
-    if (!$request->has('date')) {
-        $request->merge(['date' => now()->toDateString()]);
-    }
+    public function markAttendance(Request $request)
+    {
+        $data = $request->all();
 
-    $data = $request->all();
-
-    $employeeIds = is_array($data['employee_id']) ? $data['employee_id'] : [$data['employee_id']];
-    $responses = [];
-
-    foreach ($employeeIds as $employeeId) {
-        $validated = validator([
-            'employee_id' => $employeeId,
-            'employee_name' => $data['employee_name'] ?? null,
-            'date' => $data['date'],
-            'status' => $data['status'],
-            'check_in' => $data['check_in'] ?? null,
-            'check_out' => $data['check_out'] ?? null,
-            'branch_id' => $data['branch_id'],
-        ], [
-            'employee_id' => 'required|exists:employees,id',
-            'employee_name' => 'nullable|string',
-            'date' => 'required|date',
-            'status' => 'required|in:Present,Absent,On Leave,Late',
-            'check_in' => 'nullable|string',
-            'check_out' => 'nullable|string',
-            'branch_id' => 'required|exists:branches,id',
-        ])->validate();
-
-        if (empty($validated['employee_name'])) {
-            $employee = Employee::find($validated['employee_id']);
-            $validated['employee_name'] = $employee->name;
-        }
-
-        $existing = AttendanceRecord::where('employee_id', $validated['employee_id'])
-            ->where('date', $validated['date'])
-            ->first();
-
-        if ($existing) {
-            $existing->update($validated);
-            $responses[] = $existing->load(['employee', 'branch']);
+        $records = [];
+        if (array_is_list($data)) {
+            foreach ($data as $item) {
+                if (is_array($item)) {
+                    $records[] = $item;
+                } else {
+                    $records[] = ['employee_id' => $item];
+                }
+            }
         } else {
-            $attendance = AttendanceRecord::create([
-                ...$validated,
-                'id' => 'att' . (AttendanceRecord::count() + 1),
-            ]);
-            $responses[] = $attendance->load(['employee', 'branch']);
+            $records[] = $data;
         }
-    }
 
-    return response()->json($responses, 200);
-}
+        $responses = [];
+
+        foreach ($records as $record) {
+            $employeeIdInput = $record['employee_id'] ?? auth()->id();
+            $date = $record['date'] ?? now()->toDateString();
+            $status = $record['status'] ?? null;
+            $checkIn = $record['check_in'] ?? null;
+            $checkOut = $record['check_out'] ?? null;
+            $branchId = $record['branch_id'] ?? null;
+            $employeeName = $record['employee_name'] ?? null;
+
+            $employeeIds = is_array($employeeIdInput) ? $employeeIdInput : [$employeeIdInput];
+
+            foreach ($employeeIds as $employeeId) {
+                $validated = validator([
+                    'employee_id' => $employeeId,
+                    'employee_name' => $employeeName,
+                    'date' => $date,
+                    'status' => $status,
+                    'check_in' => $checkIn,
+                    'check_out' => $checkOut,
+                    'branch_id' => $branchId,
+                ], [
+                    'employee_id' => 'required|exists:employees,id',
+                    'employee_name' => 'nullable|string',
+                    'date' => 'required|date',
+                    'status' => 'required|in:Present,Absent,On Leave,Late',
+                    'check_in' => 'nullable|string',
+                    'check_out' => 'nullable|string',
+                    'branch_id' => 'required|exists:branches,id',
+                ])->validate();
+
+                if (empty($validated['employee_name'])) {
+                    $employee = Employee::find($validated['employee_id']);
+                    $validated['employee_name'] = $employee ? $employee->name : '';
+                }
+
+                $existing = AttendanceRecord::where('employee_id', $validated['employee_id'])
+                    ->where('date', $validated['date'])
+                    ->first();
+
+                if ($existing) {
+                    $existing->update($validated);
+                    $responses[] = $existing->load(['employee', 'branch']);
+                } else {
+                    $attendance = AttendanceRecord::create($validated);
+                    $responses[] = $attendance->load(['employee', 'branch']);
+                }
+            }
+        }
+
+        return response()->json($responses, 200);
+    }
 
     /**
      * Get Inventory

@@ -182,12 +182,16 @@ class ManagementController extends Controller
         $data = $request->all();
 
         $records = [];
-        if (array_is_list($data)) {
-            foreach ($data as $item) {
-                if (is_array($item)) {
-                    $records[] = $item;
-                } else {
-                    $records[] = ['employee_id' => $item];
+        $isList = array_is_list($data) || (isset($data[0]) && is_array($data[0]));
+
+        if ($isList) {
+            foreach ($data as $key => $item) {
+                if (is_int($key)) {
+                    if (is_array($item)) {
+                        $records[] = $item;
+                    } else {
+                        $records[] = ['employee_id' => $item];
+                    }
                 }
             }
         } else {
@@ -202,7 +206,7 @@ class ManagementController extends Controller
             $status = $record['status'] ?? null;
             $checkIn = $record['check_in'] ?? null;
             $checkOut = $record['check_out'] ?? null;
-            $branchId = $record['branch_id'] ?? null;
+            $branchId = $record['branch_id'] ?? $request->input('branch_id');
             $employeeName = $record['employee_name'] ?? null;
 
             $employeeIds = is_array($employeeIdInput) ? $employeeIdInput : [$employeeIdInput];

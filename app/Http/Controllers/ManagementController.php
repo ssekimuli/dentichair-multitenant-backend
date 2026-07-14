@@ -113,8 +113,11 @@ class ManagementController extends Controller
             'approval_status' => 'required|in:Pending,Approved,Rejected',
         ]);
 
+        $status = $validated['approval_status'] === 'Approved' ? 'Paid' : 'Pending';
+
         $payroll->update([
             'approval_status' => $validated['approval_status'],
+            'status' => $status,
         ]);
 
         return response()->json($payroll->load(['employee', 'branch']));

@@ -82,6 +82,16 @@ class Patient extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function paidInvoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->where('status', 'Paid');
+    }
+
+    public function unpaidInvoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->whereIn('status', ['Pending', 'Overdue']);
+    }
+
     public function labOrders(): HasMany
     {
         return $this->hasMany(LaboratoryOrder::class);

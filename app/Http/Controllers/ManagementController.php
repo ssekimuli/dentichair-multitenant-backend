@@ -91,6 +91,36 @@ class ManagementController extends Controller
     }
 
     /**
+     * Approve Payroll
+     *
+     * Approve or reject a payroll record.
+     *
+     * @authenticated
+     * @bodyParam approval_status string required The approval status. Allowed values: Pending, Approved, Rejected. Example: Approved
+     */
+    public function approvePayroll(Request $request, $id)
+    {
+        $payroll = Payroll::find($id);
+        if (!$payroll) {
+            return response()->json(['error' => 'Payroll record not found'], 404);
+        }
+
+        if ($request->user()->cannot('approve', $payroll)) {
+            return response()->json(['message' => 'Unauthorized. Only admin and HR roles can approve salaries.'], 403);
+        }
+
+        $validated = $request->validate([
+            'approval_status' => 'required|in:Pending,Approved,Rejected',
+        ]);
+
+        $payroll->update([
+            'approval_status' => $validated['approval_status'],
+        ]);
+
+        return response()->json($payroll->load(['employee', 'branch']));
+    }
+
+    /**
      * Get Attendance Records
      *
      * Retrieve employee attendance records.
@@ -149,6 +179,13 @@ class ManagementController extends Controller
  */
 public function markAttendance(Request $request)
 {
+    if (!$request->has('employee_id')) {
+        $request->merge(['employee_id' => auth()->id()]);
+    }
+    if (!$request->has('date')) {
+        $request->merge(['date' => now()->toDateString()]);
+    }
+
     $data = $request->all();
 
     $employeeIds = is_array($data['employee_id']) ? $data['employee_id'] : [$data['employee_id']];
@@ -167,7 +204,7 @@ public function markAttendance(Request $request)
             'employee_id' => 'required|exists:employees,id',
             'employee_name' => 'nullable|string',
             'date' => 'required|date',
-            'status' => 'required|in:Present,Absent,On Leave',
+            'status' => 'required|in:Present,Absent,On Leave,Late',
             'check_in' => 'nullable|string',
             'check_out' => 'nullable|string',
             'branch_id' => 'required|exists:branches,id',
@@ -1027,5 +1064,28 @@ public function markAttendance(Request $request)
         $branch->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Get Currencies
+     *
+     * Retrieve supported currencies.
+     */
+    public function getCurrencies()
+    {
+        $currencies = [
+            ['code' => 'USD', 'symbol' => '$', 'name' => 'United States Dollar (USD)', 'locale' => 'en-US', 'digits' => 2],
+            ['code' => 'EUR', 'symbol' => '€', 'name' => 'Euro (EUR)', 'locale' => 'de-DE', 'digits' => 2],
+            ['code' => 'UGX', 'symbol' => 'USh', 'name' => 'Ugandan Shilling (UGX)', 'locale' => 'en-UG', 'digits' => 0],
+            ['code' => 'KES', 'symbol' => 'KSh', 'name' => 'Kenyan Shilling (KES)', 'locale' => 'en-KE', 'digits' => 0],
+            ['code' => 'TZS', 'symbol' => 'TSh', 'name' => 'Tanzanian Shilling (TZS)', 'locale' => 'en-TZ', 'digits' => 0],
+            ['code' => 'RWF', 'symbol' => 'RF', 'name' => 'Rwandan Franc (RWF)', 'locale' => 'rw-RW', 'digits' => 0],
+            ['code' => 'BIF', 'symbol' => 'FBu', 'name' => 'Burundian Franc (BIF)', 'locale' => 'fr-BI', 'digits' => 0],
+            ['code' => 'SSP', 'symbol' => 'SSP', 'name' => 'South Sudanese Pound (SSP)', 'locale' => 'en-SS', 'digits' => 2],
+            ['code' => 'CDF', 'symbol' => 'FC', 'name' => 'Congolese Franc (CDF)', 'locale' => 'fr-CD', 'digits' => 2],
+            ['code' => 'SOS', 'symbol' => 'Sh.So.', 'name' => 'Somali Shilling (SOS)', 'locale' => 'so-SO', 'digits' => 0],
+        ];
+
+        return response()->json($currencies);
     }
 }

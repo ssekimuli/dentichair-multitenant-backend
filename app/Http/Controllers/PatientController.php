@@ -174,7 +174,9 @@ class PatientController extends Controller
             'images' => fn($q) => $q->latest(),
             'periodontalRecords' => fn($q) => $q->latest(),
             'softTissueRecords' => fn($q) => $q->latest(),
-            'orthodonticRecords' => fn($q) => $q->latest()
+            'orthodonticRecords' => fn($q) => $q->latest(),
+            'paidInvoices' => fn($q) => $q->latest(),
+            'unpaidInvoices' => fn($q) => $q->latest()
         ])->find($id);
 
         if (!$patient) {

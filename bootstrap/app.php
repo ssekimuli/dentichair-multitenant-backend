@@ -18,9 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-        'permission' => \App\Http\Middleware\CheckPermission::class,
-        // ... other middleware
-    ]);
+            'permission' => \App\Http\Middleware\CheckPermission::class,
+            'default_branch' => \App\Http\Middleware\DefaultBranchMiddleware::class,
+        ]);
         
         // If you need global CORS for all routes
         $middleware->validateCsrfTokens(except: [

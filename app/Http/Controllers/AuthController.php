@@ -204,6 +204,7 @@ class AuthController extends Controller
                 'role_id' => $employee->role_id,
                 'permissions' => $permissions,
                 'branchId' => $employee->branch_id,
+                'branch_id' => $employee->branch_id,
                 'branchName' => $employee->branch->name ?? null,
                 'email' => $employee->email,
                 'name' => $employee->name,

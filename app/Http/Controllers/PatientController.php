@@ -2054,4 +2054,18 @@ class PatientController extends Controller
             'history' => $sortedHistory
         ]);
     }
+
+    /**
+     * Get all invoices of a patient.
+     */
+    public function getInvoices($id)
+    {
+        $patient = Patient::find($id);
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $invoices = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions'])->latest()->get();
+        return response()->json($invoices);
+    }
 }

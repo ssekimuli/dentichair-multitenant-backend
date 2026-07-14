@@ -40,6 +40,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Patients
     Route::apiResource('patients', PatientController::class);
     Route::get('/patients-list', [PatientController::class, 'patientList']);
+    Route::get('/patients/{id}/invoices', [PatientController::class, 'getInvoices']);
 
 
     // Patient Images

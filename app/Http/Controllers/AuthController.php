@@ -81,6 +81,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($employee->status === 'Blocked') {
+            throw ValidationException::withMessages([
+                'email' => ['Your account has been blocked.'],
+            ]);
+        }
+
         $token = $employee->createToken('api-token')->plainTextToken;
 
         // Get permissions based on role

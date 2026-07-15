@@ -75,4 +75,25 @@ class EmployeeTest extends TestCase
         $response->assertStatus(200);
         $this->assertEquals('Dr. Lisa Cuddy Updated', $this->employee->fresh()->name);
     }
+
+    /** @test */
+    public function it_denies_login_for_blocked_employees()
+    {
+        $blockedEmployee = Employee::factory()->create([
+            'email' => 'blocked@example.com',
+            'password' => bcrypt('password123'),
+            'role_id' => $this->roleDentist->id,
+            'role' => $this->roleDentist->name,
+            'branch_id' => $this->branch->id,
+            'status' => 'Blocked'
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email' => 'blocked@example.com',
+            'password' => 'password123'
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email']);
+    }
 }

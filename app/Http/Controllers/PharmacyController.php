@@ -246,6 +246,17 @@ class PharmacyController extends Controller
             // Auto-bill to invoice if requested (defaults to true)
             $billToInvoice = $validated['bill_to_invoice'] ?? true;
             if ($billToInvoice && $totalAmount > 0) {
+                // Prepare medicines array
+                $medicinesList = [];
+                foreach ($validated['items'] as $itemData) {
+                    $medicinesList[] = [
+                        'medicine_id' => $itemData['medicine_id'],
+                        'medicine_unit_id' => $itemData['medicine_unit_id'],
+                        'quantity' => $itemData['quantity'],
+                        'price' => $itemData['price'],
+                    ];
+                }
+
                 // Check if a pending invoice already exists for this patient, date, and branch
                 $invoice = Invoice::where('patient_id', $prescription->patient_id)
                     ->where('issue_date', $prescription->prescription_date)
@@ -254,8 +265,11 @@ class PharmacyController extends Controller
                     ->first();
 
                 if ($invoice) {
-                    // Update existing invoice amount
+                    // Update existing invoice amount and append medicines
+                    $existingMeds = $invoice->medicines ?? [];
+                    $mergedMeds = array_merge($existingMeds, $medicinesList);
                     $invoice->increment('amount', $totalAmount);
+                    $invoice->update(['medicines' => $mergedMeds]);
                 } else {
                     // Create a new Invoice
                     $invoice = Invoice::create([
@@ -267,16 +281,7 @@ class PharmacyController extends Controller
                         'issue_date' => $prescription->prescription_date,
                         'due_date' => Carbon::parse($prescription->prescription_date)->addDays(30),
                         'branch_id' => $prescription->branch_id,
-                    ]);
-                }
-
-                // Create Invoice Medicines
-                foreach ($validated['items'] as $itemData) {
-                    $invoice->medicines()->create([
-                        'medicine_id' => $itemData['medicine_id'],
-                        'medicine_unit_id' => $itemData['medicine_unit_id'],
-                        'quantity' => $itemData['quantity'],
-                        'price' => $itemData['price'],
+                        'medicines' => $medicinesList,
                     ]);
                 }
 

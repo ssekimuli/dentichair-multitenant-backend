@@ -16,7 +16,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
-        'issue_date', 'due_date', 'branch_id', 'payment_method'
+        'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines'
     ];
 
     protected $casts = [
@@ -24,6 +24,7 @@ class Invoice extends Model
         'due_date' => 'date',
         'amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'medicines' => 'array',
     ];
 
     public function patient(): BelongsTo
@@ -61,8 +62,38 @@ class Invoice extends Model
         return $this->hasMany(PaymentTransaction::class);
     }
 
-    public function medicines(): HasMany
+    public function getMedicinesAttribute($value)
     {
-        return $this->hasMany(InvoiceMedicine::class);
+        $items = is_string($value) ? json_decode($value, true) : $value;
+        $items = $items ?: [];
+        if (empty($items)) {
+            return [];
+        }
+
+        $medicineIds = collect($items)->pluck('medicine_id')->unique();
+        $unitIds = collect($items)->pluck('medicine_unit_id')->unique();
+
+        $medicines = Medicine::whereIn('id', $medicineIds)->get()->keyBy('id');
+        $units = MedicineUnit::whereIn('id', $unitIds)->get()->keyBy('id');
+
+        return array_map(function ($item) use ($medicines, $units) {
+            $med = $medicines->get($item['medicine_id']);
+            $unit = $units->get($item['medicine_unit_id']);
+            
+            $item['medicine'] = $med ? [
+                'id' => $med->id,
+                'name' => $med->name,
+                'description' => $med->description,
+                'category' => $med->category,
+            ] : null;
+            
+            $item['unit'] = $unit ? [
+                'id' => $unit->id,
+                'unit_name' => $unit->unit_name,
+                'price' => (float)$unit->price,
+            ] : null;
+            
+            return $item;
+        }, $items);
     }
 }

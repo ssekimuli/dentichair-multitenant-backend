@@ -51,20 +51,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('invoice_medicines', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');
-            $table->foreignId('medicine_id')->constrained('medicines')->onDelete('cascade');
-            $table->foreignId('medicine_unit_id')->constrained('medicine_units')->onDelete('cascade');
-            $table->integer('quantity');
-            $table->decimal('price', 10, 2);
-            $table->timestamps();
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->json('medicines')->nullable();
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('invoice_medicines');
+        Schema::table('invoices', function (Blueprint $table) {
+            $table->dropColumn('medicines');
+        });
+
         Schema::dropIfExists('prescription_items');
         Schema::dropIfExists('prescriptions');
         Schema::dropIfExists('medicine_units');

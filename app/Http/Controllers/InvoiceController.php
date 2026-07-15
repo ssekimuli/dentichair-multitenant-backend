@@ -76,7 +76,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'medicines.medicine', 'medicines.unit']);
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions']);
 
         if ($request->has('branch_id')) {
             $query->where('branch_id', $request->branch_id);
@@ -142,7 +142,7 @@ class InvoiceController extends Controller
      */
     public function getIncomeRecords(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'medicines.medicine', 'medicines.unit'])
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])
             ->where('status', 'Paid');
 
         $branch = null;
@@ -223,7 +223,7 @@ class InvoiceController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'medicines.medicine', 'medicines.unit'])->find($id);
+        $invoice = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])->find($id);
 
         if (!$invoice) {
             return response()->json(['error' => 'Invoice not found'], 404);
@@ -320,6 +320,7 @@ class InvoiceController extends Controller
             ...collect($validated)->except(['treatments', 'other_charges', 'medicines'])->toArray(),
             'paid_amount' => 0,
             'status' => 'Pending',
+            'medicines' => $validated['medicines'] ?? null,
         ]);
 
         if (isset($validated['treatments'])) {
@@ -347,8 +348,6 @@ class InvoiceController extends Controller
 
         if (isset($validated['medicines'])) {
             foreach ($validated['medicines'] as $med) {
-                $invoice->medicines()->create($med);
-                
                 // Deduct stock quantity
                 $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
                 if ($medUnit) {
@@ -357,7 +356,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoice->load(['treatments', 'otherCharges', 'medicines.medicine', 'medicines.unit', 'patient', 'branch']);
+        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch']);
 
         if ($invoice->patient && $invoice->patient->email) {
             try {
@@ -521,24 +520,27 @@ class InvoiceController extends Controller
         // Update medicines if provided
         if (isset($validated['medicines'])) {
             // Restore previous stock
-            foreach ($invoice->medicines as $oldMed) {
-                $medUnit = \App\Models\MedicineUnit::find($oldMed->medicine_unit_id);
+            $oldMedicines = $invoice->medicines ?? [];
+            foreach ($oldMedicines as $oldMed) {
+                $medUnit = \App\Models\MedicineUnit::find($oldMed['medicine_unit_id']);
                 if ($medUnit) {
-                    $medUnit->increment('stock_quantity', $oldMed->quantity);
+                    $medUnit->increment('stock_quantity', $oldMed['quantity']);
                 }
             }
-            $invoice->medicines()->delete();
+            
+            // Deduct new stock
             foreach ($validated['medicines'] as $med) {
-                $invoice->medicines()->create($med);
-                // Deduct new stock
                 $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
                 if ($medUnit) {
                     $medUnit->decrement('stock_quantity', $med['quantity']);
                 }
             }
+
+            // Save JSON directly
+            $invoice->update(['medicines' => $validated['medicines']]);
         }
 
-        return response()->json($invoice->load(['treatments', 'otherCharges', 'medicines.medicine', 'medicines.unit', 'transactions', 'branch']));
+        return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch']));
     }
 
     /**
@@ -620,7 +622,7 @@ class InvoiceController extends Controller
             'payment_method' => $validated['method'],
         ]);
 
-        $invoice->load(['treatments', 'otherCharges', 'medicines.medicine', 'medicines.unit', 'transactions', 'patient']);
+        $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient']);
 
         if ($invoice->patient && $invoice->patient->email) {
             try {

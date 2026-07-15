@@ -24,6 +24,7 @@ class Patient extends Model
     'gender',
     'date_of_birth',
     'last_visit',
+    'next_visit',
     'status',
     'branch_id',
     'history',
@@ -34,6 +35,7 @@ class Patient extends Model
     protected $casts = [
         'date_of_birth' => 'date',
         'last_visit' => 'date',
+        'next_visit' => 'date',
         'occlusal_records' => 'array',
     ];
 

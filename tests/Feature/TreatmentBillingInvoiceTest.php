@@ -316,4 +316,172 @@ class TreatmentBillingInvoiceTest extends TestCase
         $invoice = Invoice::first();
         $this->assertEquals(150.00, $invoice->amount);
     }
+
+    /** @test */
+    public function it_creates_completed_treatment_plans_when_invoice_is_created_directly()
+    {
+        $role = RolePermission::create([
+            'name' => 'Doctor',
+            'permissions' => [],
+        ]);
+
+        $doctor = Employee::factory()->create([
+            'role' => 'Doctor',
+            'role_id' => $role->id,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $response = $this->actingAs($doctor)->postJson('/api/invoices', [
+            'patient_name' => 'John Doe',
+            'patient_id' => $this->patient->id,
+            'amount' => 350.00,
+            'issue_date' => '2026-07-08',
+            'due_date' => '2026-08-08',
+            'branch_id' => $this->branch->id,
+            'treatments' => [
+                [
+                    'procedure' => 'Teeth Cleaning',
+                    'cost' => 150.00,
+                ],
+                [
+                    'procedure' => 'Composite Filling',
+                    'cost' => 200.00,
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(201);
+
+        // Verify TreatmentPlan records were created
+        $this->assertDatabaseCount('treatment_plans', 2);
+        
+        $tps = TreatmentPlan::all();
+        $this->assertEquals('Teeth Cleaning', $tps[0]->procedure);
+        $this->assertEquals(150.00, $tps[0]->cost);
+        $this->assertEquals('Completed', $tps[0]->status);
+        
+        $date0 = is_string($tps[0]->date) ? $tps[0]->date : $tps[0]->date->format('Y-m-d');
+        $this->assertEquals('2026-07-08', $date0);
+        
+        $invoice = Invoice::first();
+        $this->assertEquals('inv' . $invoice->id, $tps[0]->invoice_id);
+        $this->assertEquals('inv' . $invoice->id, $tps[1]->invoice_id);
+    }
+
+    /** @test */
+    public function it_syncs_treatment_plans_when_invoice_is_updated()
+    {
+        $role = RolePermission::create([
+            'name' => 'Doctor',
+            'permissions' => [],
+        ]);
+
+        $doctor = Employee::factory()->create([
+            'role' => 'Doctor',
+            'role_id' => $role->id,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        // 1. Create an invoice
+        $invoice = Invoice::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $this->patient->id,
+            'amount' => 150.00,
+            'issue_date' => '2026-07-08',
+            'due_date' => '2026-08-08',
+            'branch_id' => $this->branch->id,
+            'status' => 'Pending',
+        ]);
+        $invoice->treatments()->create([
+            'procedure' => 'Teeth Cleaning',
+            'cost' => 150.00,
+        ]);
+
+        // Create the initial treatment plan
+        $tp = new TreatmentPlan([
+            'patient_id' => $this->patient->id,
+            'procedure' => 'Teeth Cleaning',
+            'cost' => 150.00,
+            'status' => 'Completed',
+            'date' => '2026-07-08',
+        ]);
+        $tp->invoice_id = 'inv' . $invoice->id;
+        $tp->saveQuietly();
+
+        $this->assertDatabaseCount('treatment_plans', 1);
+
+        // 2. Update the invoice's treatments
+        $response = $this->actingAs($doctor)->putJson("/api/invoices/{$invoice->id}", [
+            'treatments' => [
+                [
+                    'procedure' => 'Teeth Cleaning Updated',
+                    'cost' => 180.00,
+                ],
+                [
+                    'procedure' => 'Crown',
+                    'cost' => 600.00,
+                ]
+            ],
+        ]);
+
+        $response->assertStatus(200);
+
+        // 3. Verify TreatmentPlan records are updated
+        $this->assertDatabaseCount('treatment_plans', 2);
+        
+        $tps = TreatmentPlan::orderBy('cost')->get();
+        $this->assertEquals('Teeth Cleaning Updated', $tps[0]->procedure);
+        $this->assertEquals(180.00, $tps[0]->cost);
+        $this->assertEquals('inv' . $invoice->id, $tps[0]->invoice_id);
+
+        $this->assertEquals('Crown', $tps[1]->procedure);
+        $this->assertEquals(600.00, $tps[1]->cost);
+        $this->assertEquals('inv' . $invoice->id, $tps[1]->invoice_id);
+    }
+
+    /** @test */
+    public function it_deletes_treatment_plans_when_invoice_is_deleted()
+    {
+        $role = RolePermission::create([
+            'name' => 'Doctor',
+            'permissions' => [],
+        ]);
+
+        $doctor = Employee::factory()->create([
+            'role' => 'Doctor',
+            'role_id' => $role->id,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        // 1. Create an invoice
+        $invoice = Invoice::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $this->patient->id,
+            'amount' => 150.00,
+            'issue_date' => '2026-07-08',
+            'due_date' => '2026-08-08',
+            'branch_id' => $this->branch->id,
+            'status' => 'Pending',
+        ]);
+
+        // Create the treatment plan
+        $tp = new TreatmentPlan([
+            'patient_id' => $this->patient->id,
+            'procedure' => 'Teeth Cleaning',
+            'cost' => 150.00,
+            'status' => 'Completed',
+            'date' => '2026-07-08',
+        ]);
+        $tp->invoice_id = 'inv' . $invoice->id;
+        $tp->saveQuietly();
+
+        $this->assertDatabaseCount('treatment_plans', 1);
+
+        // Delete the invoice
+        $response = $this->actingAs($doctor)->deleteJson("/api/invoices/{$invoice->id}");
+        $response->assertStatus(200);
+
+        // Verify TreatmentPlan was deleted
+        $this->assertDatabaseCount('treatment_plans', 0);
+    }
 }

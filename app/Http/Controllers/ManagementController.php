@@ -965,6 +965,153 @@ class ManagementController extends Controller
         ]);
     }
 
+    /**
+     * Get Reports Overview
+     *
+     * Retrieve a consolidated summary of all report types (Financial, Appointment, Demographics)
+     * which serves as the entry point/dashboard for reporting needs.
+     *
+     * @authenticated
+     *
+     * @queryParam branch_id integer Optional branch filter. Example: 1
+     */
+    public function getReportsOverview(Request $request)
+    {
+        $branchId = $request->branch_id;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        // 1. Financial Summary
+        $invoiceQuery = Invoice::query();
+        $expenseQuery = Expense::query();
+        $payrollQuery = Payroll::query();
+
+        if ($branchId) {
+            $invoiceQuery->where('branch_id', $branchId);
+            $expenseQuery->where('branch_id', $branchId);
+            $payrollQuery->where('branch_id', $branchId);
+        }
+
+        if ($startDate) {
+            $invoiceQuery->where('issue_date', '>=', $startDate);
+            $expenseQuery->where('date', '>=', $startDate);
+            $payrollQuery->where('pay_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $invoiceQuery->where('issue_date', '<=', $endDate);
+            $expenseQuery->where('date', '<=', $endDate);
+            $payrollQuery->where('pay_date', '<=', $endDate);
+        }
+
+        $totalIncome = $invoiceQuery->sum('paid_amount');
+        $totalOtherExpenses = $expenseQuery->sum('amount');
+        $totalPayroll = $payrollQuery->sum('net_pay');
+        $totalExpenses = $totalOtherExpenses + $totalPayroll;
+        $netProfit = $totalIncome - $totalExpenses;
+
+        // 2. Appointment Summary
+        $appointmentsQuery = Appointment::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+
+        if ($startDate) {
+            $appointmentsQuery->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $appointmentsQuery->where('date', '<=', $endDate);
+        }
+
+        $appointments = $appointmentsQuery->get(['status']);
+
+        $totalAppointments = $appointments->count();
+        $appointmentStatusDistribution = [];
+        foreach ($appointments as $app) {
+            $status = $app->status ?: 'Unknown';
+            $appointmentStatusDistribution[$status] = ($appointmentStatusDistribution[$status] ?? 0) + 1;
+        }
+
+        // 3. Patient Summary
+        $patientsQuery = Patient::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+
+        if ($startDate) {
+            $patientsQuery->where('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $patientsQuery->where('created_at', '<=', $endDate);
+        }
+
+        $patients = $patientsQuery->get(['date_of_birth', 'status', 'gender']);
+
+        $totalPatients = $patients->count();
+        $patientStatusDistribution = [];
+        $genderDistribution = [];
+        $ageDistribution = [
+            'Under 18' => 0,
+            '18-35' => 0,
+            '36-50' => 0,
+            'Over 50' => 0,
+            'Unknown' => 0,
+        ];
+
+        foreach ($patients as $p) {
+            $status = $p->status ?: 'Unknown';
+            $patientStatusDistribution[$status] = ($patientStatusDistribution[$status] ?? 0) + 1;
+
+            $gender = $p->gender ?: 'Unknown';
+            $genderDistribution[$gender] = ($genderDistribution[$gender] ?? 0) + 1;
+
+            if ($p->date_of_birth) {
+                $age = \Carbon\Carbon::parse($p->date_of_birth)->age;
+                if ($age < 18) {
+                    $ageDistribution['Under 18']++;
+                } elseif ($age <= 35) {
+                    $ageDistribution['18-35']++;
+                } elseif ($age <= 50) {
+                    $ageDistribution['36-50']++;
+                } else {
+                    $ageDistribution['Over 50']++;
+                }
+            } else {
+                $ageDistribution['Unknown']++;
+            }
+        }
+
+        return response()->json([
+            'categories' => [
+                'financial' => [
+                    'title' => 'Financial Reports',
+                    'description' => 'Analyze clinic income, expenses, and net profit trends.',
+                ],
+                'appointments' => [
+                    'title' => 'Appointment Statistics',
+                    'description' => 'Track appointment volumes, status distribution, and attendance.',
+                ],
+                'demographics' => [
+                    'title' => 'Patient Demographics',
+                    'description' => 'Understand patient distributions by age, gender, and status.',
+                ],
+            ],
+            'financial_summary' => [
+                'total_income' => number_format($totalIncome, 2, '.', ''),
+                'total_expenses' => number_format($totalExpenses, 2, '.', ''),
+                'net_profit' => number_format($netProfit, 2, '.', ''),
+            ],
+            'appointment_summary' => [
+                'total_appointments' => $totalAppointments,
+                'status_distribution' => $appointmentStatusDistribution,
+            ],
+            'patient_summary' => [
+                'total_patients' => $totalPatients,
+                'status_distribution' => $patientStatusDistribution,
+                'gender_distribution' => $genderDistribution,
+                'age_distribution' => $ageDistribution,
+            ],
+        ]);
+    }
+
     public function createLabOrder(Request $request)
     {
         $validated = $request->validate([

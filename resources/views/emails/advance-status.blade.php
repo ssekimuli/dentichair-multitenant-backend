@@ -1,82 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Advance Request Update</title>
-    <style>
-        /* Modern Premium Email Reset */
-        body, table, td, div, p, a { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-        body { background-color: #f8fafc; margin: 0; padding: 0; color: #334155; }
-        .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #f1f5f9; }
-        .header { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); padding: 40px 32px; text-align: center; }
-        .header h1 { font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.025em; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .content { padding: 48px 40px; }
-        h2 { color: #0f172a; font-size: 22px; font-weight: 700; margin-top: 0; margin-bottom: 24px; letter-spacing: -0.025em; }
-        p { font-size: 16px; line-height: 1.6; margin-top: 0; margin-bottom: 24px; color: #475569; }
-        .info-card, .details-table, .checklist, .stock-table { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
-        .details-table { width: 100%; border-collapse: collapse; padding: 0; }
-        .details-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 15px; }
-        .details-table tr:last-child td { border-bottom: none; padding-bottom: 0; }
-        .details-table tr:first-child td { padding-top: 0; }
-        .label { color: #64748b; font-weight: 500; width: 35%; }
-        .value { color: #0f172a; font-weight: 600; text-align: right; }
-        .btn, .action-button { display: inline-block; background-color: #2563eb; color: #ffffff; font-weight: 600; font-size: 16px; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
-        .badge, .reminder-badge, .month-badge, .token-badge, .status-badge { display: inline-block; padding: 6px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; background-color: #dbeafe; color: #1d4ed8; }
-        .alert-badge-danger { display: inline-block; padding: 6px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 12px; background-color: #fee2e2; color: #b91c1c; }
-        .alert-badge-warning { display: inline-block; padding: 6px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 12px; background-color: #fef3c7; color: #b45309; }
-        .stock-table th { padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stock-table td { padding: 10px 12px; border-top: 1px solid #e2e8f0; }
-        .footer { background-color: #f1f5f9; padding: 32px 40px; text-align: center; font-size: 13px; color: #64748b; }
-        .info-title { font-weight: 700; color: #0369a1; margin-bottom: 8px; font-size: 15px; }
-        .info-body { font-size: 14px; color: #0f172a; }
-        .checklist-title { font-size: 14px; font-weight: 600; color: #0f172a; margin-top: 0; margin-bottom: 16px; }
-        .checklist-item { display: flex; align-items: flex-start; margin-bottom: 12px; font-size: 14px; color: #334155; }
-        .check-icon { display: inline-block; width: 20px; height: 20px; min-width: 20px; border: 2px solid #cbd5e1; border-radius: 4px; margin-right: 12px; margin-top: 1px; }
-    </style>
-</head>
-<body>
-    <div class="wrapper">
-    <div class="container">
-        <div class="header">
-            <h1>Dental Management System</h1>
-        </div>
-        <div class="content">
-            <h2>Hello {{ $employeeName }},</h2>
-            <p>Your staff advance request has been reviewed. Here are the update details:</p>
-            
-            <table class="details-table">
-                <tr>
-                    <td class="label">Amount Requested</td>
-                    <td class="value">${{ number_format($amount, 2) }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Reason</td>
-                    <td class="value">{{ $reason }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Date</td>
-                    <td class="value">{{ $date }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Status</td>
-                    <td class="value">
-                        <span class="status-badge status-{{ $status }}">{{ $status }}</span>
-                    </td>
-                </tr>
-            </table>
-            
-            @if($status === 'Approved')
-                <p>Your request has been approved. The amount will be disbursed accordingly. Please contact the finance department if you have any questions.</p>
-            @elseif($status === 'Rejected')
-                <p>If you have any questions regarding this decision, please reach out to your HR administrator.</p>
-            @endif
-        </div>
-        <div class="footer">
-            &copy; {{ date('Y') }} Dental Management System. All rights reserved.
-        </div>
-    </div>
-    </div>
-</body>
-</html>
+@component('mail::message')
+# Staff Advance Request Update
+
+Hello {{ $employeeName }},
+
+Your staff advance request has been reviewed. Here are the update details:
+
+@component('mail::panel')
+**Amount Requested:** ${{ number_format($amount, 2) }}
+**Reason:** {{ $reason }}
+**Date:** {{ $date }}
+**Status:** **{{ $status }}**
+@endcomponent
+
+@if($status === 'Approved')
+Your request has been approved. The amount will be disbursed accordingly. Please contact the finance department if you have any questions.
+@elseif($status === 'Rejected')
+If you have any questions regarding this decision, please reach out to your HR administrator.
+@endif
+
+Thanks,<br>
+{{ config('app.name', 'Dental Management System') }}
+@endcomponent

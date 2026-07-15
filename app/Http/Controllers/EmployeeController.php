@@ -312,7 +312,15 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
-        if ($request->has('role') || $request->has('role_id')) {
+        $hasRoleChange = false;
+        if ($request->has('role_id') && $request->input('role_id') != $employee->role_id && $request->input('role_id') != $employee->role) {
+            $hasRoleChange = true;
+        }
+        if ($request->has('role') && $request->input('role') != $employee->role_id && $request->input('role') != $employee->role) {
+            $hasRoleChange = true;
+        }
+
+        if ($hasRoleChange) {
             return response()->json([
                 'message' => 'Role modifications are restricted',
                 'errors' => [

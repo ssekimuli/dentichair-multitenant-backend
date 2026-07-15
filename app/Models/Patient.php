@@ -98,4 +98,9 @@ class Patient extends Model
     {
         return $this->hasMany(LaboratoryOrder::class);
     }
+
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(Prescription::class)->orderBy('id', 'desc');
+    }
 }

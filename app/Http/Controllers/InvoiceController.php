@@ -76,7 +76,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions']);
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'medicines.medicine', 'medicines.unit']);
 
         if ($request->has('branch_id')) {
             $query->where('branch_id', $request->branch_id);
@@ -142,7 +142,7 @@ class InvoiceController extends Controller
      */
     public function getIncomeRecords(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'medicines.medicine', 'medicines.unit'])
             ->where('status', 'Paid');
 
         $branch = null;
@@ -223,7 +223,7 @@ class InvoiceController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])->find($id);
+        $invoice = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'medicines.medicine', 'medicines.unit'])->find($id);
 
         if (!$invoice) {
             return response()->json(['error' => 'Invoice not found'], 404);
@@ -303,33 +303,40 @@ class InvoiceController extends Controller
             'issue_date' => 'required|date',
             'due_date' => 'required|date',
             'branch_id' => 'required|exists:branches,id',
-            'treatments' => 'required|array',
+            'treatments' => 'sometimes|array',
             'treatments.*.procedure' => 'required|string',
             'treatments.*.cost' => 'required|numeric',
             'other_charges' => 'nullable|array',
             'other_charges.*.description' => 'required|string',
             'other_charges.*.amount' => 'required|numeric',
+            'medicines' => 'nullable|array',
+            'medicines.*.medicine_id' => 'required|exists:medicines,id',
+            'medicines.*.medicine_unit_id' => 'required|exists:medicine_units,id',
+            'medicines.*.quantity' => 'required|integer|min:1',
+            'medicines.*.price' => 'required|numeric',
         ]);
 
         $invoice = Invoice::create([
-            ...$validated,
+            ...collect($validated)->except(['treatments', 'other_charges', 'medicines'])->toArray(),
             'paid_amount' => 0,
             'status' => 'Pending',
         ]);
 
-        foreach ($validated['treatments'] as $treatment) {
-            $invoice->treatments()->create($treatment);
+        if (isset($validated['treatments'])) {
+            foreach ($validated['treatments'] as $treatment) {
+                $invoice->treatments()->create($treatment);
 
-            // Create a corresponding completed treatment plan
-            $tp = new \App\Models\TreatmentPlan([
-                'patient_id' => $invoice->patient_id,
-                'procedure' => $treatment['procedure'],
-                'cost' => $treatment['cost'],
-                'status' => 'Completed',
-                'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
-            ]);
-            $tp->invoice_id = 'inv' . $invoice->id;
-            $tp->saveQuietly();
+                // Create a corresponding completed treatment plan
+                $tp = new \App\Models\TreatmentPlan([
+                    'patient_id' => $invoice->patient_id,
+                    'procedure' => $treatment['procedure'],
+                    'cost' => $treatment['cost'],
+                    'status' => 'Completed',
+                    'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
+                ]);
+                $tp->invoice_id = 'inv' . $invoice->id;
+                $tp->saveQuietly();
+            }
         }
 
         if (isset($validated['other_charges'])) {
@@ -338,7 +345,19 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch']);
+        if (isset($validated['medicines'])) {
+            foreach ($validated['medicines'] as $med) {
+                $invoice->medicines()->create($med);
+                
+                // Deduct stock quantity
+                $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
+                if ($medUnit) {
+                    $medUnit->decrement('stock_quantity', $med['quantity']);
+                }
+            }
+        }
+
+        $invoice->load(['treatments', 'otherCharges', 'medicines.medicine', 'medicines.unit', 'patient', 'branch']);
 
         if ($invoice->patient && $invoice->patient->email) {
             try {
@@ -450,10 +469,15 @@ class InvoiceController extends Controller
             'other_charges' => 'sometimes|array',
             'other_charges.*.description' => 'required|string',
             'other_charges.*.amount' => 'required|numeric',
+            'medicines' => 'sometimes|array',
+            'medicines.*.medicine_id' => 'required|exists:medicines,id',
+            'medicines.*.medicine_unit_id' => 'required|exists:medicine_units,id',
+            'medicines.*.quantity' => 'required|integer|min:1',
+            'medicines.*.price' => 'required|numeric',
         ]);
 
-        // Update basic invoice details (excluding treatments and other_charges)
-        $invoiceData = collect($validated)->except(['treatments', 'other_charges'])->toArray();
+        // Update basic invoice details (excluding treatments, other_charges, medicines)
+        $invoiceData = collect($validated)->except(['treatments', 'other_charges', 'medicines'])->toArray();
         $invoice->update($invoiceData);
 
         // Update treatments if provided
@@ -494,7 +518,27 @@ class InvoiceController extends Controller
             }
         }
 
-        return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch']));
+        // Update medicines if provided
+        if (isset($validated['medicines'])) {
+            // Restore previous stock
+            foreach ($invoice->medicines as $oldMed) {
+                $medUnit = \App\Models\MedicineUnit::find($oldMed->medicine_unit_id);
+                if ($medUnit) {
+                    $medUnit->increment('stock_quantity', $oldMed->quantity);
+                }
+            }
+            $invoice->medicines()->delete();
+            foreach ($validated['medicines'] as $med) {
+                $invoice->medicines()->create($med);
+                // Deduct new stock
+                $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
+                if ($medUnit) {
+                    $medUnit->decrement('stock_quantity', $med['quantity']);
+                }
+            }
+        }
+
+        return response()->json($invoice->load(['treatments', 'otherCharges', 'medicines.medicine', 'medicines.unit', 'transactions', 'branch']));
     }
 
     /**
@@ -576,7 +620,7 @@ class InvoiceController extends Controller
             'payment_method' => $validated['method'],
         ]);
 
-        $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient']);
+        $invoice->load(['treatments', 'otherCharges', 'medicines.medicine', 'medicines.unit', 'transactions', 'patient']);
 
         if ($invoice->patient && $invoice->patient->email) {
             try {

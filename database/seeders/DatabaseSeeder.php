@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             // AppointmentSeeder::class,
             // InvoiceSeeder::class,
             ManagementSeeder::class,
+            MedicineSeeder::class,
         ]);
     }
 }

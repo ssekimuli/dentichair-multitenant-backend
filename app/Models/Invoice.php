@@ -60,4 +60,9 @@ class Invoice extends Model
     {
         return $this->hasMany(PaymentTransaction::class);
     }
+
+    public function medicines(): HasMany
+    {
+        return $this->hasMany(InvoiceMedicine::class);
+    }
 }

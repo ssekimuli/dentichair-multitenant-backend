@@ -9,6 +9,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\PharmacyController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -175,4 +176,14 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
     Route::get('/import/templates', [ImportController::class, 'listTemplates']);
     Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
+
+    // Pharmacy Module
+    Route::get('/pharmacy/medicines', [PharmacyController::class, 'getMedicines']);
+    Route::post('/pharmacy/medicines', [PharmacyController::class, 'storeMedicine']);
+    Route::put('/pharmacy/medicines/{id}', [PharmacyController::class, 'updateMedicine']);
+    Route::delete('/pharmacy/medicines/{id}', [PharmacyController::class, 'deleteMedicine']);
+    Route::get('/pharmacy/prescriptions', [PharmacyController::class, 'getPrescriptions']);
+    Route::post('/pharmacy/prescriptions', [PharmacyController::class, 'storePrescription']);
+    Route::patch('/pharmacy/prescriptions/{id}/status', [PharmacyController::class, 'updatePrescriptionStatus']);
+    Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
 });

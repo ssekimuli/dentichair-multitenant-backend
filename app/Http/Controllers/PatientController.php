@@ -7,6 +7,7 @@ use App\Models\SoftTissueRecord;
 use App\Models\OrthodonticRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
  * @group Patients
@@ -1682,6 +1683,8 @@ class PatientController extends Controller
      */
     public function addSoftTissueRecord(Request $request, $patientId)
     {
+        try {
+            
         $patient = Patient::find($patientId);
 
         if (!$patient) {
@@ -1700,6 +1703,9 @@ class PatientController extends Controller
         ]);
 
         return response()->json($patient->load('softTissueRecords'));
+        }catch(Throwable $ex){
+            return response()->json(['error' => $ex->getMessage()], 404);
+        }
     }
 
     /**

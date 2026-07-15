@@ -1696,7 +1696,6 @@ class PatientController extends Controller
 
         $patient->softTissueRecords()->create([
             ...$validated,
-            'id' => 'st' . (SoftTissueRecord::count() + 1),
             'date' => now()->format('Y-m-d'),
         ]);
 
@@ -1896,7 +1895,6 @@ class PatientController extends Controller
 
         $patient->orthodonticRecords()->create([
             ...$validated,
-            'id' => 'or' . (OrthodonticRecord::count() + 1),
             'date' => now()->format('Y-m-d'),
         ]);
 

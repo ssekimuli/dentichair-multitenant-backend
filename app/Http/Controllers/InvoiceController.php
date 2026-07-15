@@ -313,7 +313,6 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::create([
             ...$validated,
-            'id' => 'inv' . (Invoice::count() + 1),
             'paid_amount' => 0,
             'status' => 'Pending',
         ]);

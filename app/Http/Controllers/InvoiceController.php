@@ -339,7 +339,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoice->load(['treatments', 'otherCharges', 'patient']);
+        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch']);
 
         if ($invoice->patient && $invoice->patient->email) {
             try {
@@ -495,7 +495,7 @@ class InvoiceController extends Controller
             }
         }
 
-        return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions']));
+        return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch']));
     }
 
     /**

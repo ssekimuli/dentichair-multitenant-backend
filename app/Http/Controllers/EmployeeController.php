@@ -515,7 +515,7 @@ class EmployeeController extends Controller
                 return response()->json(['message' => 'Password resent successfully']);
             } catch (\Exception $e) {
                 logger()->error("Failed to send employee password email: " . $e->getMessage());
-                return response()->json(['error' => 'Failed to send email. Password was reset.'], 500);
+                return response()->json(['message' => 'Password was reset, but email failed to send.']);
             }
         }
         

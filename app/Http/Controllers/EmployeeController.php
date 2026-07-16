@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\EmployeeWelcomeMail;
 
 /**
  * @group Employees
@@ -157,16 +158,13 @@ class EmployeeController extends Controller
 
         if ($employee->email) {
             try {
-                Mail::send('emails.employee-welcome', [
+                Mail::to($employee->email)->send(new EmployeeWelcomeMail([
                     'name' => $employee->name,
                     'email' => $employee->email,
                     'temporaryPassword' => $temporaryPassword,
                     'role' => $employee->role,
                     'branchName' => $employee->branch->name ?? 'Dental Clinic',
-                ], function ($message) use ($employee) {
-                    $message->to($employee->email)
-                            ->subject('Welcome to the Team! - Dental Management System');
-                });
+                ], 'Welcome to the Team! - Dental Management System'));
             } catch (\Exception $e) {
                 logger()->error("Failed to send employee welcome email: " . $e->getMessage());
             }
@@ -503,16 +501,13 @@ class EmployeeController extends Controller
 
         if ($employee->email) {
             try {
-                Mail::send('emails.employee-welcome', [
+                Mail::to($employee->email)->send(new EmployeeWelcomeMail([
                     'name' => $employee->name,
                     'email' => $employee->email,
                     'temporaryPassword' => $temporaryPassword,
                     'role' => $employee->role,
                     'branchName' => $employee->branch->name ?? 'Dental Clinic',
-                ], function ($message) use ($employee) {
-                    $message->to($employee->email)
-                            ->subject('Your Password Has Been Reset - Dental Management System');
-                });
+                ], 'Your Password Has Been Reset - Dental Management System'));
                 
                 return response()->json(['message' => 'Password resent successfully']);
             } catch (\Exception $e) {

@@ -479,6 +479,49 @@ class EmployeeController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * Resend Employee Password
+     * 
+     * Resets the employee's password and sends an email with the new credentials.
+     * 
+     * @authenticated
+     * 
+     * @param string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resendPassword($id)
+    {
+        $employee = Employee::findOrFail($id);
+        
+        // Use a default temporary password as done in store(), or generate one
+        $temporaryPassword = 'password'; 
+        
+        $employee->update(['password' => Hash::make($temporaryPassword)]);
+        $employee->load('branch');
+
+        if ($employee->email) {
+            try {
+                Mail::send('emails.employee-welcome', [
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                    'temporaryPassword' => $temporaryPassword,
+                    'role' => $employee->role,
+                    'branchName' => $employee->branch->name ?? 'Dental Clinic',
+                ], function ($message) use ($employee) {
+                    $message->to($employee->email)
+                            ->subject('Your Password Has Been Reset - Dental Management System');
+                });
+                
+                return response()->json(['message' => 'Password resent successfully']);
+            } catch (\Exception $e) {
+                logger()->error("Failed to send employee password email: " . $e->getMessage());
+                return response()->json(['error' => 'Failed to send email. Password was reset.'], 500);
+            }
+        }
+        
+        return response()->json(['error' => 'Employee has no email address'], 400);
+    }
+
     public function getDoctors(Request $request)
     {
         $query = Employee::with(['branch'])->whereIn('role', [

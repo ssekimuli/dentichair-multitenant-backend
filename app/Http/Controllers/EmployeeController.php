@@ -137,6 +137,8 @@ class EmployeeController extends Controller
 
         // Fetch the role name automatically
         $role = RolePermission::find($validated['role']);
+        
+        $temporaryPassword = Str::password(6, true, true, false, false);
 
         $employee = Employee::create([
             'name' => $validated['name'],
@@ -148,7 +150,7 @@ class EmployeeController extends Controller
             'hire_date' => $validated['hire_date'],
             'branch_id' => $validated['branch_id'],
             'status' => 'Active',
-            'password' => Hash::make('password'),
+            'password' => Hash::make($temporaryPassword),
         ]);
 
         $employee->load('branch');
@@ -158,7 +160,7 @@ class EmployeeController extends Controller
                 Mail::send('emails.employee-welcome', [
                     'name' => $employee->name,
                     'email' => $employee->email,
-                    'temporaryPassword' => 'password',
+                    'temporaryPassword' => $temporaryPassword,
                     'role' => $employee->role,
                     'branchName' => $employee->branch->name ?? 'Dental Clinic',
                 ], function ($message) use ($employee) {
@@ -493,8 +495,8 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         
-        // Use a default temporary password as done in store(), or generate one
-        $temporaryPassword = 'password'; 
+        // Generate a random temporary password
+        $temporaryPassword = Str::password(6, true, true, false, false);
         
         $employee->update(['password' => Hash::make($temporaryPassword)]);
         $employee->load('branch');

@@ -34,13 +34,10 @@ class SendRoutineCheckupReminders extends Command
 
         foreach ($patients as $patient) {
             try {
-                Mail::send('emails.routine-checkup', [
+                Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.routine-checkup', [
                     'patientName' => $patient->first_name . ' ' . $patient->last_name,
                     'lastVisit' => $patient->last_visit->format('M d, Y'),
-                ], function ($message) use ($patient) {
-                    $message->to($patient->email)
-                            ->subject('Time for your 6-month dental checkup! 🦷');
-                });
+                ], 'Time for your 6-month dental checkup! 🦷'));
 
                 $sent++;
             } catch (\Exception $e) {

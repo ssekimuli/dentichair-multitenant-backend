@@ -8,6 +8,7 @@ use App\Models\RolePermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\PasswordResetMail;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -356,10 +357,10 @@ class AuthController extends Controller
      */
     private function sendOtpEmail($email, $otp, $name)
     {
-        Mail::send('emails.password-reset', ['otp' => $otp, 'name' => $name], function ($message) use ($email) {
-            $message->to($email)
-                    ->subject('Password Reset OTP - Dental Management System');
-        });
+        Mail::to($email)->send(new PasswordResetMail([
+            'otp' => $otp,
+            'name' => $name
+        ]));
     }
 
     /**

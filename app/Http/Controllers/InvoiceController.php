@@ -360,17 +360,18 @@ class InvoiceController extends Controller
 
         if ($invoice->patient && $invoice->patient->email) {
             try {
-                Mail::send('emails.invoice-created', [
-                    'patientName' => $invoice->patient->first_name . ' ' . $invoice->patient->last_name,
-                    'invoiceId' => $invoice->id,
-                    'dueDate' => $invoice->due_date,
-                    'amount' => $invoice->amount,
-                    'treatments' => $invoice->treatments->toArray(),
-                    'otherCharges' => $invoice->otherCharges->toArray(),
-                ], function ($message) use ($invoice) {
-                    $message->to($invoice->patient->email)
-                            ->subject("New Invoice Issued (#{$invoice->id}) - Dental Management System");
-                });
+                Mail::to($invoice->patient->email)->send(new \App\Mail\GenericMarkdownMail(
+                    'emails.invoice-created',
+                    [
+                        'patientName' => $invoice->patient->first_name . ' ' . $invoice->patient->last_name,
+                        'invoiceId' => $invoice->id,
+                        'dueDate' => $invoice->due_date,
+                        'amount' => $invoice->amount,
+                        'treatments' => $invoice->treatments->toArray(),
+                        'otherCharges' => $invoice->otherCharges->toArray(),
+                    ],
+                    "New Invoice Issued (#{$invoice->id}) - Dental Management System"
+                ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send invoice creation email: " . $e->getMessage());
             }
@@ -626,18 +627,19 @@ class InvoiceController extends Controller
 
         if ($invoice->patient && $invoice->patient->email) {
             try {
-                Mail::send('emails.payment-receipt', [
-                    'patientName' => $invoice->patient->first_name . ' ' . $invoice->patient->last_name,
-                    'invoiceId' => $invoice->id,
-                    'paymentDate' => $transaction->date,
-                    'paymentMethod' => $transaction->method,
-                    'amountPaid' => $transaction->amount,
-                    'remainingBalance' => max(0, $invoice->amount - $invoice->paid_amount),
-                    'invoiceStatus' => $invoice->status,
-                ], function ($message) use ($invoice) {
-                    $message->to($invoice->patient->email)
-                            ->subject("Payment Receipt (#{$invoice->id}) - Dental Management System");
-                });
+                Mail::to($invoice->patient->email)->send(new \App\Mail\GenericMarkdownMail(
+                    'emails.payment-receipt',
+                    [
+                        'patientName' => $invoice->patient->first_name . ' ' . $invoice->patient->last_name,
+                        'invoiceId' => $invoice->id,
+                        'paymentDate' => $transaction->date,
+                        'paymentMethod' => $transaction->method,
+                        'amountPaid' => $transaction->amount,
+                        'remainingBalance' => max(0, $invoice->amount - $invoice->paid_amount),
+                        'invoiceStatus' => $invoice->status,
+                    ],
+                    "Payment Receipt (#{$invoice->id}) - Dental Management System"
+                ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send payment receipt email: " . $e->getMessage());
             }

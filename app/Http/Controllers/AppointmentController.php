@@ -176,7 +176,7 @@ class AppointmentController extends Controller
         // Send Email notification to patient if they have an email
         if ($appointment->patient && $appointment->patient->email) {
             try {
-                Mail::send('emails.appointment-confirmation', [
+                Mail::to($appointment->patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-confirmation', [
                     'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                     'tokenNumber' => $appointment->token_number,
                     'doctorName' => $appointment->doctor_name,
@@ -184,10 +184,7 @@ class AppointmentController extends Controller
                     'date' => $appointment->date->toDateString(),
                     'time' => $appointment->time,
                     'branchName' => $appointment->branch->name ?? 'Dental Clinic',
-                ], function ($message) use ($appointment) {
-                    $message->to($appointment->patient->email)
-                            ->subject('Appointment Scheduled - Dental Management System');
-                });
+                ], 'Appointment Scheduled - Dental Management System'));
             } catch (\Exception $e) {
                 logger()->error("Failed to send appointment confirmation email: " . $e->getMessage());
             }
@@ -278,7 +275,7 @@ class AppointmentController extends Controller
             }
             if ($appointment->patient && $appointment->patient->email) {
                 try {
-                    Mail::send('emails.appointment-status', [
+                    Mail::to($appointment->patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-status', [
                         'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                         'status' => $appointment->status,
                         'tokenNumber' => $appointment->token_number,
@@ -286,10 +283,7 @@ class AppointmentController extends Controller
                         'treatment' => $appointment->treatment,
                         'date' => $appointment->date->toDateString(),
                         'time' => $appointment->time,
-                    ], function ($message) use ($appointment) {
-                        $message->to($appointment->patient->email)
-                                ->subject('Appointment Status Update - Dental Management System');
-                    });
+                    ], 'Appointment Status Update - Dental Management System'));
                 } catch (\Exception $e) {
                     logger()->error("Failed to send appointment status update email: " . $e->getMessage());
                 }
@@ -394,7 +388,7 @@ class AppointmentController extends Controller
             }
             if ($appointment->patient && $appointment->patient->email) {
                 try {
-                    Mail::send('emails.appointment-status', [
+                    Mail::to($appointment->patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-status', [
                         'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                         'status' => $appointment->status,
                         'tokenNumber' => $appointment->token_number,
@@ -402,10 +396,7 @@ class AppointmentController extends Controller
                         'treatment' => $appointment->treatment,
                         'date' => $appointment->date->toDateString(),
                         'time' => $appointment->time,
-                    ], function ($message) use ($appointment) {
-                        $message->to($appointment->patient->email)
-                                ->subject('Appointment Status Update - Dental Management System');
-                    });
+                    ], 'Appointment Status Update - Dental Management System'));
                 } catch (\Exception $e) {
                     logger()->error("Failed to send appointment status update email: " . $e->getMessage());
                 }

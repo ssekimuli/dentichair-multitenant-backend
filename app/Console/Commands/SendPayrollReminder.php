@@ -36,13 +36,14 @@ class SendPayrollReminder extends Command
 
         foreach ($recipients as $employee) {
             try {
-                Mail::send('emails.payroll-reminder', [
-                    'recipientName' => $employee->name,
-                    'month' => $month,
-                ], function ($message) use ($employee, $month) {
-                    $message->to($employee->email)
-                            ->subject('Payroll Processing Reminder - ' . $month);
-                });
+                Mail::to($employee->email)->send(new \App\Mail\GenericMarkdownMail(
+                    'emails.payroll-reminder',
+                    [
+                        'recipientName' => $employee->name,
+                        'month' => $month,
+                    ],
+                    'Payroll Processing Reminder - ' . $month
+                ));
 
                 $sent++;
             } catch (\Exception $e) {

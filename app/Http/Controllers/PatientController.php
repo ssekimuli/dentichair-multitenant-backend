@@ -366,14 +366,11 @@ class PatientController extends Controller
 
         if ($patient->email) {
             try {
-                Mail::send('emails.patient-welcome', [
+                Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.patient-welcome', [
                     'name' => $patient->first_name . ' ' . $patient->last_name,
                     'email' => $patient->email,
                     'branchName' => $patient->branch->name ?? 'Dental Clinic',
-                ], function ($message) use ($patient) {
-                    $message->to($patient->email)
-                            ->subject('Welcome to Our Practice! - Dental Management System');
-                });
+                ], 'Welcome to Our Practice! - Dental Management System'));
             } catch (\Exception $e) {
                 logger()->error("Failed to send patient welcome email: " . $e->getMessage());
             }

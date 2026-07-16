@@ -39,13 +39,10 @@ class CheckLowStockInventory extends Command
 
         foreach ($admins as $admin) {
             try {
-                Mail::send('emails.low-stock-alert', [
+                Mail::to($admin->email)->send(new \App\Mail\GenericMarkdownMail('emails.low-stock-alert', [
                     'lowStockItems' => $lowStockItems,
                     'outOfStockItems' => $outOfStockItems,
-                ], function ($message) use ($admin) {
-                    $message->to($admin->email)
-                            ->subject('Inventory Alert - Low Stock Items');
-                });
+                ], 'Inventory Alert - Low Stock Items'));
 
                 $sent++;
             } catch (\Exception $e) {

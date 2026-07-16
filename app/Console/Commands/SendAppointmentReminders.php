@@ -28,17 +28,14 @@ class SendAppointmentReminders extends Command
             }
 
             try {
-                Mail::send('emails.appointment-reminder', [
+                Mail::to($appointment->patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-reminder', [
                     'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                     'doctorName' => $appointment->doctor_name,
                     'treatment' => $appointment->treatment,
                     'date' => $appointment->date->toDateString(),
                     'time' => $appointment->time,
                     'tokenNumber' => $appointment->token_number,
-                ], function ($message) use ($appointment) {
-                    $message->to($appointment->patient->email)
-                            ->subject('Appointment Reminder - Dental Management System');
-                });
+                ], 'Appointment Reminder - Dental Management System'));
 
                 $sent++;
             } catch (\Exception $e) {

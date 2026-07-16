@@ -387,17 +387,18 @@ class ManagementController extends Controller
 
         if ($oldStatus !== $leaveRequest->status && $leaveRequest->employee && $leaveRequest->employee->email) {
             try {
-                Mail::send('emails.leave-status', [
-                    'employeeName' => $leaveRequest->employee->name,
-                    'leaveType' => $leaveRequest->leave_type,
-                    'startDate' => $leaveRequest->start_date,
-                    'endDate' => $leaveRequest->end_date,
-                    'reason' => $leaveRequest->reason,
-                    'status' => $leaveRequest->status,
-                ], function ($message) use ($leaveRequest) {
-                    $message->to($leaveRequest->employee->email)
-                            ->subject("Leave Request Update ({$leaveRequest->status}) - Dental Management System");
-                });
+                Mail::to($leaveRequest->employee->email)->send(new \App\Mail\GenericMarkdownMail(
+                    'emails.leave-status',
+                    [
+                        'employeeName' => $leaveRequest->employee->name,
+                        'leaveType' => $leaveRequest->leave_type,
+                        'startDate' => $leaveRequest->start_date,
+                        'endDate' => $leaveRequest->end_date,
+                        'reason' => $leaveRequest->reason,
+                        'status' => $leaveRequest->status,
+                    ],
+                    "Leave Request Update ({$leaveRequest->status}) - Dental Management System"
+                ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send leave status email: " . $e->getMessage());
             }
@@ -599,16 +600,17 @@ class ManagementController extends Controller
 
         if ($oldStatus !== $advance->status && $advance->employee && $advance->employee->email) {
             try {
-                Mail::send('emails.advance-status', [
-                    'employeeName' => $advance->employee->name,
-                    'amount' => $advance->amount,
-                    'reason' => $advance->reason,
-                    'date' => $advance->date,
-                    'status' => $advance->status,
-                ], function ($message) use ($advance) {
-                    $message->to($advance->employee->email)
-                            ->subject("Staff Advance Request Update ({$advance->status}) - Dental Management System");
-                });
+                Mail::to($advance->employee->email)->send(new \App\Mail\GenericMarkdownMail(
+                    'emails.advance-status',
+                    [
+                        'employeeName' => $advance->employee->name,
+                        'amount' => $advance->amount,
+                        'reason' => $advance->reason,
+                        'date' => $advance->date,
+                        'status' => $advance->status,
+                    ],
+                    "Staff Advance Request Update ({$advance->status}) - Dental Management System"
+                ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send staff advance status email: " . $e->getMessage());
             }

@@ -91,6 +91,12 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/patients/{patientId}/orthodontic-records/{recordId}', [PatientController::class, 'updateOrthodonticRecord']);
     Route::delete('/patients/{patientId}/orthodontic-records/{recordId}', [PatientController::class, 'deleteOrthodonticRecord']);
 
+    // Endodontic Records
+    Route::get('/patients/{patientId}/endodontic-records', [PatientController::class, 'getEndodonticRecords']);
+    Route::post('/patients/{patientId}/endodontic-records', [PatientController::class, 'addEndodonticRecord']);
+    Route::put('/patients/{patientId}/endodontic-records/{recordId}', [PatientController::class, 'updateEndodonticRecord']);
+    Route::delete('/patients/{patientId}/endodontic-records/{recordId}', [PatientController::class, 'deleteEndodonticRecord']);
+
     // Appointments
     Route::apiResource('appointments', AppointmentController::class);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);

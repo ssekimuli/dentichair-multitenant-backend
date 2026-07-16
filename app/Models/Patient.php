@@ -74,6 +74,11 @@ class Patient extends Model
         return $this->hasMany(OrthodonticRecord::class);
     }
 
+    public function endodonticRecords(): HasMany
+    {
+        return $this->hasMany(EndodonticRecord::class);
+    }
+
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);

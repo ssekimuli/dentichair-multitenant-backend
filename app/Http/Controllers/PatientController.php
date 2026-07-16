@@ -62,6 +62,7 @@ class PatientController extends Controller
             'periodontalRecords' => fn($q) => $q->latest(),
             'softTissueRecords' => fn($q) => $q->latest(),
             'orthodonticRecords' => fn($q) => $q->latest(),
+            'endodonticRecords' => fn($q) => $q->latest(),
             'branch'
         ]);
 
@@ -176,6 +177,7 @@ class PatientController extends Controller
             'periodontalRecords' => fn($q) => $q->latest(),
             'softTissueRecords' => fn($q) => $q->latest(),
             'orthodonticRecords' => fn($q) => $q->latest(),
+            'endodonticRecords' => fn($q) => $q->latest(),
             'paidInvoices' => fn($q) => $q->latest(),
             'unpaidInvoices' => fn($q) => $q->latest()
         ])->find($id);
@@ -245,6 +247,7 @@ class PatientController extends Controller
             'periodontalRecords' => fn($q) => $q->latest(),
             'softTissueRecords' => fn($q) => $q->latest(),
             'orthodonticRecords' => fn($q) => $q->latest(),
+            'endodonticRecords' => fn($q) => $q->latest(),
             'branch',
         ])->find($id);
 
@@ -293,6 +296,7 @@ class PatientController extends Controller
             'periodontal_records' => $patient->periodontalRecords,
             'soft_tissue_records' => $patient->softTissueRecords,
             'orthodontic_records' => $patient->orthodonticRecords,
+            'endodontic_records' => $patient->endodonticRecords,
         ];
 
         return response()->json($history);
@@ -490,6 +494,7 @@ class PatientController extends Controller
             $patient->periodontalRecords()->delete();
             $patient->softTissueRecords()->delete();
             $patient->orthodonticRecords()->delete();
+            $patient->endodonticRecords()->delete();
             $patient->appointments()->delete();
             $patient->labOrders()->delete();
 
@@ -2071,5 +2076,101 @@ class PatientController extends Controller
 
         $invoices = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions'])->latest()->get();
         return response()->json($invoices);
+    }
+
+    /**
+     * Endodontic Records Management
+     */
+    public function getEndodonticRecords($patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Endodontic records retrieved successfully.',
+            'data' => $patient->endodonticRecords()->latest()->get()
+        ]);
+    }
+
+    public function addEndodonticRecord(Request $request, $patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'tooth_id' => 'required|integer',
+            'pulpal_diagnosis' => 'required|string',
+            'periapical_diagnosis' => 'required|string',
+            'canals' => 'required|array',
+            'obturation_material' => 'nullable|string',
+            'post_type' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $patient->endodonticRecords()->create([
+            ...$validated,
+            'date' => now()->format('Y-m-d'),
+        ]);
+
+        return response()->json($patient->load('endodonticRecords'));
+    }
+
+    public function updateEndodonticRecord(Request $request, $patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->endodonticRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Endodontic record not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'tooth_id' => 'sometimes|required|integer',
+            'pulpal_diagnosis' => 'sometimes|required|string',
+            'periapical_diagnosis' => 'sometimes|required|string',
+            'canals' => 'sometimes|required|array',
+            'obturation_material' => 'nullable|string',
+            'post_type' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $record->update($validated);
+
+        return response()->json([
+            'message' => 'Endodontic record updated successfully.',
+            'data' => $record
+        ]);
+    }
+
+    public function deleteEndodonticRecord($patientId, $recordId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $record = $patient->endodonticRecords()->find($recordId);
+
+        if (!$record) {
+            return response()->json(['error' => 'Endodontic record not found'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'message' => 'Endodontic record deleted successfully.'
+        ]);
     }
 }

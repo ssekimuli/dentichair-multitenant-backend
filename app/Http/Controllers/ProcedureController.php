@@ -10,9 +10,19 @@ class ProcedureController extends Controller
     /**
      * List all procedures.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Treatment::latest()->get());
+        $query = Treatment::query();
+
+        if ($request->has('search') && $request->search != '') {
+            $query->where('procedure', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->has('category') && $request->category != '') {
+            $query->where('category', $request->category);
+        }
+
+        return response()->json($query->orderBy('procedure', 'asc')->get());
     }
 
     /**

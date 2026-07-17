@@ -1920,15 +1920,26 @@ class PatientController extends Controller
         }
 
         $validated = $request->validate([
+            'date' => 'nullable|date',
             'appliance' => 'required|string',
+            'appliance_location' => 'nullable|string',
+            'treatment_phase' => 'nullable|string',
             'wire_size' => 'nullable|string',
+            'wire_size_upper' => 'nullable|string',
+            'wire_size_lower' => 'nullable|string',
+            'archwire_material' => 'nullable|string',
+            'elastics' => 'nullable|string',
+            'compliance' => 'nullable|string',
+            'oral_hygiene' => 'nullable|string',
             'bracket_changes' => 'nullable|array',
+            'broken_brackets' => 'nullable|array',
             'notes' => 'nullable|string',
+            'next_visit_goals' => 'nullable|string',
         ]);
 
         $patient->orthodonticRecords()->create([
             ...$validated,
-            'date' => now()->format('Y-m-d'),
+            'date' => $validated['date'] ?? now()->format('Y-m-d'),
         ]);
 
         return response()->json($patient->load('orthodonticRecords'));
@@ -1983,10 +1994,21 @@ class PatientController extends Controller
         }
 
         $validated = $request->validate([
+            'date' => 'sometimes|date',
             'appliance' => 'sometimes|string',
+            'appliance_location' => 'nullable|string',
+            'treatment_phase' => 'nullable|string',
             'wire_size' => 'nullable|string',
+            'wire_size_upper' => 'nullable|string',
+            'wire_size_lower' => 'nullable|string',
+            'archwire_material' => 'nullable|string',
+            'elastics' => 'nullable|string',
+            'compliance' => 'nullable|string',
+            'oral_hygiene' => 'nullable|string',
             'bracket_changes' => 'nullable|array',
+            'broken_brackets' => 'nullable|array',
             'notes' => 'nullable|string',
+            'next_visit_goals' => 'nullable|string',
         ]);
 
         $record->update($validated);

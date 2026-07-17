@@ -11,7 +11,7 @@ class PeriodontalRecord extends Model
     use HasFactory;
 
     protected $fillable = [
-        'patient_id', 'tooth_id', 'pockets', 'recession', 'mobility', 'furcation', 'conditions'
+        'patient_id', 'tooth_id', 'pockets', 'recession', 'mgj', 'mobility', 'furcation', 'conditions'
     ];
 
     protected $casts = [

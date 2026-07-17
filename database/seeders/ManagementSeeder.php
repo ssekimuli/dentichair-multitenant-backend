@@ -32,7 +32,7 @@ class ManagementSeeder extends Seeder
         $roles = [
             [
                 'name' => 'Super Admin', 
-                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'patients:delete', 'charting:read', 'charting:update', 'appointments:read', 'appointments:create', 'appointments:update', 'appointments:delete', 'billing:read', 'billing:create', 'billing:update', 'billing:delete', 'accounting:read', 'accounting:create', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'hrm:read', 'hrm:create', 'hrm:update', 'hrm:delete', 'branches:read', 'branches:create', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'patients:delete', 'charting:read', 'charting:update', 'periodontal:read', 'periodontal:update', 'appointments:read', 'appointments:create', 'appointments:update', 'appointments:delete', 'billing:read', 'billing:create', 'billing:update', 'billing:delete', 'accounting:read', 'accounting:create', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'hrm:read', 'hrm:create', 'hrm:update', 'hrm:delete', 'branches:read', 'branches:create', 'reports:read', 'settings:manage', 'profile:read', 'profile:update']
             ],
             [
                 'name' => 'Accountant', 
@@ -44,11 +44,11 @@ class ManagementSeeder extends Seeder
             ],
             [
                 'name' => 'Dentist', 
-                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'charting:read', 'charting:update', 'appointments:read', 'appointments:create', 'appointments:update', 'billing:read', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'profile:read', 'profile:update']
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'patients:create', 'patients:update', 'charting:read', 'charting:update', 'periodontal:read', 'periodontal:update', 'appointments:read', 'appointments:create', 'appointments:update', 'billing:read', 'laboratory:read', 'laboratory:create', 'laboratory:update', 'profile:read', 'profile:update']
             ],
             [
                 'name' => 'Hygienist', 
-                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'charting:update', 'appointments:read', 'profile:read', 'profile:update']
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'charting:update', 'periodontal:read', 'periodontal:update', 'appointments:read', 'profile:read', 'profile:update']
             ],
             [
                 'name' => 'Receptionist', 
@@ -56,7 +56,7 @@ class ManagementSeeder extends Seeder
             ],
             [
                 'name' => 'Dental Assistant', 
-                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'appointments:read', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'profile:read', 'profile:update']
+                'permissions' => ['dashboard:read', 'queue:read', 'patients:read', 'charting:read', 'periodontal:read', 'appointments:read', 'inventory:read', 'inventory:create', 'inventory:update', 'laboratory:read', 'profile:read', 'profile:update']
             ]
         ];
 

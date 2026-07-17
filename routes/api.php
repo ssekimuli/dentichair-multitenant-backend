@@ -40,6 +40,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Patients
     Route::apiResource('patients', PatientController::class);
+    Route::put('/patients/{id}/next-visit', [PatientController::class, 'updateNextVisit']);
     Route::get('/patients-list', [PatientController::class, 'patientList']);
     Route::get('/patients/{id}/invoices', [PatientController::class, 'getInvoices']);
 

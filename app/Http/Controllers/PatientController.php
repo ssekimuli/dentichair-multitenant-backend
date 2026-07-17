@@ -415,6 +415,31 @@ class PatientController extends Controller
      * @param string $id Patient ID
      * @return \Illuminate\Http\JsonResponse
      */
+    public function updateNextVisit(Request $request, $id)
+    {
+        $patient = Patient::find($id);
+
+        if (!$patient) {
+            return response()->json(['message' => 'Patient not found'], 404);
+        }
+
+        $request->validate([
+            'next_visit' => 'nullable|date',
+        ]);
+
+        $patient->next_visit = $request->next_visit;
+        $patient->save();
+
+        return response()->json($patient->load([
+            'dentalRecords',
+            'treatmentPlans',
+            'imaging',
+            'softTissueRecords',
+            'orthodonticRecords',
+            'endodonticRecords'
+        ]));
+    }
+
     public function update(Request $request, $id)
     {
         $patient = Patient::find($id);

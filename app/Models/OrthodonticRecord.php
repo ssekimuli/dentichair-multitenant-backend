@@ -29,4 +29,24 @@ class OrthodonticRecord extends Model
         'bracket_changes' => 'array',
         'broken_brackets' => 'array',
     ];
+
+    protected $appends = ['months_in_treatment'];
+
+    public function getMonthsInTreatmentAttribute()
+    {
+        if (!$this->patient_id) return 0;
+        
+        static $firstDates = [];
+        if (!isset($firstDates[$this->patient_id])) {
+            $firstDates[$this->patient_id] = static::where('patient_id', $this->patient_id)->min('date');
+        }
+        
+        if (!$firstDates[$this->patient_id]) return 0;
+        
+        $start = \Carbon\Carbon::parse($firstDates[$this->patient_id]);
+        // Use the current record's date to show the months in treatment at that specific visit
+        $current = \Carbon\Carbon::parse($this->date);
+        
+        return max(0, $start->diffInMonths($current));
+    }
 }

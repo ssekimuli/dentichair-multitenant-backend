@@ -50,6 +50,15 @@ class AutoScheduleNextVisits extends Command
                 continue;
             }
 
+            // Check if appointment already exists for this date
+            $exists = Appointment::where('patient_id', $patient->id)
+                ->whereDate('date', $patient->next_visit)
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
             // Create appointment
             Appointment::create([
                 'patient_name' => $patient->first_name . ' ' . $patient->last_name,
@@ -64,8 +73,6 @@ class AutoScheduleNextVisits extends Command
                 'token_number' => 'T' . strtoupper(Str::random(6)),
             ]);
 
-            // Clear the next_visit since it has been converted to an appointment
-            $patient->update(['next_visit' => null]);
             $count++;
         }
 

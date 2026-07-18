@@ -46,8 +46,8 @@ return new class extends Migration
 
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
-            $table->string('patient_name');
-            $table->foreignId('patient_id'); // Changed to foreignId
+            $table->string('patient_name')->nullable();
+            $table->foreignId('patient_id')->nullable(); // Changed to foreignId
             $table->decimal('amount', 10, 2);
             $table->decimal('paid_amount', 10, 2)->default(0);
             $table->enum('status', ['Pending', 'Paid', 'Overdue']);

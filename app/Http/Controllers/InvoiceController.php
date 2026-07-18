@@ -297,8 +297,8 @@ class InvoiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'patient_name' => 'required|string',
-            'patient_id' => 'required|exists:patients,id',
+            'patient_name' => 'nullable|string',
+            'patient_id' => 'nullable|exists:patients,id',
             'amount' => 'required|numeric',
             'issue_date' => 'required|date',
             'due_date' => 'required|date',
@@ -454,8 +454,8 @@ class InvoiceController extends Controller
         }
 
         $validated = $request->validate([
-            'patient_name' => 'sometimes|string',
-            'patient_id' => 'sometimes|exists:patients,id',
+            'patient_name' => 'sometimes|nullable|string',
+            'patient_id' => 'sometimes|nullable|exists:patients,id',
             'amount' => 'sometimes|numeric',
             'paid_amount' => 'sometimes|numeric',
             'status' => 'sometimes|in:Pending,Paid,Overdue',

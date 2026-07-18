@@ -10,6 +10,7 @@ use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PharmacyController;
+use App\Http\Controllers\BusinessController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +38,10 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
     Route::get('/currencies', [ManagementController::class, 'getCurrencies']);
+
+    // Businesses
+    Route::get('/businesses', [BusinessController::class, 'index']);
+    Route::post('/businesses', [BusinessController::class, 'store']);
 
     // Patients
     Route::apiResource('patients', PatientController::class);

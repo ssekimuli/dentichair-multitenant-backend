@@ -192,7 +192,7 @@ class PharmacyController extends Controller
     public function storePrescription(Request $request)
     {
         $validated = $request->validate([
-            'patient_id' => 'required|exists:patients,id',
+            'patient_id' => 'nullable|exists:patients,id',
             'doctor_id' => 'nullable|exists:employees,id',
             'prescription_date' => 'required|date',
             'notes' => 'nullable|string',
@@ -207,7 +207,7 @@ class PharmacyController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
-            $patient = Patient::findOrFail($validated['patient_id']);
+            $patient = isset($validated['patient_id']) ? Patient::find($validated['patient_id']) : null;
             $doctorName = null;
             if (isset($validated['doctor_id'])) {
                 $doctor = \App\Models\Employee::find($validated['doctor_id']);
@@ -218,8 +218,8 @@ class PharmacyController extends Controller
 
             // Create prescription
             $prescription = Prescription::create([
-                'patient_id' => $validated['patient_id'],
-                'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+                'patient_id' => $validated['patient_id'] ?? null,
+                'patient_name' => $patient ? $patient->first_name . ' ' . $patient->last_name : null,
                 'doctor_id' => $validated['doctor_id'] ?? null,
                 'doctor_name' => $doctorName,
                 'prescription_date' => $validated['prescription_date'],
@@ -258,11 +258,14 @@ class PharmacyController extends Controller
                 }
 
                 // Check if a pending invoice already exists for this patient, date, and branch
-                $invoice = Invoice::where('patient_id', $prescription->patient_id)
-                    ->where('issue_date', $prescription->prescription_date)
-                    ->where('branch_id', $prescription->branch_id)
-                    ->where('status', 'Pending')
-                    ->first();
+                $invoice = null;
+                if ($prescription->patient_id) {
+                    $invoice = Invoice::where('patient_id', $prescription->patient_id)
+                        ->where('issue_date', $prescription->prescription_date)
+                        ->where('branch_id', $prescription->branch_id)
+                        ->where('status', 'Pending')
+                        ->first();
+                }
 
                 if ($invoice) {
                     // Update existing invoice amount and append medicines

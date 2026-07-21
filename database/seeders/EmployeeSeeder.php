@@ -19,7 +19,7 @@ class EmployeeSeeder extends Seeder
                 'id' => 1,
                 'name' => 'Dr. Lisa', 
                 'avatar' => 'https://picsum.photos/seed/emp1/200/200', 
-                'email' => 'lisa.cuddy@example.com', 
+                'email' => 'ssekimuliandrew321@gmail.com', 
                 'password' => Hash::make('password'),
                 'role' => 'Super Admin', 
                 'role_id' => $roles['Super Admin']->id ?? 1, // Use numeric role_id

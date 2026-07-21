@@ -99,12 +99,15 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Endodontic Records
     Route::get('/patients/{patientId}/endodontic-records', [PatientController::class, 'getEndodonticRecords']);
-    Route::post('/patients/{patientId}/endodontic-records', [PatientController::class, 'addEndodonticRecord']);
-    Route::put('/patients/{patientId}/endodontic-records/{recordId}', [PatientController::class, 'updateEndodonticRecord']);
-    Route::delete('/patients/{patientId}/endodontic-records/{recordId}', [PatientController::class, 'deleteEndodonticRecord']);
+    Route::post('/patients/{patient}/endodontic-records', [App\Http\Controllers\EndodonticRecordController::class, 'store']);
+    Route::put('/patients/{patient}/endodontic-records/{endodonticRecord}', [App\Http\Controllers\EndodonticRecordController::class, 'update']);
+    Route::delete('/patients/{patient}/endodontic-records/{endodonticRecord}', [App\Http\Controllers\EndodonticRecordController::class, 'destroy']);
 
-    // Appointments
-    Route::apiResource('appointments', AppointmentController::class);
+    Route::post('/patients/{patient}/restorative-records', [App\Http\Controllers\RestorativeRecordController::class, 'store']);
+    Route::put('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'update']);
+    Route::delete('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'destroy']);
+
+    Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);
 
     // Invoices

@@ -69,14 +69,19 @@ class Patient extends Model
         return $this->hasMany(SoftTissueRecord::class);
     }
 
-    public function orthodonticRecords(): HasMany
-    {
-        return $this->hasMany(OrthodonticRecord::class);
-    }
-
     public function endodonticRecords(): HasMany
     {
         return $this->hasMany(EndodonticRecord::class);
+    }
+
+    public function restorativeRecords(): HasMany
+    {
+        return $this->hasMany(RestorativeRecord::class);
+    }
+
+    public function orthodonticRecords(): HasMany
+    {
+        return $this->hasMany(OrthodonticRecord::class);
     }
 
     public function appointments(): HasMany

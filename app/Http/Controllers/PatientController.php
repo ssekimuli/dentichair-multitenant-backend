@@ -178,6 +178,7 @@ class PatientController extends Controller
             'softTissueRecords' => fn($q) => $q->latest(),
             'orthodonticRecords' => fn($q) => $q->latest(),
             'endodonticRecords' => fn($q) => $q->latest(),
+            'restorativeRecords' => fn($q) => $q->latest(),
             'paidInvoices' => fn($q) => $q->latest(),
             'unpaidInvoices' => fn($q) => $q->latest()
         ])->find($id);
@@ -297,6 +298,7 @@ class PatientController extends Controller
             'soft_tissue_records' => $patient->softTissueRecords,
             'orthodontic_records' => $patient->orthodonticRecords,
             'endodontic_records' => $patient->endodonticRecords,
+            'restorative_records' => $patient->restorativeRecords,
         ];
 
         return response()->json($history);

@@ -16,7 +16,8 @@ class Invoice extends Model
 
     protected $fillable = [
         'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
-        'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines'
+        'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines',
+        'discount', 'tax', 'insurance_coverage'
     ];
 
     protected $casts = [

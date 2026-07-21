@@ -317,4 +317,57 @@ class PharmacyController extends Controller
 
         return response()->json($prescription->load(['items.medicine', 'items.unit', 'invoice']));
     }
+
+    /**
+     * Update Prescription
+     */
+    public function updatePrescription(Request $request, $id)
+    {
+        $prescription = Prescription::with('items')->find($id);
+        if (!$prescription) {
+            return response()->json(['error' => 'Prescription not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'prescription_date' => 'sometimes|date',
+            'notes' => 'nullable|string',
+            'items' => 'sometimes|array|min:1',
+            'items.*.medicine_id' => 'required|exists:medicines,id',
+            'items.*.medicine_unit_id' => 'required|exists:medicine_units,id',
+            'items.*.dosage' => 'required|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+        ]);
+
+        return DB::transaction(function () use ($prescription, $validated) {
+            $prescription->update(collect($validated)->except('items')->toArray());
+
+            if (isset($validated['items'])) {
+                // To keep it simple, delete old items and create new ones
+                $prescription->items()->delete();
+                foreach ($validated['items'] as $itemData) {
+                    $prescription->items()->create($itemData);
+                }
+            }
+
+            return response()->json($prescription->load(['items.medicine', 'items.unit', 'invoice']));
+        });
+    }
+
+    /**
+     * Delete Prescription
+     */
+    public function deletePrescription($id)
+    {
+        $prescription = Prescription::find($id);
+        if (!$prescription) {
+            return response()->json(['error' => 'Prescription not found'], 404);
+        }
+
+        $prescription->items()->delete();
+        $prescription->delete();
+
+        return response()->json(['success' => true]);
+    }
 }
+

@@ -198,5 +198,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/pharmacy/prescriptions', [PharmacyController::class, 'getPrescriptions']);
     Route::post('/pharmacy/prescriptions', [PharmacyController::class, 'storePrescription']);
     Route::patch('/pharmacy/prescriptions/{id}/status', [PharmacyController::class, 'updatePrescriptionStatus']);
+    Route::put('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'updatePrescription']);
+    Route::delete('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'deletePrescription']);
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
 });

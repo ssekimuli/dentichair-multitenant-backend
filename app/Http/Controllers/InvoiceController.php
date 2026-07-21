@@ -151,6 +151,13 @@ class InvoiceController extends Controller
             $branch = Branch::find($request->branch_id);
         }
 
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $query->whereBetween('issue_date', [
+                \Carbon\Carbon::parse($request->date_from)->startOfDay(),
+                \Carbon\Carbon::parse($request->date_to)->endOfDay()
+            ]);
+        }
+
         $invoices = $query->latest()->get();
         $totalPaid = $invoices->sum('paid_amount');
 

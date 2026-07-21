@@ -661,6 +661,10 @@ class ManagementController extends Controller
 
         $payrollRecords = Payroll::with(['employee', 'branch'])
             ->when($request->filled('branch_id'), fn($q) => $q->where('branch_id', $request->branch_id))
+            ->when($request->filled('date_from') && $request->filled('date_to'), fn($q) => $q->whereBetween('pay_date', [
+                \Carbon\Carbon::parse($request->date_from)->startOfDay(),
+                \Carbon\Carbon::parse($request->date_to)->endOfDay()
+            ]))
             ->orderByDesc('pay_date')
             ->get()
             ->map(function ($record) {
@@ -683,6 +687,10 @@ class ManagementController extends Controller
 
         $operationalRecords = Expense::with(['branch'])
             ->when($request->filled('branch_id'), fn($q) => $q->where('branch_id', $request->branch_id))
+            ->when($request->filled('date_from') && $request->filled('date_to'), fn($q) => $q->whereBetween('date', [
+                \Carbon\Carbon::parse($request->date_from)->startOfDay(),
+                \Carbon\Carbon::parse($request->date_to)->endOfDay()
+            ]))
             ->orderByDesc('date')
             ->get()
             ->map(function ($record) {
@@ -809,9 +817,14 @@ class ManagementController extends Controller
     public function getFinancialSummary(Request $request)
     {
         $branchId = $request->branch_id;
-        $today = Carbon::today();
-        $startDate = $today->copy()->subMonthsNoOverflow(5)->startOfMonth();
-        $endDate = $today->copy()->endOfMonth();
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $startDate = \Carbon\Carbon::parse($request->date_from)->startOfDay();
+            $endDate = \Carbon\Carbon::parse($request->date_to)->endOfDay();
+        } else {
+            $today = Carbon::today();
+            $startDate = $today->copy()->subMonthsNoOverflow(5)->startOfMonth();
+            $endDate = $today->copy()->endOfMonth();
+        }
 
         $incomeQuery = Invoice::query()
             ->whereBetween('issue_date', [$startDate, $endDate])

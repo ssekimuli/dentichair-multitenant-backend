@@ -358,7 +358,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch']);
+        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions']);
 
         if ($invoice->patient && $invoice->patient->email) {
             try {

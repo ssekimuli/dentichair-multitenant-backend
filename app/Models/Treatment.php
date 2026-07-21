@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Treatment extends Model
 {
     use HasFactory;
-
-    protected $fillable = ['procedure', 'cost', 'category'];
+    protected $fillable = ['treatment_code', 'procedure', 'cost', 'category'];
 
     protected $casts = [
         'cost' => 'decimal:2',

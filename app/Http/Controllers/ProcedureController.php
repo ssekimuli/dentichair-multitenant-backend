@@ -45,6 +45,7 @@ class ProcedureController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'treatment_code' => 'nullable|string|max:255',
             'procedure' => 'required|string|max:255',
             'cost' => 'required|numeric|min:0',
             'category' => 'nullable|string|max:255',
@@ -67,6 +68,7 @@ class ProcedureController extends Controller
         }
 
         $validated = $request->validate([
+            'treatment_code' => 'nullable|string|max:255',
             'procedure' => 'sometimes|required|string|max:255',
             'cost' => 'sometimes|required|numeric|min:0',
             'category' => 'nullable|string|max:255',

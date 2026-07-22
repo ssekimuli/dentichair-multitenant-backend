@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Patient;
 use App\Models\SoftTissueRecord;
 use App\Models\OrthodonticRecord;
+use App\Services\CloudflareR2Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -556,7 +557,7 @@ class PatientController extends Controller
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getImages($patientId)
+    public function getImages(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
 
@@ -564,9 +565,23 @@ class PatientController extends Controller
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
+        $query = $patient->images();
+
+        if ($request->filled('category') && $request->category !== 'all') {
+            $query->where('category', $request->category);
+        }
+
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('description', 'like', "%{$searchTerm}%")
+                  ->orWhere('category', 'like', "%{$searchTerm}%");
+            });
+        }
+
         return response()->json([
             'message' => 'Images retrieved successfully.',
-            'data' => $patient->images()->latest()->get()
+            'data' => $query->latest()->get()
         ]);
     }
 
@@ -608,13 +623,19 @@ class PatientController extends Controller
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        $validated = $request->validate([
-            'url' => 'required|string',
+        $request->validate([
             'description' => 'required|string',
+            'category' => 'required|string',
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:20480', // max 20MB
         ]);
 
+        $service = app(CloudflareR2Service::class);
+        $url = $service->upload($request->file('file'), 'patient-documents');
+
         $patient->images()->create([
-            ...$validated,
+            'url' => $url,
+            'description' => $request->description,
+            'category' => $request->category,
             'date' => now()->format('Y-m-d'),
         ]);
 
@@ -713,6 +734,9 @@ class PatientController extends Controller
             return response()->json(['error' => 'Image not found'], 404);
         }
 
+        $service = app(CloudflareR2Service::class);
+        $service->delete($image->url);
+        
         $image->delete();
 
         return response()->json([
@@ -2220,5 +2244,45 @@ class PatientController extends Controller
         return response()->json([
             'message' => 'Endodontic record deleted successfully.'
         ]);
+    }
+
+
+
+    public function uploadPatientDocuments(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'documentfile' => 'required|image|max:5120',
+                'patientId' => 'required|exists:patients,id',
+                'category' => 'required|string'
+            ]);
+
+            $service = app(CloudflareR2Service::class);
+            $url = $service->upload($request->file('documentfile'), 'patient-documents');
+
+            $patient = Patient::findOrFail($request->patientId);
+            $image = $patient->images()->create([
+                'url' => $url,
+                'category' => $request->category,
+                'description' => $request->category . ' document',
+                'date' => now()->format('Y-m-d')
+            ]);
+
+            return response()->json([
+                'message' => 'Document uploaded successfully.',
+                'data' => $image
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to upload document.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

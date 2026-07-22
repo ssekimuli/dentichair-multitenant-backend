@@ -22,9 +22,10 @@ class CloudflareR2Service
         $filename = $customFilename ?? Str::uuid();
         $name = $folder . '/' . $filename . '.' . $ext;
 
-        Storage::disk('r2')->put($name, file_get_contents($file), 'public');
+        Storage::disk('r2')->put($name, $file->getContent(), 'public');
 
-        return rtrim(config('filesystems.disks.r2.url'), '/') . '/' . $name;
+        $baseUrl = config('filesystems.disks.r2.url');
+        return rtrim((string) $baseUrl, '/') . '/' . $name;
     }
 
     /**
@@ -39,9 +40,9 @@ class CloudflareR2Service
             return;
         }
 
-        $base = rtrim(config('filesystems.disks.r2.url'), '/') . '/';
+        $base = rtrim((string) config('filesystems.disks.r2.url'), '/') . '/';
 
-        if (str_starts_with($url, $base)) {
+        if ($base !== '/' && str_starts_with($url, $base)) {
             $key = substr($url, strlen($base));
             Storage::disk('r2')->delete($key);
         }

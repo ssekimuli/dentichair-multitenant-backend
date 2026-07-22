@@ -261,16 +261,17 @@ class PharmacyController extends Controller
                 $invoice = null;
                 if ($prescription->patient_id) {
                     $invoice = Invoice::where('patient_id', $prescription->patient_id)
-                        ->where('issue_date', $prescription->prescription_date)
+                        ->whereDate('issue_date', \Carbon\Carbon::parse($prescription->prescription_date)->format('Y-m-d'))
                         ->where('branch_id', $prescription->branch_id)
-                        ->where('status', 'Pending')
+                        ->whereIn('status', ['Pending', 'Overdue'])
                         ->first();
                 }
 
                 if ($invoice) {
                     // Update existing invoice amount and append medicines
-                    $existingMeds = $invoice->medicines ?? [];
-                    $mergedMeds = array_merge($existingMeds, $medicinesList);
+                    $existingMedsStr = $invoice->getRawOriginal('medicines');
+                    $existingMeds = $existingMedsStr ? json_decode($existingMedsStr, true) : [];
+                    $mergedMeds = array_merge($existingMeds ?: [], $medicinesList);
                     $invoice->increment('amount', $totalAmount);
                     $invoice->update(['medicines' => $mergedMeds]);
                 } else {

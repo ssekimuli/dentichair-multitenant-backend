@@ -326,12 +326,56 @@ class InvoiceController extends Controller
             'medicines.*.price' => 'required|numeric',
         ]);
 
-        $invoice = Invoice::create([
-            ...collect($validated)->except(['treatments', 'other_charges', 'medicines'])->toArray(),
-            'paid_amount' => 0,
-            'status' => 'Pending',
-            'medicines' => $validated['medicines'] ?? null,
-        ]);
+        $existingInvoice = null;
+
+        if (!empty($validated['patient_id'])) {
+            $existingInvoice = Invoice::where('patient_id', $validated['patient_id'])
+                ->whereDate('issue_date', $validated['issue_date'])
+                ->where('branch_id', $validated['branch_id'])
+                ->whereIn('status', ['Pending', 'Overdue'])
+                ->first();
+        }
+
+        if ($existingInvoice) {
+            // Merge into existing invoice
+            $newAmount = $existingInvoice->amount + $validated['amount'];
+            
+            $existingInvoice->amount = $newAmount;
+            
+            if (isset($validated['discount'])) {
+                $existingInvoice->discount = ($existingInvoice->discount ?? 0) + $validated['discount'];
+            }
+            if (isset($validated['tax'])) {
+                $existingInvoice->tax = ($existingInvoice->tax ?? 0) + $validated['tax'];
+            }
+            if (isset($validated['insurance_coverage'])) {
+                $existingInvoice->insurance_coverage = ($existingInvoice->insurance_coverage ?? 0) + $validated['insurance_coverage'];
+            }
+
+            // Status update
+            if ($existingInvoice->paid_amount >= $newAmount) {
+                $existingInvoice->status = 'Paid';
+            } else {
+                $existingInvoice->status = $existingInvoice->issue_date < today() ? 'Overdue' : 'Pending';
+            }
+
+            // Merge medicines
+            if (isset($validated['medicines'])) {
+                $currentMedsStr = $existingInvoice->getRawOriginal('medicines');
+                $currentMeds = $currentMedsStr ? json_decode($currentMedsStr, true) : [];
+                $existingInvoice->medicines = array_merge($currentMeds ?: [], $validated['medicines']);
+            }
+
+            $existingInvoice->save();
+            $invoice = $existingInvoice;
+        } else {
+            $invoice = Invoice::create([
+                ...collect($validated)->except(['treatments', 'other_charges', 'medicines'])->toArray(),
+                'paid_amount' => 0,
+                'status' => 'Pending',
+                'medicines' => $validated['medicines'] ?? null,
+            ]);
+        }
 
         if (isset($validated['treatments'])) {
             foreach ($validated['treatments'] as $treatment) {

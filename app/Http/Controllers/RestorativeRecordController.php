@@ -15,9 +15,46 @@ class RestorativeRecordController extends Controller
             'surface' => 'required|string',
             'material' => 'required|string',
             'notes' => 'nullable|string',
+            'cost' => 'nullable|numeric|min:0',
         ]);
 
-        $record = $patient->restorativeRecords()->create($validated);
+        $record = $patient->restorativeRecords()->create(
+            \Illuminate\Support\Arr::except($validated, ['cost'])
+        );
+
+        if (!empty($validated['cost']) && $validated['cost'] > 0) {
+            $cost = $validated['cost'];
+            $invoice = \App\Models\Invoice::where('patient_id', $patient->id)
+                ->whereDate('issue_date', today())
+                ->where('branch_id', $patient->branch_id)
+                ->whereIn('status', ['Pending', 'Overdue'])
+                ->first();
+                
+            $procedureName = 'Restoration Tooth #' . $record->tooth_id . ' (' . $record->surface . ' - ' . $record->material . ')';
+
+            if ($invoice) {
+                $invoice->increment('amount', $cost);
+                $invoice->treatments()->create([
+                    'procedure' => $procedureName,
+                    'cost' => $cost
+                ]);
+            } else {
+                $invoice = \App\Models\Invoice::create([
+                    'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+                    'patient_id' => $patient->id,
+                    'amount' => $cost,
+                    'paid_amount' => 0,
+                    'status' => 'Pending',
+                    'issue_date' => today(),
+                    'due_date' => today()->addDays(30),
+                    'branch_id' => $patient->branch_id,
+                ]);
+                $invoice->treatments()->create([
+                    'procedure' => $procedureName,
+                    'cost' => $cost
+                ]);
+            }
+        }
 
         return response()->json($record, 201);
     }

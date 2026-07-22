@@ -626,18 +626,21 @@ class PatientController extends Controller
         $request->validate([
             'description' => 'required|string',
             'category' => 'required|string',
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:20480', // max 20MB
+            'files' => 'required|array',
+            'files.*' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:20480',
         ]);
 
         $service = app(CloudflareR2Service::class);
-        $url = $service->upload($request->file('file'), 'patient-documents');
-
-        $patient->images()->create([
-            'url' => $url,
-            'description' => $request->description,
-            'category' => $request->category,
-            'date' => now()->format('Y-m-d'),
-        ]);
+        
+        foreach ($request->file('files') as $file) {
+            $url = $service->upload($file, 'patient-documents');
+            $patient->images()->create([
+                'url' => $url,
+                'description' => $request->description,
+                'category' => $request->category,
+                'date' => now()->format('Y-m-d'),
+            ]);
+        }
 
         return response()->json($patient->load('images'));
     }

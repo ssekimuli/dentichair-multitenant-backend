@@ -55,7 +55,6 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/patients/{patientId}/images', [PatientController::class, 'addImage']);
     Route::put('/patients/{patientId}/images/{imageId}', [PatientController::class, 'updateImage']);
     Route::delete('/patients/{patientId}/images/{imageId}', [PatientController::class, 'deleteImage']);
-    Route::post('/patients/upload-document', [PatientController::class, 'uploadPatientDocuments']);
 
     // Patient history
     Route::get('/patients/{id}/history', [PatientController::class, 'getHistory']);

@@ -1,3 +1,4 @@
+cat >/deploy.sh <<'EOF'
 #!/bin/bash
 
 # CloudPanel Laravel Automated Deployment Script
@@ -152,3 +153,4 @@ echo "✅ Deployment completed!"
 echo "Domain: https://$DOMAIN"
 echo "Branch: $GIT_BRANCH"
 echo "=============================================="
+EOF

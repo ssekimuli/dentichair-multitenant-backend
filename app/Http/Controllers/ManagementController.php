@@ -1244,7 +1244,14 @@ class ManagementController extends Controller
             return response()->json(['message' => 'Branch not found'], 404);
         }
 
-        $branch->delete();
+        try {
+            $branch->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return response()->json(['message' => 'Cannot delete this branch because it has related records (e.g., patients, employees, appointments).'], 400);
+            }
+            return response()->json(['message' => 'An error occurred while deleting the branch.'], 500);
+        }
 
         return response()->json(['success' => true]);
     }

@@ -16,11 +16,11 @@ fi
 # ==========================================
 # CONFIGURATION VARIABLES
 # ==========================================
-DOMAIN="crogendentalapi.poslycloud.com"
-SITE_USER="poslycloud-crogendentalapi"
-DB_NAME="crogendentaldb"
-DB_USER="crogendentalbsuser"
-DB_PASS="crogend3KYkz"
+DOMAIN="icondentalapi.poslycloud.com"
+SITE_USER="poslycloud-icondentalapi"
+DB_NAME="icondentalapidb"
+DB_USER="icondentalapibsuser"
+DB_PASS="icondentalapi3KYkz"
 GIT_REPO="git@github.com:ssekimuli/chart-backend.git"
 GIT_BRANCH="production"  # Specify the production branch
 
@@ -55,56 +55,7 @@ echo "=============================================="
 echo "Starting deployment for $DOMAIN..."
 echo "=============================================="
 
-# 1. Get MySQL root password
-echo "[1/6] Getting MySQL root password..."
-
-MYSQL_ROOT_PASS=""
-
-# Method 0: Try clpctl db:show:master-credentials (CloudPanel v2)
-if [ -z "$MYSQL_ROOT_PASS" ]; then
-    MYSQL_ROOT_PASS=$(clpctl db:show:master-credentials 2>/dev/null | grep -i "Password" | head -1 | awk '{print $4}')
-fi
-
-# Method 1: Try to get from CloudPanel config (alternative)
-if [ -z "$MYSQL_ROOT_PASS" ]; then
-    MYSQL_ROOT_PASS=$(clpctl system:info 2>/dev/null | grep -i "root password" | head -1 | awk '{print $NF}')
-fi
-
-# Method 2: Try common locations
-if [ -z "$MYSQL_ROOT_PASS" ] && [ -f /root/.my.cnf ]; then
-    MYSQL_ROOT_PASS=$(grep password /root/.my.cnf | cut -d= -f2)
-fi
-
-# Method 3: Check /etc/cloudpanel/ directory
-if [ -z "$MYSQL_ROOT_PASS" ] && [ -f /etc/cloudpanel/mysql-root-password ]; then
-    MYSQL_ROOT_PASS=$(cat /etc/cloudpanel/mysql-root-password)
-fi
-
-if [ -z "$MYSQL_ROOT_PASS" ]; then
-    echo "⚠️  Could not find MySQL root password automatically."
-    echo "Please enter the MySQL root password:"
-    read -s MYSQL_ROOT_PASS
-    echo ""
-fi
-
-# 2. Setup Database
-echo "[2/6] Setting up database..."
-mysql -h'127.0.0.1' -P'3306' -u root -p"$MYSQL_ROOT_PASS" << MYSQL_EOF
-CREATE DATABASE IF NOT EXISTS $DB_NAME;
-CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS';
-ALTER USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS';
-GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'%';
-FLUSH PRIVILEGES;
-MYSQL_EOF
-
-if [ $? -eq 0 ]; then
-    echo "✅ Database setup successful!"
-else
-    echo "❌ Database setup failed. Please check your MySQL root password."
-    exit 1
-fi
-
-# 3. Clone the Codebase (from production branch)
+# 2. Clone the Codebase (from production branch)
 echo "[3/6] Cloning repository (branch: $GIT_BRANCH)..."
 HTDOCS_DIR="/home/$SITE_USER/htdocs/$DOMAIN"
 
@@ -153,15 +104,7 @@ sudo -u "$SITE_USER" bash -c "
     # Generate Application Key
     php artisan key:generate --force
 
-    # Run migrations
-    php artisan migrate --force
-
-    # Clear and cache config
-    php artisan config:clear
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
-
+    
     # Install and build frontend assets
     if [ -f package.json ]; then
         npm install

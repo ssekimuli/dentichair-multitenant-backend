@@ -42,7 +42,7 @@ if ! id "$SITE_USER" &>/dev/null; then
     # Generate a random password for the site user
     RANDOM_PASS=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
     
-    if clpctl site:add:php --domainName="$DOMAIN" --phpVersion="$LATEST_PHP_VERSION" --vhostTemplate="Generic" --siteUser="$SITE_USER" --siteUserPassword="$RANDOM_PASS"; then
+    if clpctl site:add:php --domainName="$DOMAIN" --phpVersion="$LATEST_PHP_VERSION" --vhostTemplate="Laravel 12" --siteUser="$SITE_USER" --siteUserPassword="$RANDOM_PASS"; then
         echo "✅ CloudPanel site '$DOMAIN' created successfully!"
     else
         echo "❌ Failed to create site '$DOMAIN' via CloudPanel CLI. Aborting."

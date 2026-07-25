@@ -16,42 +16,63 @@ class RestorativeRecordController extends Controller
             'material' => 'required|string',
             'notes' => 'nullable|string',
             'cost' => 'nullable|numeric|min:0',
+            'procedure_cost' => 'nullable|numeric|min:0',
+            'material_cost' => 'nullable|numeric|min:0',
+            'other_charges' => 'nullable|numeric|min:0',
         ]);
 
         $record = $patient->restorativeRecords()->create(
-            \Illuminate\Support\Arr::except($validated, ['cost'])
+            \Illuminate\Support\Arr::except($validated, ['cost', 'procedure_cost', 'material_cost', 'other_charges'])
         );
 
-        if (!empty($validated['cost']) && $validated['cost'] > 0) {
-            $cost = $validated['cost'];
+        $procedureCost = $validated['procedure_cost'] ?? 0;
+        $materialCost = $validated['material_cost'] ?? 0;
+        $otherCharges = $validated['other_charges'] ?? 0;
+        $totalCost = $procedureCost + $materialCost + $otherCharges;
+
+        if ($totalCost == 0 && !empty($validated['cost']) && $validated['cost'] > 0) {
+            $totalCost = $validated['cost'];
+            $procedureCost = $totalCost;
+        }
+
+        if ($totalCost > 0) {
             $invoice = \App\Models\Invoice::where('patient_id', $patient->id)
                 ->whereDate('issue_date', today())
                 ->where('branch_id', $patient->branch_id)
                 ->whereIn('status', ['Pending', 'Overdue'])
                 ->first();
                 
-            $procedureName = 'Restoration Tooth #' . $record->tooth_id . ' (' . $record->surface . ' - ' . $record->material . ')';
-
-            if ($invoice) {
-                $invoice->increment('amount', $cost);
-                $invoice->treatments()->create([
-                    'procedure' => $procedureName,
-                    'cost' => $cost
-                ]);
-            } else {
+            if (!$invoice) {
                 $invoice = \App\Models\Invoice::create([
                     'patient_name' => $patient->first_name . ' ' . $patient->last_name,
                     'patient_id' => $patient->id,
-                    'amount' => $cost,
+                    'amount' => 0,
                     'paid_amount' => 0,
                     'status' => 'Pending',
                     'issue_date' => today(),
                     'due_date' => today()->addDays(30),
                     'branch_id' => $patient->branch_id,
                 ]);
+            }
+
+            $invoice->increment('amount', $totalCost);
+
+            if ($procedureCost > 0) {
                 $invoice->treatments()->create([
-                    'procedure' => $procedureName,
-                    'cost' => $cost
+                    'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' (' . $record->surface . ' - ' . $record->material . ') - Procedure',
+                    'cost' => $procedureCost
+                ]);
+            }
+            if ($materialCost > 0) {
+                $invoice->treatments()->create([
+                    'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' - Material',
+                    'cost' => $materialCost
+                ]);
+            }
+            if ($otherCharges > 0) {
+                $invoice->treatments()->create([
+                    'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' - Other Charges',
+                    'cost' => $otherCharges
                 ]);
             }
         }

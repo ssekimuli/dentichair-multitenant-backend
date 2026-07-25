@@ -103,18 +103,7 @@ sudo -u "$SITE_USER" bash -c "
     # Generate Application Key
     php artisan key:generate --force
 
-    # Run migrations
-    php artisan migrate --force
-
-    # Seed the database
-    php artisan db:seed --force
-
-    # Clear and cache config
-    php artisan config:clear
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
-
+   
     # Install and build frontend assets
     if [ -f package.json ]; then
         npm install

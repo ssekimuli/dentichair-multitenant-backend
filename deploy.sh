@@ -1,4 +1,3 @@
-cat > deploy.sh << 'EOF'
 #!/bin/bash
 
 # CloudPanel Laravel Automated Deployment Script
@@ -115,6 +114,23 @@ sudo -u "$SITE_USER" bash -c "
     chmod -R 775 storage bootstrap/cache
 "
 
+# 4.5. Configure Nginx Document Root for Laravel (point to /public)
+echo "[4.5/6] Updating Nginx configuration to point to public/ folder..."
+NGINX_CONFIG="/etc/nginx/sites-enabled/$DOMAIN.conf"
+if [ -f "$NGINX_CONFIG" ]; then
+    if grep -q "root /home/$SITE_USER/htdocs/$DOMAIN;" "$NGINX_CONFIG"; then
+        echo "Updating Nginx root directory in $NGINX_CONFIG..."
+        sed -i "s|root /home/$SITE_USER/htdocs/$DOMAIN;|root /home/$SITE_USER/htdocs/$DOMAIN/public;|g" "$NGINX_CONFIG"
+        nginx -t && systemctl reload nginx
+        echo "✅ Nginx configuration updated and reloaded!"
+    else
+        echo "Nginx root is already configured correctly or custom."
+    fi
+else
+    echo "⚠️  Nginx configuration file $NGINX_CONFIG not found. Skipping automatic root path update."
+fi
+
+
 # 5. Configure the Cron Scheduler
 echo "[5/6] Setting up cron..."
 CRON_JOB="* * * * * cd $HTDOCS_DIR && php artisan schedule:run >> /dev/null 2>&1"
@@ -136,4 +152,3 @@ echo "✅ Deployment completed!"
 echo "Domain: https://$DOMAIN"
 echo "Branch: $GIT_BRANCH"
 echo "=============================================="
-EOF

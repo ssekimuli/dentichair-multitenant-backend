@@ -455,7 +455,16 @@ class AuthController extends Controller
         Cache::put('otp_' . $identifier, $otp, now()->addMinutes(15));
 
         // Send OTP email
-        $this->sendOtpEmail($employee->email, $otp, $employee->name);
+        try {
+            $this->sendOtpEmail($employee->email, $otp, $employee->name);
+        } catch (\Exception $e) {
+            \Log::error("Failed to send OTP email: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to send OTP email due to mail server authentication/configuration issue.',
+                'error' => $e->getMessage(),
+                'debug_otp' => $otp // return for testing convenience
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'OTP sent successfully.',

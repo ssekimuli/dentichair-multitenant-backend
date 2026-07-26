@@ -21,6 +21,9 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
+// Public template download (browser direct access)
+Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
+
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Auth
@@ -35,7 +38,6 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
     Route::get('/import/templates', [ImportController::class, 'listTemplates']);
-    Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
     Route::post('/branches', [ManagementController::class, 'createBranch']);
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
@@ -193,7 +195,6 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
     Route::get('/import/templates', [ImportController::class, 'listTemplates']);
-    Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 
     // Pharmacy Module
     Route::get('/pharmacy/medicines', [PharmacyController::class, 'getMedicines']);

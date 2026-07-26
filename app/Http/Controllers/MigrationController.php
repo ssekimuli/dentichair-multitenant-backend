@@ -28,61 +28,91 @@ class MigrationController extends Controller
             
             $record = array_combine($headers, $row);
 
-            if ($section === 'financial') {
-                // Find patient by email OR phone instead of legacy_id
-                $email = $record['patient_email'] ?? null;
-                $phone = $record['patient_phone'] ?? null;
-                
-                // Lookup the patient in the DB
-                $patient = \Illuminate\Support\Facades\DB::table('patients')
-                    ->where('email', $email)
-                    ->orWhere('phone', $phone)
-                    ->first();
-
-                if ($patient) {
-                    // Example: Insert the invoice linked to this patient
-                    /*
-                    \App\Models\Invoice::create([
-                        'patient_id' => $patient->id,
-                        'invoice_number' => $record['invoice_number'],
-                        'amount' => $record['amount'],
-                        'date' => $record['date'],
-                        'status' => $record['status']
-                    ]);
-                    */
-                    $count++;
-                } else {
-                    Log::warning("Skipped invoice {$record['invoice_number']}: Patient not found with email {$email} or phone {$phone}");
-                }
+            if ($section === 'employees') {
+                \App\Models\Employee::updateOrCreate(
+                    ['email' => $record['email']],
+                    [
+                        'first_name' => $record['first_name'] ?? 'Unknown',
+                        'last_name' => $record['last_name'] ?? '',
+                        'phone' => $record['phone'] ?? null,
+                        'role' => $record['role'] ?? 'Staff',
+                        'status' => $record['status'] ?? 'Active',
+                        'branch_id' => 1,
+                    ]
+                );
+                $count++;
+            } elseif ($section === 'patients') {
+                \App\Models\Patient::updateOrCreate(
+                    ['email' => $record['email']],
+                    [
+                        'first_name' => $record['first_name'] ?? 'Unknown',
+                        'last_name' => $record['last_name'] ?? '',
+                        'phone' => $record['phone'] ?? null,
+                        'address' => $record['address'] ?? null,
+                        'gender' => $record['gender'] ?? 'Other',
+                        'date_of_birth' => $record['date_of_birth'] ?? null,
+                        'status' => 'Active',
+                        'branch_id' => 1,
+                    ]
+                );
+                $count++;
             } elseif ($section === 'appointments') {
-                // Handling Appointments
                 $patientEmail = $record['patient_email'] ?? null;
                 $patientPhone = $record['patient_phone'] ?? null;
                 $doctorEmail = $record['doctor_email'] ?? null;
 
                 $patient = \Illuminate\Support\Facades\DB::table('patients')
-                    ->where('email', $patientEmail)
-                    ->orWhere('phone', $patientPhone)
-                    ->first();
-
+                    ->where('email', $patientEmail)->orWhere('phone', $patientPhone)->first();
                 $doctor = \Illuminate\Support\Facades\DB::table('employees')
-                    ->where('email', $doctorEmail)
-                    ->first();
+                    ->where('email', $doctorEmail)->first();
 
                 if ($patient && $doctor) {
-                    // Insert Appointment
-                    /*
                     \App\Models\Appointment::create([
                         'patient_id' => $patient->id,
+                        'patient_name' => $patient->first_name . ' ' . $patient->last_name,
                         'doctor_id' => $doctor->id,
-                        'appointment_date' => $record['appointment_date'],
-                        'reason' => $record['reason'],
-                        'status' => $record['status']
+                        'doctor_name' => $doctor->first_name . ' ' . $doctor->last_name,
+                        'date' => $record['appointment_date'] ?? now(),
+                        'treatment' => $record['reason'] ?? 'General Checkup',
+                        'status' => $record['status'] ?? 'Scheduled',
+                        'branch_id' => 1,
                     ]);
-                    */
                     $count++;
                 } else {
-                    Log::warning("Skipped appointment: Patient or Doctor not found. PatientEmail: {$patientEmail}, DoctorEmail: {$doctorEmail}");
+                    Log::warning("Skipped appointment: Patient or Doctor not found.");
+                }
+            } elseif ($section === 'financial') {
+                $email = $record['patient_email'] ?? null;
+                $phone = $record['patient_phone'] ?? null;
+                
+                $patient = \Illuminate\Support\Facades\DB::table('patients')
+                    ->where('email', $email)->orWhere('phone', $phone)->first();
+
+                if ($patient) {
+                    \App\Models\Invoice::create([
+                        'patient_id' => $patient->id,
+                        'invoice_number' => $record['invoice_number'] ?? 'INV-' . rand(1000, 9999),
+                        'amount' => $record['amount'] ?? 0,
+                        'status' => $record['status'] ?? 'Unpaid',
+                        'branch_id' => 1,
+                    ]);
+                    $count++;
+                } else {
+                    Log::warning("Skipped invoice: Patient not found.");
+                }
+            } elseif ($section === 'clinical') {
+                $email = $record['patient_email'] ?? null;
+                $phone = $record['patient_phone'] ?? null;
+                $patient = \Illuminate\Support\Facades\DB::table('patients')
+                    ->where('email', $email)->orWhere('phone', $phone)->first();
+
+                if ($patient) {
+                    \App\Models\TreatmentPlan::create([
+                        'patient_id' => $patient->id,
+                        'treatment_name' => $record['treatment_name'] ?? 'General',
+                        'status' => $record['status'] ?? 'Planned',
+                    ]);
+                    $count++;
                 }
             }
         }

@@ -54,6 +54,36 @@ class MigrationController extends Controller
                 } else {
                     Log::warning("Skipped invoice {$record['invoice_number']}: Patient not found with email {$email} or phone {$phone}");
                 }
+            } elseif ($section === 'clinical') {
+                // Handling Appointments
+                $patientEmail = $record['patient_email'] ?? null;
+                $patientPhone = $record['patient_phone'] ?? null;
+                $doctorEmail = $record['doctor_email'] ?? null;
+
+                $patient = \Illuminate\Support\Facades\DB::table('patients')
+                    ->where('email', $patientEmail)
+                    ->orWhere('phone', $patientPhone)
+                    ->first();
+
+                $doctor = \Illuminate\Support\Facades\DB::table('employees')
+                    ->where('email', $doctorEmail)
+                    ->first();
+
+                if ($patient && $doctor) {
+                    // Insert Appointment
+                    /*
+                    \App\Models\Appointment::create([
+                        'patient_id' => $patient->id,
+                        'doctor_id' => $doctor->id,
+                        'appointment_date' => $record['appointment_date'],
+                        'reason' => $record['reason'],
+                        'status' => $record['status']
+                    ]);
+                    */
+                    $count++;
+                } else {
+                    Log::warning("Skipped appointment: Patient or Doctor not found. PatientEmail: {$patientEmail}, DoctorEmail: {$doctorEmail}");
+                }
             }
         }
         

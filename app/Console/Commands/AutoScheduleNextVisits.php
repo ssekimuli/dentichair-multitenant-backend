@@ -67,11 +67,13 @@ class AutoScheduleNextVisits extends Command
                 'doctor_id' => $doctor->id,
                 'treatment' => 'Routine Checkup',
                 'status' => 'Scheduled',
-                'date' => $patient->next_visit,
+                'date' => $patient->next_visit->toDateString(),
                 'time' => '09:00 AM',
                 'branch_id' => $patient->branch_id,
                 'token_number' => 'T' . strtoupper(Str::random(6)),
             ]);
+
+            $patient->update(['next_visit' => null]);
 
             $count++;
         }

@@ -249,51 +249,105 @@ class MigrationController extends Controller
             $doctorEmails = [];
             foreach ($chunk as $record) {
                 $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
-                if ($pEmail) $patientEmails[] = $pEmail;
+                if ($pEmail) $patientEmails[] = strtolower(trim($pEmail));
                 $dEmail = $this->getRecordValue($record, ['doctoremail', 'doctor_email']);
-                if ($dEmail) $doctorEmails[] = $dEmail;
+                if ($dEmail) $doctorEmails[] = strtolower(trim($dEmail));
             }
 
-            $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy('email');
-            $doctors = DB::table('employees')->whereIn('email', $doctorEmails)->get()->keyBy('email');
+            $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy(function ($item) {
+                return strtolower(trim($item->email));
+            });
+            $doctors = DB::table('employees')->whereIn('email', $doctorEmails)->get()->keyBy(function ($item) {
+                return strtolower(trim($item->email));
+            });
 
             $insertData = [];
             foreach ($chunk as $record) {
                 $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
                 $dEmail = $this->getRecordValue($record, ['doctoremail', 'doctor_email']);
                 
-                $p = $pEmail ? $patients->get($pEmail) : null;
-                $d = $dEmail ? $doctors->get($dEmail) : null;
+                if (!$pEmail || !$dEmail) {
+                    continue;
+                }
 
-                if ($p && $d) {
-                    $rawDate = $this->getRecordValue($record, ['appointmentdate', 'appointment_date', 'date']);
-                    $dateTime = $rawDate ? strtotime($rawDate) : false;
-                    $date = $dateTime ? date('Y-m-d', $dateTime) : $now->format('Y-m-d');
-                    $time = $dateTime ? date('H:i', $dateTime) : '10:00';
+                $pEmailNorm = strtolower(trim($pEmail));
+                $dEmailNorm = strtolower(trim($dEmail));
 
-                    $status = $this->getRecordValue($record, ['status']) ?? 'Scheduled';
-                    if (!in_array($status, ['Scheduled', 'Completed', 'Cancelled', 'Waiting'])) {
-                        $status = 'Scheduled';
-                    }
+                $p = $patients->get($pEmailNorm);
+                $d = $doctors->get($dEmailNorm);
+                $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
-                    $treatment = $this->getRecordValue($record, ['treatment', 'reason', 'procedure']) ?? 'General Checkup';
-                    $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
-
-                    $insertData[] = [
-                        'patient_id' => $p->id,
-                        'patient_name' => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')),
-                        'doctor_id' => $d->id,
-                        'doctor_name' => $d->name,
-                        'date' => $date,
-                        'time' => $time,
-                        'treatment' => $treatment,
-                        'status' => $status,
+                if (!$p) {
+                    $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone']);
+                    $pId = DB::table('patients')->insertGetId([
+                        'first_name' => 'Imported',
+                        'last_name' => 'Patient',
+                        'email' => $pEmailNorm,
+                        'phone' => $pPhone,
+                        'date_of_birth' => '1990-01-01',
+                        'gender' => 'Other',
+                        'status' => 'Active',
                         'branch_id' => $branchId,
-                        'token_number' => 'TKN-' . rand(1000, 9999),
                         'created_at' => $now,
                         'updated_at' => $now,
+                    ]);
+                    $p = (object)[
+                        'id' => $pId,
+                        'first_name' => 'Imported',
+                        'last_name' => 'Patient',
+                        'email' => $pEmailNorm
                     ];
+                    $patients->put($pEmailNorm, $p);
                 }
+
+                if (!$d) {
+                    $dId = DB::table('employees')->insertGetId([
+                        'name' => 'Imported Doctor',
+                        'email' => $dEmailNorm,
+                        'role' => 'Dentist',
+                        'role_id' => 4,
+                        'salary' => 0,
+                        'hire_date' => $now->format('Y-m-d'),
+                        'status' => 'Active',
+                        'branch_id' => $branchId,
+                        'password' => Hash::make('password'),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                    $d = (object)[
+                        'id' => $dId,
+                        'name' => 'Imported Doctor',
+                        'email' => $dEmailNorm
+                    ];
+                    $doctors->put($dEmailNorm, $d);
+                }
+
+                $rawDate = $this->getRecordValue($record, ['appointmentdate', 'appointment_date', 'date']);
+                $dateTime = $rawDate ? strtotime($rawDate) : false;
+                $date = $dateTime ? date('Y-m-d', $dateTime) : $now->format('Y-m-d');
+                $time = $dateTime ? date('H:i', $dateTime) : '10:00';
+
+                $status = $this->getRecordValue($record, ['status']) ?? 'Scheduled';
+                if (!in_array($status, ['Scheduled', 'Completed', 'Cancelled', 'Waiting'])) {
+                    $status = 'Scheduled';
+                }
+
+                $treatment = $this->getRecordValue($record, ['treatment', 'reason', 'procedure']) ?? 'General Checkup';
+
+                $insertData[] = [
+                    'patient_id' => $p->id,
+                    'patient_name' => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')),
+                    'doctor_id' => $d->id,
+                    'doctor_name' => $d->name,
+                    'date' => $date,
+                    'time' => $time,
+                    'treatment' => $treatment,
+                    'status' => $status,
+                    'branch_id' => $branchId,
+                    'token_number' => 'TKN-' . rand(1000, 9999),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
             if (!empty($insertData)) {
                 DB::table('appointments')->insert($insertData);
@@ -303,53 +357,79 @@ class MigrationController extends Controller
             $patientEmails = [];
             foreach ($chunk as $record) {
                 $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
-                if ($pEmail) $patientEmails[] = $pEmail;
+                if ($pEmail) $patientEmails[] = strtolower(trim($pEmail));
             }
 
-            $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy('email');
+            $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy(function ($item) {
+                return strtolower(trim($item->email));
+            });
 
             $insertData = [];
             foreach ($chunk as $record) {
                 $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
-                $p = $pEmail ? $patients->get($pEmail) : null;
+                if (!$pEmail) continue;
+                
+                $pEmailNorm = strtolower(trim($pEmail));
+                $p = $patients->get($pEmailNorm);
+                $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
-                if ($p) {
-                    $amount = $this->getRecordValue($record, ['amount']) ?? 0;
-                    $status = $this->getRecordValue($record, ['status']) ?? 'Pending';
-                    
-                    if (strcasecmp($status, 'Paid') === 0) {
-                        $status = 'Paid';
-                    } elseif (strcasecmp($status, 'Overdue') === 0) {
-                        $status = 'Overdue';
-                    } else {
-                        $status = 'Pending';
-                    }
-
-                    $paidAmount = ($status === 'Paid') ? $amount : 0;
-
-                    $rawDate = $this->getRecordValue($record, ['date', 'issuedate', 'issue_date']);
-                    $issueDate = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
-                    
-                    $rawDueDate = $this->getRecordValue($record, ['duedate', 'due_date']);
-                    $dueDate = $rawDueDate ? date('Y-m-d', strtotime($rawDueDate)) : date('Y-m-d', strtotime($issueDate . ' +14 days'));
-
-                    $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
-                    $paymentMethod = ($status === 'Paid') ? 'Cash' : null;
-
-                    $insertData[] = [
-                        'patient_id' => $p->id,
-                        'patient_name' => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')),
-                        'amount' => $amount,
-                        'paid_amount' => $paidAmount,
-                        'status' => $status,
-                        'issue_date' => $issueDate,
-                        'due_date' => $dueDate,
+                if (!$p) {
+                    $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone']);
+                    $pId = DB::table('patients')->insertGetId([
+                        'first_name' => 'Imported',
+                        'last_name' => 'Patient',
+                        'email' => $pEmailNorm,
+                        'phone' => $pPhone,
+                        'date_of_birth' => '1990-01-01',
+                        'gender' => 'Other',
+                        'status' => 'Active',
                         'branch_id' => $branchId,
-                        'payment_method' => $paymentMethod,
                         'created_at' => $now,
                         'updated_at' => $now,
+                    ]);
+                    $p = (object)[
+                        'id' => $pId,
+                        'first_name' => 'Imported',
+                        'last_name' => 'Patient',
+                        'email' => $pEmailNorm
                     ];
+                    $patients->put($pEmailNorm, $p);
                 }
+
+                $amount = $this->getRecordValue($record, ['amount']) ?? 0;
+                $status = $this->getRecordValue($record, ['status']) ?? 'Pending';
+                
+                if (strcasecmp($status, 'Paid') === 0) {
+                    $status = 'Paid';
+                } elseif (strcasecmp($status, 'Overdue') === 0) {
+                    $status = 'Overdue';
+                } else {
+                    $status = 'Pending';
+                }
+
+                $paidAmount = ($status === 'Paid') ? $amount : 0;
+
+                $rawDate = $this->getRecordValue($record, ['date', 'issuedate', 'issue_date']);
+                $issueDate = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
+                
+                $rawDueDate = $this->getRecordValue($record, ['duedate', 'due_date']);
+                $dueDate = $rawDueDate ? date('Y-m-d', strtotime($rawDueDate)) : date('Y-m-d', strtotime($issueDate . ' +14 days'));
+
+                $paymentMethod = ($status === 'Paid') ? 'Cash' : null;
+
+                $insertData[] = [
+                    'patient_id' => $p->id,
+                    'patient_name' => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')),
+                    'amount' => $amount,
+                    'paid_amount' => $paidAmount,
+                    'status' => $status,
+                    'issue_date' => $issueDate,
+                    'due_date' => $dueDate,
+                    'branch_id' => $branchId,
+                    'payment_method' => $paymentMethod,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
             if (!empty($insertData)) {
                 DB::table('invoices')->insert($insertData);
@@ -359,43 +439,70 @@ class MigrationController extends Controller
             $patientEmails = [];
             foreach ($chunk as $record) {
                 $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
-                if ($pEmail) $patientEmails[] = $pEmail;
+                if ($pEmail) $patientEmails[] = strtolower(trim($pEmail));
             }
 
-            $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy('email');
+            $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy(function ($item) {
+                return strtolower(trim($item->email));
+            });
 
             $insertData = [];
             foreach ($chunk as $record) {
                 $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
-                $p = $pEmail ? $patients->get($pEmail) : null;
+                if (!$pEmail) continue;
 
-                if ($p) {
-                    $procedure = $this->getRecordValue($record, ['procedure', 'procedurename', 'procedure_name', 'treatmentname', 'treatment_name', 'treatment']) ?? 'General Checkup';
-                    
-                    $status = $this->getRecordValue($record, ['status']) ?? 'Proposed';
-                    if (strcasecmp($status, 'Completed') === 0) {
-                        $status = 'Completed';
-                    } else {
-                        $status = 'Proposed';
-                    }
+                $pEmailNorm = strtolower(trim($pEmail));
+                $p = $patients->get($pEmailNorm);
+                $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
-                    $cost = $this->getRecordValue($record, ['cost', 'costamount', 'cost_amount', 'amount']) ?? 0;
-                    $rawDate = $this->getRecordValue($record, ['date', 'createdat', 'created_at']);
-                    $date = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
-                    
-                    $tooth = $this->getRecordValue($record, ['tooth']);
-
-                    $insertData[] = [
-                        'patient_id' => $p->id,
-                        'procedure' => $procedure,
-                        'tooth' => $tooth,
-                        'status' => $status,
-                        'cost' => $cost,
-                        'date' => $date,
+                if (!$p) {
+                    $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone']);
+                    $pId = DB::table('patients')->insertGetId([
+                        'first_name' => 'Imported',
+                        'last_name' => 'Patient',
+                        'email' => $pEmailNorm,
+                        'phone' => $pPhone,
+                        'date_of_birth' => '1990-01-01',
+                        'gender' => 'Other',
+                        'status' => 'Active',
+                        'branch_id' => $branchId,
                         'created_at' => $now,
                         'updated_at' => $now,
+                    ]);
+                    $p = (object)[
+                        'id' => $pId,
+                        'first_name' => 'Imported',
+                        'last_name' => 'Patient',
+                        'email' => $pEmailNorm
                     ];
+                    $patients->put($pEmailNorm, $p);
                 }
+
+                $procedure = $this->getRecordValue($record, ['procedure', 'procedurename', 'procedure_name', 'treatmentname', 'treatment_name', 'treatment']) ?? 'General Checkup';
+                
+                $status = $this->getRecordValue($record, ['status']) ?? 'Proposed';
+                if (strcasecmp($status, 'Completed') === 0) {
+                    $status = 'Completed';
+                } else {
+                    $status = 'Proposed';
+                }
+
+                $cost = $this->getRecordValue($record, ['cost', 'costamount', 'cost_amount', 'amount']) ?? 0;
+                $rawDate = $this->getRecordValue($record, ['date', 'createdat', 'created_at']);
+                $date = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
+                
+                $tooth = $this->getRecordValue($record, ['tooth']);
+
+                $insertData[] = [
+                    'patient_id' => $p->id,
+                    'procedure' => $procedure,
+                    'tooth' => $tooth,
+                    'status' => $status,
+                    'cost' => $cost,
+                    'date' => $date,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
             if (!empty($insertData)) {
                 DB::table('treatment_plans')->insert($insertData);

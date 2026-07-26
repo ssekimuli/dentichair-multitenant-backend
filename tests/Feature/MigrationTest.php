@@ -226,4 +226,59 @@ class MigrationTest extends TestCase
             'date' => '2023-02-15'
         ]);
     }
+
+    /** @test */
+    public function it_auto_creates_missing_patient_and_doctor_and_ignores_email_casing_when_migrating_appointments()
+    {
+        $employee = Employee::factory()->create([
+            'role_id' => 4,
+            'branch_id' => $this->branch->id
+        ]);
+
+        $csvContent = "patient_email,patient_phone,doctor_email,appointment_date,reason,status\n";
+        $csvContent .= "NEW.PATIENT@example.com,555-4321,NEW.DOCTOR@example.com,2023-02-10 10:00:00,General Checkup,Completed\n";
+        $file = UploadedFile::fake()->createWithContent('appointments_new.csv', $csvContent);
+
+        $response = $this->actingAs($employee)
+            ->postJson('/api/migrate', [
+                'file' => $file,
+                'section' => 'appointments'
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'message' => 'Successfully imported data for appointments',
+                'count' => 1
+            ]);
+
+        // Verify patient was auto-created with lowercase email
+        $this->assertDatabaseHas('patients', [
+            'email' => 'new.patient@example.com',
+            'first_name' => 'Imported',
+            'last_name' => 'Patient',
+            'phone' => '555-4321'
+        ]);
+
+        // Verify doctor was auto-created with lowercase email
+        $this->assertDatabaseHas('employees', [
+            'email' => 'new.doctor@example.com',
+            'name' => 'Imported Doctor',
+            'role' => 'Dentist',
+            'role_id' => 4
+        ]);
+
+        // Verify appointment was imported
+        $patient = \App\Models\Patient::where('email', 'new.patient@example.com')->first();
+        $doctor = \App\Models\Employee::where('email', 'new.doctor@example.com')->first();
+
+        $this->assertDatabaseHas('appointments', [
+            'patient_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'treatment' => 'General Checkup',
+            'status' => 'Completed',
+            'date' => '2023-02-10',
+            'time' => '10:00'
+        ]);
+    }
 }
+

@@ -55,7 +55,7 @@ class AutoScheduleNextVisitsTest extends TestCase
         $this->assertDatabaseHas('appointments', [
             'patient_id' => $patient->id,
             'doctor_id' => $doctor->id,
-            'date' => '2026-07-20',
+            'date' => '2026-07-20 00:00:00',
             'treatment' => 'Routine Checkup',
         ]);
 

@@ -11,7 +11,7 @@ class MigrationController extends Controller
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
-            'section' => 'required|string|in:employees,patients,clinical,financial'
+            'section' => 'required|string|in:employees,patients,appointments,clinical,financial'
         ]);
 
         $section = $request->input('section');
@@ -54,7 +54,7 @@ class MigrationController extends Controller
                 } else {
                     Log::warning("Skipped invoice {$record['invoice_number']}: Patient not found with email {$email} or phone {$phone}");
                 }
-            } elseif ($section === 'clinical') {
+            } elseif ($section === 'appointments') {
                 // Handling Appointments
                 $patientEmail = $record['patient_email'] ?? null;
                 $patientPhone = $record['patient_phone'] ?? null;

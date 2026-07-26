@@ -16,11 +16,11 @@ fi
 # ==========================================
 # CONFIGURATION VARIABLES
 # ==========================================
-DOMAIN="icondentalapi.poslycloud.com"
-SITE_USER="poslycloud-icondentalapi"
-DB_NAME="icondentalapidb"
-DB_USER="icondentalapibsuser"
-DB_PASS="icondentalapi3KYkz"
+DOMAIN="stagingapi.poslycloud.com"
+SITE_USER="poslycloud-stagingapi"
+DB_NAME="stagingapidb"
+DB_USER="stagingapibsuser"
+DB_PASS="stagingapi3KYkz"
 GIT_REPO="git@github.com:ssekimuli/chart-backend.git"
 GIT_BRANCH="production"  # Specify the production branch
 

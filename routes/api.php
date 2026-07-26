@@ -11,6 +11,7 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\MigrationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
 
     // Imports
+    Route::post('/migrate', [MigrationController::class, 'migrate']);
     Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);

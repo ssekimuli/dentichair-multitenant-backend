@@ -21,7 +21,10 @@ class Branch extends Model
         return $this->hasMany(Patient::class);
     }
 
-    
+    public function setting()
+    {
+        return $this->hasOne(BranchSetting::class);
+    }
 
     public function appointments(): HasMany
     {

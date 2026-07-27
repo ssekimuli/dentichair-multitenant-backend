@@ -59,6 +59,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Patient Images
     Route::get('/patients/{patientId}/images', [PatientController::class, 'getImages']);
+    Route::post('/patients/{patientId}/images/send', [PatientController::class, 'sendDocuments']);
     Route::post('/patients/{patientId}/images', [PatientController::class, 'addImage']);
     Route::put('/patients/{patientId}/images/{imageId}', [PatientController::class, 'updateImage']);
     Route::delete('/patients/{patientId}/images/{imageId}', [PatientController::class, 'deleteImage']);
@@ -177,6 +178,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);
         Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
     });
+
+    // Branch Settings
+    Route::get('/settings/branch', [\App\Http\Controllers\BranchSettingController::class, 'getSettings']);
+    Route::post('/settings/branch', [\App\Http\Controllers\BranchSettingController::class, 'updateSettings']);
+    Route::post('/settings/branch/top-up', [\App\Http\Controllers\BranchSettingController::class, 'topUpCredits']);
 
     // Get all roles with permissions (Super Admin only)
     Route::get('/settings/roles', [RolePermissionController::class, 'getAllRolesWithPermissions']);

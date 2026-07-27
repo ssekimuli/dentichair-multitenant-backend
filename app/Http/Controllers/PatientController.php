@@ -367,13 +367,36 @@ class PatientController extends Controller
         $patient = Patient::create($validated);
         $patient->load('branch');
 
-        if ($patient->email) {
+        $settings = \App\Models\GlobalSetting::getSettings();
+
+        if ($settings && isset($settings->notifications['patient_created'])) {
+            $sendEmail = $settings->notifications['patient_created']['email'] ?? true;
+            $sendSms = $settings->notifications['patient_created']['sms'] ?? false;
+            $sendWa = $settings->notifications['patient_created']['whatsapp'] ?? false;
+
+            $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+            if ($sendSms && $patient->phone && $settings->deductSms()) {
+                $msg = "Welcome {$patient->first_name}! Your profile has been created at {$clinicName}.";
+                \App\Services\NotificationService::sendSms($patient->phone, $msg);
+            }
+
+            if ($sendWa && $patient->phone && $settings->isWhatsappActive()) {
+                $msg = "Welcome {$patient->first_name}! Your profile has been created at {$clinicName}.";
+                \App\Services\NotificationService::sendWhatsApp($patient->phone, $msg);
+            }
+        }
+
+        $sendEmail = $settings->notifications['patient_created']['email'] ?? true;
+
+        if ($sendEmail && $patient->email) {
             try {
+                $clinicName = $settings->clinic_name ?? 'Our Clinic';
                 Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.patient-welcome', [
                     'name' => $patient->first_name . ' ' . $patient->last_name,
-                    'email' => $patient->email,
-                    'branchName' => $patient->branch->name ?? 'Dental Clinic',
-                ], 'Welcome to Our Practice! - Dental Management System'));
+                    'patientId' => $patient->patient_id,
+                    'clinicName' => $clinicName
+                ], 'Welcome to ' . $clinicName));
             } catch (\Exception $e) {
                 logger()->error("Failed to send patient welcome email: " . $e->getMessage());
             }
@@ -583,6 +606,134 @@ class PatientController extends Controller
             'message' => 'Images retrieved successfully.',
             'data' => $query->latest()->get()
         ]);
+    }
+
+    /**
+     * Add Patient Image
+     *
+     * Add a new image to patient's records (X-rays, clinical photos, etc.).
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @bodyParam url string required URL of the image. Example: https://picsum.photos/800/600
+     * @bodyParam description string required Description of the image. Example: Panoramic X-ray showing full dentition
+     *
+     * @response 200 {
+     *   "id": "1",
+     *   "name": "John Doe",
+     *   "imaging": [
+     *     {
+     *       "url": "https://picsum.photos/800/600",
+     *       "description": "Panoramic X-ray showing full dentition",
+     *       "date": "2024-07-15"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function sendDocuments(Request $request, $patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $request->validate([
+            'document_ids' => 'required|array',
+            'document_ids.*' => 'integer|exists:patient_images,id',
+            'channel' => 'required|in:email,whatsapp',
+            'recipient' => 'required|string',
+            'custom_message' => 'nullable|string'
+        ]);
+
+        $documents = \App\Models\PatientImage::whereIn('id', $request->document_ids)
+            ->where('patient_id', $patientId)
+            ->get();
+
+        if ($documents->isEmpty()) {
+            return response()->json(['error' => 'No valid documents found for this patient'], 404);
+        }
+
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+        $links = [];
+        $attachments = [];
+        
+        foreach ($documents as $doc) {
+            $links[] = [
+                'name' => $doc->description ?? 'Document',
+                'url' => $doc->url
+            ];
+            
+            // Try to add attachment for email if the file exists locally
+            // We'll skip actual file attachment here and rely on the URL links
+            // because $doc->url might be an external AWS S3 link or local, and downloading might be slow/fail.
+            // The template already includes the links!
+            // Wait, "use those document link to get file and send". I'll prepare an array for download if it's local.
+            if (str_starts_with($doc->url, 'http')) {
+                // Cannot easily attach remote files without downloading, we'll just send links.
+                // Or if it's local URL (like /storage/), we can attach it.
+                $path = str_replace(url('/storage'), storage_path('app/public'), $doc->url);
+                if (file_exists($path)) {
+                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                }
+            } else {
+                $path = storage_path('app/public/' . $doc->url);
+                if (file_exists($path)) {
+                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                    $doc->url = url('/storage/' . $doc->url);
+                }
+            }
+        }
+
+        $channel = $request->channel;
+        $recipient = $request->recipient;
+        $customMessage = $request->custom_message;
+
+        // Send Email
+        if ($channel === 'email') {
+            $mail = new \App\Mail\GenericMarkdownMail(
+                'emails.patient-documents',
+                [
+                    'name' => $patient->first_name,
+                    'clinicName' => $clinicName,
+                    'links' => $links,
+                    'customMessage' => $customMessage,
+                ],
+                "Your Documents from {$clinicName}",
+                $attachments
+            );
+            \Illuminate\Support\Facades\Mail::to($recipient)->send($mail);
+        }
+
+        // Send WhatsApp
+        if ($channel === 'whatsapp' && $settings->isWhatsappActive()) {
+            // First, send the links in a text message
+            $msg = "Hello {$patient->first_name}, here are your requested documents from {$clinicName}:\n\n";
+            if (!empty($customMessage)) {
+                $msg .= "{$customMessage}\n\n";
+            }
+            foreach ($links as $link) {
+                $msg .= "- {$link['name']}: {$link['url']}\n";
+            }
+            \App\Services\NotificationService::sendWhatsApp($recipient, $msg);
+
+            // Also send media using our new method if applicable
+            foreach ($links as $link) {
+                \App\Services\NotificationService::sendMediaWhatsApp($recipient, $link['url'], $link['name']);
+            }
+        }
+
+        return response()->json(['message' => 'Documents sent successfully.']);
     }
 
     /**

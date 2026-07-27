@@ -15,7 +15,7 @@ class Invoice extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
+        'receipt_number', 'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
         'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines',
         'discount', 'tax', 'insurance_coverage'
     ];
@@ -27,6 +27,15 @@ class Invoice extends Model
         'paid_amount' => 'decimal:2',
         'medicines' => 'array',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($invoice) {
+            if (empty($invoice->receipt_number)) {
+                $invoice->receipt_number = 'REC-' . strtoupper(\Illuminate\Support\Str::random(8));
+            }
+        });
+    }
 
     public function patient(): BelongsTo
     {

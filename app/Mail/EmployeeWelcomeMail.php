@@ -18,6 +18,7 @@ class EmployeeWelcomeMail extends Mailable
     public $temporaryPassword;
     public $role;
     public $branchName;
+    public $clinicName;
 
     public $subjectLine;
 
@@ -33,6 +34,7 @@ class EmployeeWelcomeMail extends Mailable
         $this->temporaryPassword = $data['temporaryPassword'] ?? '';
         $this->role = $data['role'] ?? '';
         $this->branchName = $data['branchName'] ?? '';
+        $this->clinicName = $data['clinicName'] ?? '';
         $this->subjectLine = $subjectLine;
     }
 

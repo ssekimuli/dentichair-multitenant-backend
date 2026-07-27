@@ -156,7 +156,29 @@ class EmployeeController extends Controller
 
         $employee->load('branch');
 
-        if ($employee->email) {
+        $settings = \App\Models\GlobalSetting::getSettings();
+
+        if ($settings && isset($settings->notifications['staff_created'])) {
+            $sendEmail = $settings->notifications['staff_created']['email'] ?? true;
+            $sendSms = $settings->notifications['staff_created']['sms'] ?? false;
+            $sendWa = $settings->notifications['staff_created']['whatsapp'] ?? false;
+            $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+            if ($sendSms && isset($employee->phone) && $settings->deductSms()) {
+                $msg = "Welcome {$employee->name}! You have been added as {$employee->role} at {$clinicName}. Your temporary password is: {$temporaryPassword}";
+                \App\Services\NotificationService::sendSms($employee->phone, $msg);
+            }
+
+            if ($sendWa && isset($employee->phone) && $settings->isWhatsappActive()) {
+                $msg = "Welcome {$employee->name}! You have been added as {$employee->role} at {$clinicName}. Your temporary password is: {$temporaryPassword}";
+                \App\Services\NotificationService::sendWhatsApp($employee->phone, $msg);
+            }
+        }
+
+        $sendEmail = $settings->notifications['staff_created']['email'] ?? true;
+        $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+        if ($sendEmail && $employee->email) {
             try {
                 Mail::to($employee->email)->send(new EmployeeWelcomeMail([
                     'name' => $employee->name,
@@ -164,7 +186,8 @@ class EmployeeController extends Controller
                     'temporaryPassword' => $temporaryPassword,
                     'role' => $employee->role,
                     'branchName' => $employee->branch->name ?? 'Dental Clinic',
-                ], 'Welcome to the Team! - Dental Management System'));
+                    'clinicName' => $clinicName
+                ], 'Welcome to ' . $clinicName));
             } catch (\Exception $e) {
                 logger()->error("Failed to send employee welcome email: " . $e->getMessage());
             }

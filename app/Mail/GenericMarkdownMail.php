@@ -16,17 +16,19 @@ class GenericMarkdownMail extends Mailable
     public $viewData;
     public $subjectLine;
     public $viewName;
+    public $mailAttachments;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct(string $viewName, array $viewData, string $subjectLine)
+    public function __construct(string $viewName, array $viewData, string $subjectLine, array $mailAttachments = [])
     {
         $this->viewName = $viewName;
         $this->viewData = $viewData;
         $this->subjectLine = $subjectLine;
+        $this->mailAttachments = $mailAttachments;
     }
 
     /**
@@ -61,6 +63,6 @@ class GenericMarkdownMail extends Mailable
      */
     public function attachments()
     {
-        return [];
+        return $this->mailAttachments;
     }
 }

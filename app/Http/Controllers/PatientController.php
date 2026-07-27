@@ -737,6 +737,67 @@ class PatientController extends Controller
     }
 
     /**
+     * Send Periodontal Results
+     *
+     * Send periodontal chart summary via email or WhatsApp
+     */
+    public function sendPeriodontalResult(Request $request, $patientId)
+    {
+        $patient = Patient::findOrFail($patientId);
+        $settings = \App\Models\GlobalSetting::firstOrCreate(['id' => 1]);
+        $clinicName = $settings->clinic_name ?: 'Our Clinic';
+
+        $request->validate([
+            'channel' => 'required|in:email,whatsapp',
+            'recipient' => 'required|string',
+            'custom_message' => 'nullable|string',
+            'data' => 'required|array'
+        ]);
+
+        $channel = $request->channel;
+        $recipient = $request->recipient;
+        $customMessage = $request->custom_message;
+        $data = $request->data;
+
+        // Send Email
+        if ($channel === 'email') {
+            $mail = new \App\Mail\GenericMarkdownMail(
+                'emails.patient-periodontal-result',
+                [
+                    'name' => $patient->first_name,
+                    'clinicName' => $clinicName,
+                    'customMessage' => $customMessage,
+                    'data' => $data
+                ],
+                "Your Periodontal Examination Results from {$clinicName}"
+            );
+            \Illuminate\Support\Facades\Mail::to($recipient)->send($mail);
+        }
+
+        // Send WhatsApp
+        if ($channel === 'whatsapp' && $settings->isWhatsappActive()) {
+            $msg = "Hello {$patient->first_name}, here is the summary of your recent periodontal examination at {$clinicName}:\n\n";
+            if (!empty($customMessage)) {
+                $msg .= "{$customMessage}\n\n";
+            }
+            $msg .= "Key Indices:\n";
+            $msg .= "- Bleeding Index: {$data['bleeding_index']}%\n";
+            $msg .= "- Plaque Index: {$data['plaque_index']}%\n\n";
+            $msg .= "PSR Scores:\n";
+            $msg .= "- Upper Right: {$data['psr_scores'][0]}\n";
+            $msg .= "- Upper Anterior: {$data['psr_scores'][1]}\n";
+            $msg .= "- Upper Left: {$data['psr_scores'][2]}\n";
+            $msg .= "- Lower Right: {$data['psr_scores'][3]}\n";
+            $msg .= "- Lower Anterior: {$data['psr_scores'][4]}\n";
+            $msg .= "- Lower Left: {$data['psr_scores'][5]}\n";
+            
+            \App\Services\NotificationService::sendWhatsApp($recipient, $msg);
+        }
+
+        return response()->json(['message' => 'Results sent successfully']);
+    }
+
+    /**
      * Add Patient Image
      *
      * Add a new image to patient's records (X-rays, clinical photos, etc.).

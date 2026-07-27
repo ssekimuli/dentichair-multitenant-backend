@@ -711,6 +711,8 @@ class InvoiceController extends Controller
             'payment_method' => $validated['method'],
         ]);
 
+        \App\Models\ActivityLog::log('pay_invoice', "Payment of {$validated['amount']} added to Invoice #{$invoice->id}", ['invoice_id' => $invoice->id, 'amount' => $validated['amount'], 'method' => $validated['method']]);
+
         $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient']);
 
         $settings = \App\Models\GlobalSetting::getSettings();

@@ -22,6 +22,7 @@ class NotificationService
 
         if (!$username || !$password) {
             Log::warning("EgoSMS credentials missing. Simulating SMS to {$phone}");
+            \App\Models\ActivityLog::log('send_sms', "Simulated sending SMS to {$phone}", ['phone' => $phone]);
             return true;
         }
 
@@ -43,6 +44,7 @@ class NotificationService
 
             if ($response->successful()) {
                 Log::info("EgoSMS successfully sent to {$phone}");
+                \App\Models\ActivityLog::log('send_sms', "Successfully sent SMS to {$phone}", ['phone' => $phone]);
                 return true;
             } else {
                 Log::error("EgoSMS sending failed: " . $response->body());
@@ -68,6 +70,7 @@ class NotificationService
 
         if (!$instanceId || !$token) {
             Log::warning("WAAPI credentials missing. Simulating WhatsApp to {$phone}");
+            \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp to {$phone}", ['phone' => $phone]);
             return true;
         }
 
@@ -86,6 +89,7 @@ class NotificationService
 
             if ($response->successful()) {
                 Log::info("WAAPI successfully sent to {$phone}");
+                \App\Models\ActivityLog::log('send_whatsapp', "Successfully sent WhatsApp to {$phone}", ['phone' => $phone]);
                 return true;
             } else {
                 Log::error("WAAPI sending failed: " . $response->body());
@@ -113,6 +117,7 @@ class NotificationService
 
         if (!$instanceId || !$token) {
             Log::warning("WAAPI credentials missing. Simulating WhatsApp media to {$phone}: {$mediaUrl}");
+            \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
             return true;
         }
 
@@ -131,6 +136,7 @@ class NotificationService
 
             if ($response->successful()) {
                 Log::info("WAAPI media successfully sent to {$phone}");
+                \App\Models\ActivityLog::log('send_whatsapp', "Successfully sent WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
                 return true;
             } else {
                 Log::error("WAAPI media sending failed: " . $response->body());

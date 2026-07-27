@@ -13,6 +13,9 @@ class SendAppointmentReminders extends Command
 
     public function handle()
     {
+        $settings = \App\Models\GlobalSetting::firstOrCreate(['id' => 1]);
+        $clinicName = $settings->clinic_name ?: 'Dental Clinic';
+
         $tomorrow = now()->addDay()->toDateString();
 
         $appointments = Appointment::with('patient')
@@ -23,25 +26,41 @@ class SendAppointmentReminders extends Command
         $sent = 0;
 
         foreach ($appointments as $appointment) {
-            if (!$appointment->patient || !$appointment->patient->email) {
+            if (!$appointment->patient) {
                 continue;
             }
+            $patient = $appointment->patient;
+            
+            $msg = "Reminder: You have an appointment at {$clinicName} tomorrow (" . $appointment->date->format('M d, Y') . ") at {$appointment->time} with {$appointment->doctor_name}.";
 
-            try {
-                Mail::to($appointment->patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-reminder', [
-                    'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
-                    'doctorName' => $appointment->doctor_name,
-                    'treatment' => $appointment->treatment,
-                    'date' => $appointment->date->toDateString(),
-                    'time' => $appointment->time,
-                    'tokenNumber' => $appointment->token_number,
-                ], 'Appointment Reminder - Dental Management System'));
-
-                $sent++;
-            } catch (\Exception $e) {
-                logger()->error("Failed to send appointment reminder to {$appointment->patient->email}: " . $e->getMessage());
-                $this->error("Failed to send reminder to {$appointment->patient->email}");
+            // Email
+            if ($settings->send_email_notifications && $patient->email) {
+                try {
+                    Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-reminder', [
+                        'patientName' => $patient->first_name . ' ' . $patient->last_name,
+                        'doctorName' => $appointment->doctor_name,
+                        'treatment' => $appointment->treatment,
+                        'date' => $appointment->date->format('M d, Y'),
+                        'time' => $appointment->time,
+                        'tokenNumber' => $appointment->token_number,
+                        'clinicName' => $clinicName
+                    ], "Appointment Reminder - {$clinicName}"));
+                } catch (\Exception $e) {
+                    logger()->error("Failed to send appointment reminder email to {$patient->email}: " . $e->getMessage());
+                }
             }
+
+            // SMS
+            if ($settings->send_sms_notifications && $patient->phone && $settings->deductSms()) {
+                \App\Services\NotificationService::sendSMS($patient->phone, $msg);
+            }
+
+            // WhatsApp
+            if ($settings->send_whatsapp_notifications && $patient->phone && $settings->isWhatsappActive()) {
+                \App\Services\NotificationService::sendWhatsApp($patient->phone, $msg);
+            }
+
+            $sent++;
         }
 
         $this->info("Sent {$sent} appointment reminder(s) for {$tomorrow}.");

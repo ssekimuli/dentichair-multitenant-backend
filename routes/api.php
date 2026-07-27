@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PatientController;
@@ -26,6 +26,7 @@ Route::get('/import/templates/download/{filename}', [ImportController::class, 'd
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
+    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index']);
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
@@ -57,9 +58,9 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::apiResource('appointments', AppointmentController::class);
 
 
-    // Patient Images
     Route::get('/patients/{patientId}/images', [PatientController::class, 'getImages']);
     Route::post('/patients/{patientId}/images/send', [PatientController::class, 'sendDocuments']);
+    Route::post('/patients/{patientId}/periodontal/send', [PatientController::class, 'sendPeriodontalResult']);
     Route::post('/patients/{patientId}/images', [PatientController::class, 'addImage']);
     Route::put('/patients/{patientId}/images/{imageId}', [PatientController::class, 'updateImage']);
     Route::delete('/patients/{patientId}/images/{imageId}', [PatientController::class, 'deleteImage']);

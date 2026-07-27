@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class GlobalSetting extends Model
 {
-    use HasFactory;
+use HasFactory;
 
     protected $fillable = ['clinic_name', 'sms_balance', 'whatsapp_balance', 'notifications', 'whatsapp_expires_at'];
 

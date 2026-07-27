@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Branch extends Model
 {
-    use HasFactory, SoftDeletes;
+use HasFactory, SoftDeletes;
 
     // protected $keyType = 'string';
     // public $incrementing = false;

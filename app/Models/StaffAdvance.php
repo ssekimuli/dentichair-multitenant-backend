@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StaffAdvance extends Model
 {
-    use HasFactory;
+use HasFactory;
 
     // protected $keyType = 'string';
     // public $incrementing = false;

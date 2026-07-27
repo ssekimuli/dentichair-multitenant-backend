@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class BranchSetting extends Model
 {
-    use HasFactory;
+use HasFactory;
 
     protected $fillable = [
         'branch_id', 'clinic_name', 'sms_balance', 'whatsapp_balance', 'notifications'

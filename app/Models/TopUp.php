@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TopUp extends Model
 {
-    use HasFactory;
+use HasFactory;
     
     protected $fillable = ['type', 'amount', 'date_paid'];
 }

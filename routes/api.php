@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PatientController;
@@ -12,6 +12,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MigrationController;
+use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -217,4 +218,9 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'updatePrescription']);
     Route::delete('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'deletePrescription']);
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
+
+    // Notifications API
+    Route::post('/send-sms', [NotificationController::class, 'sendSms']);
+    Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
+    Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
 });

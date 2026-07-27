@@ -75,7 +75,7 @@ class ActivityLogTest extends TestCase
             'total'
         ]);
 
-        $this->assertCount(2, $response->json('data'));
+        $this->assertCount(4, $response->json('data'));
     }
 
     /** @test */

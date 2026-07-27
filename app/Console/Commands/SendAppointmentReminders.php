@@ -65,6 +65,12 @@ class SendAppointmentReminders extends Command
 
         $this->info("Sent {$sent} appointment reminder(s) for {$tomorrow}.");
 
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Sent {$sent} appointment reminder(s) for {$tomorrow}.",
+            ['command' => $this->signature]
+        );
+
         return Command::SUCCESS;
     }
 }

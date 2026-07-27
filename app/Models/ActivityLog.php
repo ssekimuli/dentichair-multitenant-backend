@@ -17,7 +17,8 @@ class ActivityLog extends Model
 
     public static function log($action, $description = null, $metadata = [])
     {
-        $user = auth()->user();
+        $user = auth()->user() ?? auth('sanctum')->user() ?? request()->user();
+        $userId = auth()->id() ?? auth('sanctum')->id() ?? ($user ? $user->id : null);
         $userName = 'System Action';
 
         if ($user) {
@@ -30,7 +31,7 @@ class ActivityLog extends Model
         $metadata['user_name'] = $userName;
 
         self::create([
-            'user_id' => auth()->id(),
+            'user_id' => $userId,
             'action' => $action,
             'description' => $description,
             'metadata' => $metadata,

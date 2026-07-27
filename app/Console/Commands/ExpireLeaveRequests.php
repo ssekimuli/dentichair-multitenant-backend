@@ -18,6 +18,12 @@ class ExpireLeaveRequests extends Command
 
         $this->info("Expired {$count} pending leave request(s).");
 
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Expired {$count} pending leave request(s).",
+            ['command' => $this->signature]
+        );
+
         return Command::SUCCESS;
     }
 }

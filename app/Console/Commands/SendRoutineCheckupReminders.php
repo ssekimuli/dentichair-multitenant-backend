@@ -68,6 +68,12 @@ class SendRoutineCheckupReminders extends Command
 
         $this->info("Sent {$sent} routine checkup reminder(s).");
 
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Sent {$sent} routine checkup reminder(s).",
+            ['command' => $this->signature]
+        );
+
         return Command::SUCCESS;
     }
 }

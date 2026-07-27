@@ -18,6 +18,12 @@ class MarkOverdueInvoices extends Command
 
         $this->info("Marked {$count} invoice(s) as overdue.");
 
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Marked {$count} invoice(s) as overdue.",
+            ['command' => $this->signature]
+        );
+
         return Command::SUCCESS;
     }
 }

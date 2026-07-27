@@ -79,5 +79,11 @@ class AutoScheduleNextVisits extends Command
         }
 
         $this->info("Successfully scheduled {$count} appointments.");
+
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Automatically scheduled {$count} appointments based on patients' next visit dates.",
+            ['command' => $this->signature]
+        );
     }
 }

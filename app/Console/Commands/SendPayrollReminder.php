@@ -54,6 +54,12 @@ class SendPayrollReminder extends Command
 
         $this->info("Sent payroll reminder to {$sent} recipient(s) for {$month}.");
 
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Sent payroll reminder to {$sent} recipient(s) for {$month}.",
+            ['command' => $this->signature]
+        );
+
         return Command::SUCCESS;
     }
 }

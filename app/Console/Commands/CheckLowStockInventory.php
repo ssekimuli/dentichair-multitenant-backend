@@ -53,6 +53,12 @@ class CheckLowStockInventory extends Command
 
         $this->info("Sent low stock alerts to {$sent} admin(s).");
 
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Found {$outOfStockItems->count()} out-of-stock and {$lowStockItems->count()} low-stock item(s). Sent alerts to {$sent} admin(s).",
+            ['command' => $this->signature]
+        );
+
         return Command::SUCCESS;
     }
 }

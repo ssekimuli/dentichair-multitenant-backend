@@ -14,13 +14,15 @@ class LaboratoryOrder extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'patient_id', 'patient_name', 'lab', 'item', 'tooth',
-        'status', 'sent_date', 'due_date', 'branch_id'
+        'id', 'patient_id', 'patient_name', 'lab', 'item', 'tooth', 'doctor_id',
+        'status', 'sent_date', 'due_date', 'branch_id',
+        'received_date', 'shade', 'material', 'instructions', 'cost', 'invoice_number'
     ];
 
     protected $casts = [
         'sent_date' => 'date',
         'due_date' => 'date',
+        'received_date' => 'date',
     ];
 
     public function patient(): BelongsTo
@@ -31,5 +33,10 @@ class LaboratoryOrder extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'doctor_id');
     }
 }

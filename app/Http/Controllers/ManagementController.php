@@ -317,7 +317,7 @@ class ManagementController extends Controller
      */
     public function getLabOrders(Request $request)
     {
-        $query = LaboratoryOrder::with(['patient', 'branch']);
+        $query = LaboratoryOrder::with(['patient', 'branch', 'doctor']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
         $orders = $query->latest()->paginate($request->input('per_page', 10));
         return response()->json([
@@ -1138,6 +1138,13 @@ class ManagementController extends Controller
             'sentDate' => 'required|date',
             'dueDate' => 'required|date',
             'branchId' => 'required|exists:branches,id',
+            'receivedDate' => 'nullable|date',
+            'shade' => 'nullable|string',
+            'material' => 'nullable|string',
+            'instructions' => 'nullable|string',
+            'cost' => 'nullable|numeric',
+            'invoiceNumber' => 'nullable|string',
+            'doctorId' => 'nullable|exists:employees,id',
         ]);
 
         $patient = Patient::find($validated['patientId']);
@@ -1152,6 +1159,13 @@ class ManagementController extends Controller
             'sent_date' => $validated['sentDate'],
             'due_date' => $validated['dueDate'],
             'branch_id' => $validated['branchId'],
+            'received_date' => $validated['receivedDate'] ?? null,
+            'shade' => $validated['shade'] ?? null,
+            'material' => $validated['material'] ?? null,
+            'instructions' => $validated['instructions'] ?? null,
+            'cost' => $validated['cost'] ?? null,
+            'invoice_number' => $validated['invoiceNumber'] ?? null,
+            'doctor_id' => $validated['doctorId'] ?? null,
         ]);
 
         return response()->json($labOrder->load(['patient', 'branch']), 201);

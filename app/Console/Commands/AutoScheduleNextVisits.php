@@ -34,6 +34,7 @@ class AutoScheduleNextVisits extends Command
         $patients = Patient::whereNotNull('next_visit')->get();
 
         $count = 0;
+        $patientDetails = [];
         foreach ($patients as $patient) {
             // Find an active dentist/doctor in the same branch
             $doctor = Employee::where('branch_id', $patient->branch_id)
@@ -73,6 +74,12 @@ class AutoScheduleNextVisits extends Command
                 'token_number' => 'T' . strtoupper(Str::random(6)),
             ]);
 
+            $patientDetails[] = [
+                'name' => $patient->first_name . ' ' . $patient->last_name,
+                'phone' => $patient->phone,
+                'email' => $patient->email,
+            ];
+
             $patient->update(['next_visit' => null]);
 
             $count++;
@@ -83,7 +90,7 @@ class AutoScheduleNextVisits extends Command
         \App\Models\ActivityLog::log(
             'cron_job',
             "Automatically scheduled {$count} appointments based on patients' next visit dates.",
-            ['command' => $this->signature]
+            ['patients' => $patientDetails]
         );
     }
 }

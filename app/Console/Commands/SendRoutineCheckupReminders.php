@@ -36,6 +36,7 @@ class SendRoutineCheckupReminders extends Command
         }
 
         $sent = 0;
+        $patientDetails = [];
 
         foreach ($patients as $patient) {
             $msg = "Hello {$patient->first_name}, it's been 6 months since your last visit to {$clinicName}. It's time for your routine dental checkup! Please contact us to schedule an appointment.";
@@ -63,6 +64,11 @@ class SendRoutineCheckupReminders extends Command
                 \App\Services\NotificationService::sendWhatsApp($patient->phone, $msg);
             }
             
+            $patientDetails[] = [
+                'name' => $patient->first_name . ' ' . $patient->last_name,
+                'phone' => $patient->phone,
+                'email' => $patient->email,
+            ];
             $sent++;
         }
 
@@ -71,7 +77,7 @@ class SendRoutineCheckupReminders extends Command
         \App\Models\ActivityLog::log(
             'cron_job',
             "Sent {$sent} routine checkup reminder(s).",
-            ['command' => $this->signature]
+            ['patients' => $patientDetails]
         );
 
         return Command::SUCCESS;

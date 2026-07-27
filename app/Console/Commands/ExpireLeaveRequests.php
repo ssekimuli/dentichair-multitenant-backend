@@ -12,16 +12,30 @@ class ExpireLeaveRequests extends Command
 
     public function handle()
     {
-        $count = LeaveRequest::where('status', 'Pending')
+        $leaveRequests = LeaveRequest::with('employee')
+            ->where('status', 'Pending')
             ->where('start_date', '<', now()->startOfDay())
-            ->update(['status' => 'Expired']);
+            ->get();
 
+        $employeeDetails = [];
+        foreach ($leaveRequests as $req) {
+            $req->update(['status' => 'Expired']);
+            if ($req->employee) {
+                $employeeDetails[] = [
+                    'name' => $req->employee->name,
+                    'phone' => $req->employee->phone ?? null,
+                    'email' => $req->employee->email,
+                ];
+            }
+        }
+
+        $count = count($employeeDetails);
         $this->info("Expired {$count} pending leave request(s).");
 
         \App\Models\ActivityLog::log(
             'cron_job',
             "Expired {$count} pending leave request(s).",
-            ['command' => $this->signature]
+            ['employees' => $employeeDetails]
         );
 
         return Command::SUCCESS;

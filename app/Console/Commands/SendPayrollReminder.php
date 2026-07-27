@@ -33,6 +33,7 @@ class SendPayrollReminder extends Command
         }
 
         $sent = 0;
+        $recipientsList = [];
 
         foreach ($recipients as $employee) {
             try {
@@ -45,6 +46,10 @@ class SendPayrollReminder extends Command
                     'Payroll Processing Reminder - ' . $month
                 ));
 
+                $recipientsList[] = [
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                ];
                 $sent++;
             } catch (\Exception $e) {
                 logger()->error("Failed to send payroll reminder to {$employee->email}: " . $e->getMessage());
@@ -57,7 +62,7 @@ class SendPayrollReminder extends Command
         \App\Models\ActivityLog::log(
             'cron_job',
             "Sent payroll reminder to {$sent} recipient(s) for {$month}.",
-            ['command' => $this->signature]
+            ['recipients' => $recipientsList]
         );
 
         return Command::SUCCESS;

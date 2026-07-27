@@ -24,6 +24,7 @@ class SendAppointmentReminders extends Command
             ->get();
 
         $sent = 0;
+        $patientDetails = [];
 
         foreach ($appointments as $appointment) {
             if (!$appointment->patient) {
@@ -60,6 +61,11 @@ class SendAppointmentReminders extends Command
                 \App\Services\NotificationService::sendWhatsApp($patient->phone, $msg);
             }
 
+            $patientDetails[] = [
+                'name' => $patient->first_name . ' ' . $patient->last_name,
+                'phone' => $patient->phone,
+                'email' => $patient->email,
+            ];
             $sent++;
         }
 
@@ -68,7 +74,7 @@ class SendAppointmentReminders extends Command
         \App\Models\ActivityLog::log(
             'cron_job',
             "Sent {$sent} appointment reminder(s) for {$tomorrow}.",
-            ['command' => $this->signature]
+            ['patients' => $patientDetails]
         );
 
         return Command::SUCCESS;

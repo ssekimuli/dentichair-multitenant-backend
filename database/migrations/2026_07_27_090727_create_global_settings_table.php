@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('global_settings', function (Blueprint $table) {
             $table->id();
-            $table->integer('sms_balance')->default(0);
+            $table->integer('sms_balance')->default(600);
             $table->integer('whatsapp_balance')->default(0);
             $table->timestamps();
         });

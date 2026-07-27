@@ -16,11 +16,11 @@ fi
 # ==========================================
 # CONFIGURATION VARIABLES
 # ==========================================
-DOMAIN="stagingapi.poslycloud.com"
-SITE_USER="poslycloud-stagingapi"
-DB_NAME="stagingapidb"
-DB_USER="stagingapibsuser"
-DB_PASS="stagingapi3KYkz"
+DOMAIN="shalomdentalcareapi.poslycloud.com"
+SITE_USER="poslycloud-shalomdentalcare"
+DB_NAME="shalomdentalcaredb"
+DB_USER="shalomdentalcarebsuser"
+DB_PASS="shalomdentalcare3KYkz"
 GIT_REPO="git@github.com:ssekimuli/chart-backend.git"
 GIT_BRANCH="production"  # Specify the production branch
 

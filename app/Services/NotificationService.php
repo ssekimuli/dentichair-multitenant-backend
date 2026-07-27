@@ -16,42 +16,32 @@ class NotificationService
      */
     public static function sendSms($phone, $message)
     {
-        $username = env('EGOSMS_USERNAME');
-        $password = env('EGOSMS_PASSWORD');
-        $senderId = env('EGOSMS_SENDER_ID');
+        $clientId = env('SMS_CLIENT_ID');
 
-        if (!$username || !$password) {
-            Log::warning("EgoSMS credentials missing. Simulating SMS to {$phone}");
+        if (!$clientId) {
+            Log::warning("SMS_CLIENT_ID missing. Simulating SMS to {$phone}");
             \App\Models\ActivityLog::log('send_sms', "Simulated sending SMS to {$phone}", ['phone' => $phone]);
             return true;
         }
 
         try {
-            $response = Http::post('https://www.egosms.co/api/v1/json/', [
-                'method' => 'SendSms',
-                'userdata' => [
-                    'username' => $username,
-                    'password' => $password,
-                ],
-                'msgdata' => [
-                    [
-                        'number' => $phone,
-                        'message' => $message,
-                        'senderid' => $senderId,
-                    ]
-                ]
+            $response = Http::withHeaders([
+                'X-Client-Id' => $clientId,
+            ])->post('https://onboarddental.poslycloud.com/api/send-sms', [
+                'phone' => $phone,
+                'message' => $message,
             ]);
 
             if ($response->successful()) {
-                Log::info("EgoSMS successfully sent to {$phone}");
+                Log::info("SMS successfully sent to {$phone}");
                 \App\Models\ActivityLog::log('send_sms', "Successfully sent SMS to {$phone}", ['phone' => $phone]);
                 return true;
             } else {
-                Log::error("EgoSMS sending failed: " . $response->body());
+                Log::error("SMS sending failed: " . $response->body());
                 return false;
             }
         } catch (\Exception $e) {
-            Log::error("EgoSMS exception: " . $e->getMessage());
+            Log::error("SMS exception: " . $e->getMessage());
             return false;
         }
     }
@@ -65,38 +55,32 @@ class NotificationService
      */
     public static function sendWhatsApp($phone, $message)
     {
-        $instanceId = env('WAAPI_INSTANCE_ID');
-        $token = env('WAAPI_TOKEN');
+        $clientId = env('SMS_CLIENT_ID');
 
-        if (!$instanceId || !$token) {
-            Log::warning("WAAPI credentials missing. Simulating WhatsApp to {$phone}");
+        if (!$clientId) {
+            Log::warning("SMS_CLIENT_ID missing. Simulating WhatsApp to {$phone}");
             \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp to {$phone}", ['phone' => $phone]);
             return true;
         }
 
-        // Format phone number to WhatsApp ID format (e.g., 256701234567@c.us)
-        // Note: Assumes phone is already in international format without '+'
-        $chatId = preg_replace('/[^0-9]/', '', $phone) . '@c.us';
-
         try {
-            $url = "https://waapi.app/api/v1/instances/{$instanceId}/client/action/send-message";
-            
-            $response = Http::withToken($token)
-                ->post($url, [
-                    'chatId' => $chatId,
-                    'message' => $message,
-                ]);
+            $response = Http::withHeaders([
+                'X-Client-Id' => $clientId,
+            ])->post('https://onboarddental.poslycloud.com/api/send-whatsapp', [
+                'phone' => $phone,
+                'message' => $message,
+            ]);
 
             if ($response->successful()) {
-                Log::info("WAAPI successfully sent to {$phone}");
+                Log::info("WhatsApp successfully sent to {$phone}");
                 \App\Models\ActivityLog::log('send_whatsapp', "Successfully sent WhatsApp to {$phone}", ['phone' => $phone]);
                 return true;
             } else {
-                Log::error("WAAPI sending failed: " . $response->body());
+                Log::error("WhatsApp sending failed: " . $response->body());
                 return false;
             }
         } catch (\Exception $e) {
-            Log::error("WAAPI exception: " . $e->getMessage());
+            Log::error("WhatsApp exception: " . $e->getMessage());
             return false;
         }
     }
@@ -112,38 +96,34 @@ class NotificationService
      */
     public static function sendMediaWhatsApp($phone, $mediaUrl, $fileName, $caption = '')
     {
-        $instanceId = env('WAAPI_INSTANCE_ID');
-        $token = env('WAAPI_TOKEN');
+        $clientId = env('SMS_CLIENT_ID');
 
-        if (!$instanceId || !$token) {
-            Log::warning("WAAPI credentials missing. Simulating WhatsApp media to {$phone}: {$mediaUrl}");
+        if (!$clientId) {
+            Log::warning("SMS_CLIENT_ID missing. Simulating WhatsApp media to {$phone}: {$mediaUrl}");
             \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
             return true;
         }
 
-        $chatId = preg_replace('/[^0-9]/', '', $phone) . '@c.us';
-
         try {
-            $url = "https://waapi.app/api/v1/instances/{$instanceId}/client/action/send-media";
-            
-            $response = Http::withToken($token)
-                ->post($url, [
-                    'chatId' => $chatId,
-                    'mediaUrl' => $mediaUrl,
-                    'mediaName' => $fileName,
-                    'mediaCaption' => $caption,
-                ]);
+            $response = Http::withHeaders([
+                'X-Client-Id' => $clientId,
+            ])->post('https://onboarddental.poslycloud.com/api/send-whatsapp-media', [
+                'phone' => $phone,
+                'media_url' => $mediaUrl,
+                'file_name' => $fileName,
+                'caption' => $caption,
+            ]);
 
             if ($response->successful()) {
-                Log::info("WAAPI media successfully sent to {$phone}");
+                Log::info("WhatsApp media successfully sent to {$phone}");
                 \App\Models\ActivityLog::log('send_whatsapp', "Successfully sent WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
                 return true;
             } else {
-                Log::error("WAAPI media sending failed: " . $response->body());
+                Log::error("WhatsApp media sending failed: " . $response->body());
                 return false;
             }
         } catch (\Exception $e) {
-            Log::error("WAAPI media exception: " . $e->getMessage());
+            Log::error("WhatsApp media exception: " . $e->getMessage());
             return false;
         }
     }

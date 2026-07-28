@@ -38,7 +38,6 @@ class NotificationService
             ]);
 
             if ($response->successful()) {
-                Log::info("SMS successfully sent to {$phone}");
                 \App\Models\ActivityLog::log('send_sms', "Successfully sent SMS to {$phone}", ['phone' => $phone]);
                 return [
                     'success' => true,
@@ -49,12 +48,11 @@ class NotificationService
                 Log::error("SMS sending failed: " . $response->body());
                 return [
                     'success' => false,
-                    'message' => 'EgoSMS API rejected the request',
+                    'message' => 'SMS API rejected the request',
                     'error' => $response->body()
                 ];
             }
         } catch (\Exception $e) {
-            Log::error("SMS exception: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'An exception occurred while sending SMS',
@@ -75,7 +73,6 @@ class NotificationService
         $clientId = env('SMS_CLIENT_ID');
 
         if (!$clientId) {
-            Log::warning("SMS_CLIENT_ID missing. Simulating WhatsApp to {$phone}");
             \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp to {$phone}", ['phone' => $phone]);
             return [
                 'success' => true,
@@ -94,7 +91,6 @@ class NotificationService
             ]);
 
             if ($response->successful()) {
-                Log::info("WhatsApp successfully sent to {$phone}");
                 \App\Models\ActivityLog::log('send_whatsapp', "Successfully sent WhatsApp to {$phone}", ['phone' => $phone]);
                 return [
                     'success' => true,
@@ -102,7 +98,6 @@ class NotificationService
                     'data' => $response->json()
                 ];
             } else {
-                Log::error("WhatsApp sending failed: " . $response->body());
                 return [
                     'success' => false,
                     'message' => 'WAAPI rejected the request',
@@ -110,7 +105,6 @@ class NotificationService
                 ];
             }
         } catch (\Exception $e) {
-            Log::error("WhatsApp exception: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'An exception occurred while sending WhatsApp message',
@@ -133,7 +127,6 @@ class NotificationService
         $clientId = env('SMS_CLIENT_ID');
 
         if (!$clientId) {
-            Log::warning("SMS_CLIENT_ID missing. Simulating WhatsApp media to {$phone}: {$mediaUrl}");
             \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
             return [
                 'success' => true,
@@ -154,7 +147,6 @@ class NotificationService
             ]);
 
             if ($response->successful()) {
-                Log::info("WhatsApp media successfully sent to {$phone}");
                 \App\Models\ActivityLog::log('send_whatsapp', "Successfully sent WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
                 return [
                     'success' => true,
@@ -162,7 +154,6 @@ class NotificationService
                     'data' => $response->json()
                 ];
             } else {
-                Log::error("WhatsApp media sending failed: " . $response->body());
                 return [
                     'success' => false,
                     'message' => 'WAAPI rejected the request',
@@ -170,7 +161,6 @@ class NotificationService
                 ];
             }
         } catch (\Exception $e) {
-            Log::error("WhatsApp media exception: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'An exception occurred while sending WhatsApp media',

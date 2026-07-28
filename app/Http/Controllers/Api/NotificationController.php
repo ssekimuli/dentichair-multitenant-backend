@@ -72,8 +72,6 @@ class NotificationController extends Controller
             ], 500);
         }
     }
-    }
-
     /**
      * Send WhatsApp Message
      */

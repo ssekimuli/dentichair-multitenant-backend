@@ -108,6 +108,51 @@ class NotificationService
             ];
         }
     }
+    public static function verifyWebhook($reference)
+    {
+        $clientId = env('SMS_CLIENT_ID');
+
+        if (!$clientId) {
+
+            \App\Models\ActivityLog::log('verify_payment', "Fail to verify {$reference}", ['reference' => $reference]);
+            return [
+                'success' => true,
+                'message' => 'Fail to verify',
+                'data' => null
+            ];
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'X-Client-Id' => $clientId,
+                'X-Client-domain' => env('APP_URL'),
+            ])->post('https://onboarddental.poslycloud.com/api/verify-transaction', [
+                'reference' => $reference
+            ]);
+
+            if ($response->successful()) {
+                \App\Models\ActivityLog::log('top_up_sms', "Successfully verified {$reference}", ['phone' => $reference]);
+                return [
+                    'success' => true,
+                    'message' => 'Successfully verified transaction',
+                    'data' => $response->json()
+                ];
+            } else {
+
+                return [
+                    'success' => false,
+                    'message' => 'Top Up SMS API rejected the request',
+                    'error' => $response->body()
+                ];
+            }
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'An exception occurred while Top Up SMS',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
 
     /**
      * Send WhatsApp

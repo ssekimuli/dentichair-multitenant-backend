@@ -57,6 +57,20 @@ class NotificationController extends Controller
         }
     }
 
+    public function verifyWebhook(Request $request){
+        try{
+             $response = NotificationService::verifyWebhook($request->reference);
+
+            return response()->json($response, $response['success'] ? 200 : 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function updateTopUpBalance(Request $request){
         try{
 

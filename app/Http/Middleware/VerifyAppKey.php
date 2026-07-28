@@ -21,7 +21,7 @@ class VerifyAppKey
             return response()->json(['success' => false, 'message' => 'appKey is required'], 401);
         }
 
-        $envAppKey = env('APP_KEY');
+        $envAppKey = env('SYSTEM_KEY');
 
         if ($appKey !== $envAppKey) {
             return response()->json(['success' => false, 'message' => 'Invalid appKey'], 401);

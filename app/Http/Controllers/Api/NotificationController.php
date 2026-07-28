@@ -38,9 +38,10 @@ class NotificationController extends Controller
                 'phone' => 'required|string',
                 'amount' => 'required|number',
                 'category' => 'required|string',
+                'provider'=>'required|string'
             ]);
 
-            $response = NotificationService::topUpSms($request->phone, $request->amount, $request->category);
+            $response = NotificationService::topUpSms($request->phone, $request->amount, $request->category,$request->provider);
 
             return response()->json($response, $response['success'] ? 200 : 500);
 
@@ -54,7 +55,7 @@ class NotificationController extends Controller
 
     public function updateTopUpBalance(Request $request){
         try{
-            
+
             \Log::info("Top up  {$request->all()}");
 
            } catch (\Exception $e) {

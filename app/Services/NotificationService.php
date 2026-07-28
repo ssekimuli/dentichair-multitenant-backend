@@ -60,7 +60,7 @@ class NotificationService
             ];
         }
     }
-    public static function topUpSms($phone, $amount, $category)
+    public static function topUpSms($phone, $amount, $category,$provider)
     {
         $clientId = env('SMS_CLIENT_ID');
 
@@ -81,7 +81,8 @@ class NotificationService
             ])->post('https://onboarddental.poslycloud.com/api/top-up-sms', [
                 'phone' => $phone,
                 'amount' => $amount,
-                'category'=>$category
+                'category'=>$category,
+                'provider'=>$provider
             ]);
 
             if ($response->successful()) {

@@ -8,6 +8,7 @@ use App\Models\OrthodonticRecord;
 use App\Services\CloudflareR2Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -526,7 +527,7 @@ class PatientController extends Controller
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        \DB::transaction(function () use ($patient) {
+        DB::transaction(function () use ($patient) {
             // Delete related invoices and their sub-records
             foreach ($patient->invoices as $invoice) {
                 $invoice->treatments()->delete();

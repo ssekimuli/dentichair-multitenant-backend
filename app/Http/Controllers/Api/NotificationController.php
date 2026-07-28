@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
@@ -28,6 +29,44 @@ class NotificationController extends Controller
                 'message' => 'An error occurred: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function topUpSms(Request $request)
+    {
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'amount' => 'required|number',
+                'category' => 'required|string',
+            ]);
+
+            $response = NotificationService::topUpSms($request->phone, $request->amount, $request->category);
+
+            return response()->json($response, $response['success'] ? 200 : 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateTopUpBalance(Request $request){
+        try{
+            
+            \Log::info("Top up  {$request->all()}");
+
+           } catch (\Exception $e) {
+
+            \Log::info("Top up Exception to {$e}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     }
 
     /**

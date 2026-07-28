@@ -24,7 +24,10 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function () {
     // Notifications API
+
     Route::post('/send-sms', [NotificationController::class, 'sendSms']);
+    Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
+    Route::post('/update-top-up-balance', [NotificationController::class, 'updateTopUpBalance']);
     Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
     Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
 });

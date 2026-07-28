@@ -60,6 +60,53 @@ class NotificationService
             ];
         }
     }
+    public static function topUpSms($phone, $amount, $category)
+    {
+        $clientId = env('SMS_CLIENT_ID');
+
+        if (!$clientId) {
+
+            \App\Models\ActivityLog::log('top_up_sms', "Fail Top Up SMS to {$phone} amount {$amount}", ['phone' => $phone]);
+            return [
+                'success' => true,
+                'message' => 'Fail Top Up SMS (credentials missing)',
+                'data' => null
+            ];
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'X-Client-Id' => $clientId,
+                'X-Client-domain' => env('APP_URL'),
+            ])->post('https://onboarddental.poslycloud.com/api/top-up-sms', [
+                'phone' => $phone,
+                'amount' => $amount,
+                'category'=>$category
+            ]);
+
+            if ($response->successful()) {
+                \App\Models\ActivityLog::log('top_up_sms', "Successfully Top Up SMS to {$phone}", ['phone' => $phone]);
+                return [
+                    'success' => true,
+                    'message' => 'Top Up SMS successfully',
+                    'data' => $response->json()
+                ];
+            } else {
+
+                return [
+                    'success' => false,
+                    'message' => 'Top Up SMS API rejected the request',
+                    'error' => $response->body()
+                ];
+            }
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'An exception occurred while Top Up SMS',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
 
     /**
      * Send WhatsApp

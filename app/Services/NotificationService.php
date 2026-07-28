@@ -135,10 +135,10 @@ class NotificationService
                         'reference' => $reference,
                         'error' => $response['error'] ?? 'Verification failed',
                     ]);
-                    return response()->json([
+                    return [
                         'success' => false,
                         'error'   => $response['error'] ?? 'Verification failed',
-                    ], 400);
+                    ];
                 }
 
 
@@ -146,19 +146,19 @@ class NotificationService
 
                 self::processPaymentStatus($verifiedData);
 
-                return response()->json([
+                return [
                     'success' => true,
                     'data'    => $verifiedData,
-                ]);
+                ];
             } else {
                 \App\Models\ActivityLog::log('verify_payment', "Webhook verify request failed", [
                     'reference' => $reference,
                     'error' => $response->body()
                 ]);
-                return response()->json([
+                return [
                     'success' => false,
                     'error'   => 'Verification request failed',
-                ], 400);
+                ];
             }
         } catch (\Exception $e) {
             \App\Models\ActivityLog::log('verify_payment', "Webhook verify exception", [
@@ -166,10 +166,10 @@ class NotificationService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json([
+            return [
                 'success' => false,
                 'error'   => 'Verification error',
-            ], 500);
+            ];
         }
     }
 

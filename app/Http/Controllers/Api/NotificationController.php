@@ -13,14 +13,21 @@ class NotificationController extends Controller
      */
     public function sendSms(Request $request)
     {
-        $request->validate([
-            'phone' => 'required|string',
-            'message' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'message' => 'required|string',
+            ]);
 
-        $response = NotificationService::sendSms($request->phone, $request->message);
+            $response = NotificationService::sendSms($request->phone, $request->message);
 
-        return response()->json($response, $response['success'] ? 200 : 500);
+            return response()->json($response, $response['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -28,14 +35,21 @@ class NotificationController extends Controller
      */
     public function sendWhatsApp(Request $request)
     {
-        $request->validate([
-            'phone' => 'required|string',
-            'message' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'message' => 'required|string',
+            ]);
 
-        $response = NotificationService::sendWhatsApp($request->phone, $request->message);
+            $response = NotificationService::sendWhatsApp($request->phone, $request->message);
 
-        return response()->json($response, $response['success'] ? 200 : 500);
+            return response()->json($response, $response['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -43,20 +57,27 @@ class NotificationController extends Controller
      */
     public function sendWhatsAppMedia(Request $request)
     {
-        $request->validate([
-            'phone' => 'required|string',
-            'media_url' => 'required|url',
-            'file_name' => 'required|string',
-            'caption' => 'nullable|string',
-        ]);
+        try {
+            $request->validate([
+                'phone' => 'required|string',
+                'media_url' => 'required|url',
+                'file_name' => 'required|string',
+                'caption' => 'nullable|string',
+            ]);
 
-        $response = NotificationService::sendMediaWhatsApp(
-            $request->phone,
-            $request->media_url,
-            $request->file_name,
-            $request->caption ?? ''
-        );
+            $response = NotificationService::sendMediaWhatsApp(
+                $request->phone,
+                $request->media_url,
+                $request->file_name,
+                $request->caption ?? ''
+            );
 
-        return response()->json($response, $response['success'] ? 200 : 500);
+            return response()->json($response, $response['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

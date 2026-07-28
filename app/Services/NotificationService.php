@@ -116,7 +116,7 @@ class NotificationService
 
             \App\Models\ActivityLog::log('verify_payment', "Fail to verify {$reference}", ['reference' => $reference]);
             return [
-                'success' => true,
+                'success' => false,
                 'message' => 'Fail to verify',
                 'data' => null
             ];
@@ -134,7 +134,6 @@ class NotificationService
                 \App\Models\ActivityLog::log('top_up_sms', "Successfully verified {$reference}", ['phone' => $reference]);
                 return [
                     'success' => true,
-                    'message' => 'Successfully verified transaction',
                     'data' => $response->json()
                 ];
             } else {

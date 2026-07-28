@@ -130,7 +130,6 @@ class NotificationService
             ]);
 
             if ($response->successful()) {
-                return $response;
                 if (!$response['success']) {
                     \App\Models\ActivityLog::log('verify_payment', "Webhook verify failed", [
                         'reference' => $reference,

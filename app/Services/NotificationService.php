@@ -122,7 +122,7 @@ class NotificationService
         }
 
         try {
-           return $response = Http::withHeaders([
+           $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
                 'X-Client-domain' => env('APP_URL'),
             ])->post('https://onboarddental.poslycloud.com/api/verify-transaction', [
@@ -130,6 +130,7 @@ class NotificationService
             ]);
 
             if ($response->successful()) {
+                return $response;
                 if (!$response['success']) {
                     \App\Models\ActivityLog::log('verify_payment', "Webhook verify failed", [
                         'reference' => $reference,

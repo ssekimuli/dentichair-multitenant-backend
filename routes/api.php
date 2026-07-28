@@ -22,6 +22,13 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
+Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function () {
+    // Notifications API
+    Route::post('/send-sms', [NotificationController::class, 'sendSms']);
+    Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
+    Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
+});
+
 // Public template download (browser direct access)
 Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 
@@ -219,8 +226,4 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::delete('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'deletePrescription']);
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
 
-    // Notifications API
-    Route::post('/send-sms', [NotificationController::class, 'sendSms']);
-    Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
-    Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
 });

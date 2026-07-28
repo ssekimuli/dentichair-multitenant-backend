@@ -113,7 +113,6 @@ class NotificationService
         $clientId = env('SMS_CLIENT_ID');
 
         if (!$clientId) {
-
             \App\Models\ActivityLog::log('verify_payment', "Fail to verify {$reference}", ['reference' => $reference]);
             return [
                 'success' => false,
@@ -131,25 +130,64 @@ class NotificationService
             ]);
 
             if ($response->successful()) {
-                \App\Models\ActivityLog::log('top_up_sms', "Successfully verified {$reference}", ['phone' => $reference]);
-                return [
-                    'success' => true,
-                    'data' => $response->json()
-                ];
-            } else {
+                if (!$response['success']) {
+                    \App\Models\ActivityLog::log('verify_payment', "Webhook verify failed", [
+                        'reference' => $reference,
+                        'error' => $response['error'] ?? 'Verification failed',
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'error'   => $response['error'] ?? 'Verification failed',
+                    ], 400);
+                }
 
-                return [
-                    'success' => false,
-                    'message' => 'Top Up SMS API rejected the request',
+
+                $verifiedData = $response['data'];
+
+                self::processPaymentStatus($verifiedData);
+
+                return response()->json([
+                    'success' => true,
+                    'data'    => $verifiedData,
+                ]);
+            } else {
+                \App\Models\ActivityLog::log('verify_payment', "Webhook verify request failed", [
+                    'reference' => $reference,
                     'error' => $response->body()
-                ];
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'Verification request failed',
+                ], 400);
             }
         } catch (\Exception $e) {
-            return [
+            \App\Models\ActivityLog::log('verify_payment', "Webhook verify exception", [
+                'reference' => $reference,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
                 'success' => false,
-                'message' => 'An exception occurred while Top Up SMS',
-                'error' => $e->getMessage()
-            ];
+                'error'   => 'Verification error',
+            ], 500);
+        }
+    }
+
+    private static function processPaymentStatus(array $data)
+    {
+        $status = strtolower($data['status'] ?? '');
+       
+        if (in_array($status, ['completed', 'success', 'successful'])) {
+            \App\Models\ActivityLog::log('payment_status', "Payment completed", ['status' => $status, 'data' => $data]);
+            // Update 
+        } elseif ($status === 'failed') {
+            \App\Models\ActivityLog::log('payment_status', "Payment failed", ['status' => $status, 'data' => $data]);
+            return $data;
+            // Update UserSubscription status
+        } elseif ($status === 'pending') {
+           \App\Models\ActivityLog::log('payment_status', "Payment pending", ['status' => $status, 'data' => $data]);
+        } else {
+           \App\Models\ActivityLog::log('payment_status', "Payment status unknown: {$status}", ['status' => $status, 'data' => $data]);
         }
     }
 

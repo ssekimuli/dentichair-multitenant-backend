@@ -122,7 +122,7 @@ class NotificationService
         }
 
         try {
-            $response = Http::withHeaders([
+           return $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
                 'X-Client-domain' => env('APP_URL'),
             ])->post('https://onboarddental.poslycloud.com/api/verify-transaction', [

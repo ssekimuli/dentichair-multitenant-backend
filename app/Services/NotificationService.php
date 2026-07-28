@@ -19,7 +19,7 @@ class NotificationService
         $clientId = env('SMS_CLIENT_ID');
 
         if (!$clientId) {
-            Log::warning("SMS_CLIENT_ID missing. Simulating SMS to {$phone}");
+            
             \App\Models\ActivityLog::log('send_sms', "Simulated sending SMS to {$phone}", ['phone' => $phone]);
             return [
                 'success' => true,
@@ -31,6 +31,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
+                'Domain' => request()->getHost(),
             ])->post('https://onboarddental.poslycloud.com/api/send-sms', [
                 'phone' => $phone,
                 'message' => $message,
@@ -86,6 +87,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
+                'Domain' => request()->getHost(),
             ])->post('https://onboarddental.poslycloud.com/api/send-whatsapp', [
                 'phone' => $phone,
                 'message' => $message,
@@ -143,6 +145,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
+                'Domain' => request()->getHost(),
             ])->post('https://onboarddental.poslycloud.com/api/send-whatsapp-media', [
                 'phone' => $phone,
                 'media_url' => $mediaUrl,

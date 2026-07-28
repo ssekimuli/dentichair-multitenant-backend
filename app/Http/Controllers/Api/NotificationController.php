@@ -35,10 +35,14 @@ class NotificationController extends Controller
     {
         try {
             $request->validate([
-                'phone' => 'required|string',
-                'amount' => 'required|number',
+                'phone' => [
+                    'required',
+                    'string',
+                    'regex:/^\+[1-9]\d{7,14}$/',
+                ],
+                'amount' => 'required|numeric',
                 'category' => 'required|string',
-                'provider'=>'required|string'
+                'provider' => 'required|string',
             ]);
 
             $response = NotificationService::topUpSms($request->phone, $request->amount, $request->category,$request->provider);

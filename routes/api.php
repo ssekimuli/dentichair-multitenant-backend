@@ -28,8 +28,7 @@ Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function ()
     // Notifications API
 
     Route::post('/send-sms', [NotificationController::class, 'sendSms']);
-    Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
-    Route::post('/verify-transaction', [NotificationController::class, 'verifyWebhook']);
+
     Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
 });
 
@@ -38,7 +37,9 @@ Route::get('/import/templates/download/{filename}', [ImportController::class, 'd
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
-
+    
+    Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
+    Route::post('/verify-transaction', [NotificationController::class, 'verifyWebhook']);
     Route::post('/update-top-up-balance', [NotificationController::class, 'updateTopUpBalance']);
 
     Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index']);

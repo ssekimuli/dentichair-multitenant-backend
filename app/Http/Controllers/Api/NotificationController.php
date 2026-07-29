@@ -74,9 +74,31 @@ class NotificationController extends Controller
     public function updateTopUpBalance(Request $request){
         try{
 
-            \Log::info("Top up  {$request->all()}");
+            \Log::info("Top up  ", $request->all());
 
-           } catch (\Exception $e) {
+            $request->validate([
+                'type' => 'required|in:sms,whatsapp',
+                'amount' => 'required|numeric',
+                'expiredate' => 'required_if:type,whatsapp|date',
+            ]);
+
+            $globalSetting = \App\Models\GlobalSetting::getSettings();
+
+            if ($request->type === 'sms') {
+                $globalSetting->sms_balance += $request->amount;
+            } else if ($request->type === 'whatsapp') {
+                $globalSetting->whatsapp_balance += $request->amount;
+                $globalSetting->whatsapp_expires_at = \Carbon\Carbon::parse($request->expiredate);
+            }
+            $globalSetting->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => ucfirst($request->type) . ' balance updated successfully.',
+                'data' => $globalSetting
+            ], 200);
+
+        } catch (\Exception $e) {
 
             \Log::info("Top up Exception to {$e}");
 

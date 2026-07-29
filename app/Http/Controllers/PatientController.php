@@ -271,6 +271,7 @@ class PatientController extends Controller
             'status' => $patient->status,
             'branch' => $patient->branch,
             'history' => $patient->history,
+            'nationality' => $patient->nationality,
             'appointments' => $patient->appointments->map(function ($appointment) {
                 return [
                     'id' => $appointment->id,
@@ -354,7 +355,7 @@ class PatientController extends Controller
             'last_name' => 'required|string|max:255',
             'avatar' => 'nullable|string',
             'email' => 'nullable|email|unique:patients,email',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'required|date',
@@ -363,6 +364,7 @@ class PatientController extends Controller
             'branch_id' => 'required|exists:branches,id',
             'history' => 'nullable|string',
             'occlusal_records' => 'nullable|json',
+            'nationality' => 'nullable|string|max:255',
         ]);
 
         $patient = Patient::create($validated);
@@ -480,7 +482,7 @@ class PatientController extends Controller
             'last_name' => 'sometimes|string|max:255',
             'avatar' => 'nullable|string',
             'email' => 'nullable|email|unique:patients,email,' . $id,
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'sometimes|date',
@@ -489,6 +491,7 @@ class PatientController extends Controller
             'branch_id' => 'sometimes|exists:branches,id',
             'history' => 'nullable|string',
             'occlusal_records' => 'nullable|json',
+            'nationality' => 'nullable|string|max:255',
         ]);
 
         $patient->update($validated);

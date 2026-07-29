@@ -32,6 +32,7 @@ class Patient extends Model
     'branch_id',
     'history',
     'occlusal_records',
+    'nationality',
 ];
 
 

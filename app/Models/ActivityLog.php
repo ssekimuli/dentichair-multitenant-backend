@@ -17,6 +17,11 @@ class ActivityLog extends Model
 
     public static function log($action, $description = null, $metadata = [])
     {
+        $setting = \App\Models\GlobalSetting::getSettings();
+        if (!$setting->activity_log_enabled) {
+            return;
+        }
+
         $user = auth()->user() ?? auth('sanctum')->user() ?? request()->user();
         $userId = auth()->id() ?? auth('sanctum')->id() ?? ($user ? $user->id : null);
         $userName = 'System Action';

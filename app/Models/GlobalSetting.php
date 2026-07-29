@@ -9,11 +9,12 @@ class GlobalSetting extends Model
 {
 use HasFactory;
 
-    protected $fillable = ['clinic_name', 'sms_balance', 'whatsapp_balance', 'notifications', 'whatsapp_expires_at'];
+    protected $fillable = ['clinic_name', 'sms_balance', 'whatsapp_balance', 'notifications', 'whatsapp_expires_at', 'activity_log_enabled'];
 
     protected $casts = [
         'notifications' => 'array',
         'whatsapp_expires_at' => 'datetime',
+        'activity_log_enabled' => 'boolean',
     ];
 
     public static function getSettings()
@@ -22,6 +23,7 @@ use HasFactory;
             ['id' => 1],
             [
                 'clinic_name' => null,
+                'activity_log_enabled' => false,
                 'notifications' => [
                     'appointments_created' => ['email' => true, 'sms' => false, 'whatsapp' => false],
                     'appointments_upcoming' => ['email' => true, 'sms' => false, 'whatsapp' => false],

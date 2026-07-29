@@ -17,6 +17,7 @@ class BranchSettingController extends Controller
     {
         $validated = $request->validate([
             'clinic_name' => 'nullable|string|max:255',
+            'activity_log_enabled' => 'nullable|boolean',
             'notifications' => 'required|array',
             'notifications.*.email' => 'boolean',
             'notifications.*.sms' => 'boolean',
@@ -27,6 +28,9 @@ class BranchSettingController extends Controller
 
         if (array_key_exists('clinic_name', $validated)) {
             $globalSetting->clinic_name = $validated['clinic_name'];
+        }
+        if (array_key_exists('activity_log_enabled', $validated)) {
+            $globalSetting->activity_log_enabled = $validated['activity_log_enabled'];
         }
 
         $globalSetting->notifications = $validated['notifications'];

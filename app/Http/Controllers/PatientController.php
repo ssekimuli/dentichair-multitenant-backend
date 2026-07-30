@@ -678,17 +678,20 @@ class PatientController extends Controller
                 'url' => $doc->url
             ];
             
-            // Try to add attachment for email if the file exists locally
-            // We'll skip actual file attachment here and rely on the URL links
-            // because $doc->url might be an external AWS S3 link or local, and downloading might be slow/fail.
-            // The template already includes the links!
-            // Wait, "use those document link to get file and send". I'll prepare an array for download if it's local.
             if (str_starts_with($doc->url, 'http')) {
-                // Cannot easily attach remote files without downloading, we'll just send links.
-                // Or if it's local URL (like /storage/), we can attach it.
-                $path = str_replace(url('/storage'), storage_path('app/public'), $doc->url);
-                if (file_exists($path)) {
-                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                $storageUrl = url('/storage');
+                if (str_starts_with($doc->url, $storageUrl)) {
+                    $path = str_replace($storageUrl, storage_path('app/public'), $doc->url);
+                    if (file_exists($path)) {
+                        $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                    }
+                } else {
+                    // Remote URL (e.g. Cloudflare R2 / S3), attach it using fromUrl
+                    try {
+                        $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromUrl($doc->url);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("Could not attach remote file: " . $doc->url . ". Error: " . $e->getMessage());
+                    }
                 }
             } else {
                 $path = storage_path('app/public/' . $doc->url);

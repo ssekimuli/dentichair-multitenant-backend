@@ -63,4 +63,33 @@ try {
     echo "Error: Failed to send EmployeeWelcomeMail. " . $e->getMessage() . "\n\n";
 }
 
+echo "4. Testing Patient Documents Mail with R2 remote attachment...\n";
+try {
+    $url = 'https://pub-483de1b92d754056ab7315fc395f5f25.r2.dev/patient-documents/fe1df5fd-cea8-4f2d-849c-4777cdccf88e.png';
+    $attachments = [];
+    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromUrl($url);
+    
+    $mail = new \App\Mail\GenericMarkdownMail(
+        'emails.patient-documents',
+        [
+            'name' => 'Andrew Ssekimuli',
+            'clinicName' => 'Test Clinic',
+            'links' => [
+                [
+                    'name' => 'Sample X-Ray',
+                    'url' => $url
+                ]
+            ],
+            'customMessage' => 'Here is your test document attached from Cloudflare R2.',
+        ],
+        "Your Test Documents from Test Clinic",
+        $attachments
+    );
+    
+    Mail::to($recipient)->send($mail);
+    echo "Success: Patient Documents Mail with attachment sent successfully!\n\n";
+} catch (\Exception $e) {
+    echo "Error: Failed to send Patient Documents Mail with attachment. " . $e->getMessage() . "\n\n";
+}
+
 echo "All test attempts completed.\n";

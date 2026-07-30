@@ -109,41 +109,54 @@ class BusinessController extends Controller
             'business_name' => 'required|string',
             'branch_name' => 'required|string',
             'name' => 'required|string',
-            'email' => 'required|email|unique:employees,email',
+            'email' => 'required|email',
             'phone' => 'required|string',
         ]);
 
         try {
-            // 1. Create Business
-            $business = Business::create([
-                'name' => $request->business_name,
-                'business_email' => $request->email,
-                'joined_date' => now(),
-                'business_status' => 'active'
-            ]);
+            // 1. Create or Update Business
+            $business = Business::updateOrCreate(
+                ['business_email' => $request->email],
+                [
+                    'name' => $request->business_name,
+                    'business_status' => 'active',
+                ]
+            );
+
+            // Set joined_date only if it's newly created
+            if ($business->wasRecentlyCreated) {
+                $business->joined_date = now();
+                $business->save();
+            }
 
             // 2. Set Global Clinic Name
             $globalSetting = \App\Models\GlobalSetting::getSettings();
             $globalSetting->clinic_name = $request->business_name;
             $globalSetting->save();
 
-            // 3. Create Branch
-            $branch = \App\Models\Branch::create([
+            // 3. Create or Get Branch
+            $branch = \App\Models\Branch::firstOrCreate([
                 'name' => $request->branch_name,
             ]);
 
-            // 4. Create Employee (SuperAdmin)
+            // 4. Create or Update Employee (SuperAdmin)
             $password = \Illuminate\Support\Str::random(10);
-            $employee = \App\Models\Employee::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'role' => 'Super Admin', 
-                'role_id' =>1,
-                'status' => 'Active',
-                'hire_date' => now(),
-                'branch_id' => $branch->id,
-                'password' => \Illuminate\Support\Facades\Hash::make($password),
-            ]);
+            $employee = \App\Models\Employee::updateOrCreate(
+                ['email' => $request->email],
+                [
+                    'name' => $request->name,
+                    'role' => 'Super Admin', 
+                    'role_id' => 1,
+                    'status' => 'Active',
+                    'branch_id' => $branch->id,
+                    'password' => \Illuminate\Support\Facades\Hash::make($password),
+                ]
+            );
+
+            if ($employee->wasRecentlyCreated) {
+                $employee->hire_date = now();
+                $employee->save();
+            }
 
             // 5. Send Welcome Email and SMS
             $message = \App\Services\NotificationService::getWelcomeMessage(

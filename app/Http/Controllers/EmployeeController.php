@@ -558,9 +558,14 @@ class EmployeeController extends Controller
             'email' => 'required|email|exists:employees,email'
         ]);
 
-        $employee = Employee::where('email', $request->email)->firstOrFail();
-        
-        return $this->resendPassword($employee->id);
+        try {
+            $employee = Employee::where('email', $request->email)->firstOrFail();
+            
+            return $this->resendPassword($employee->id);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("resetPasswordByEmail API error: " . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while resetting the password.'], 500);
+        }
     }
 
     public function getDoctors(Request $request)

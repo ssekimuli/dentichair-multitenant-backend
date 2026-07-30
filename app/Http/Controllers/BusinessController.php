@@ -37,37 +37,42 @@ class BusinessController extends Controller
             'phone' => 'nullable|string',
         ]);
 
-        $oldEmail = $request->old_email;
-        $newEmail = $request->new_email;
-
-        // Update employee table
-        $employeeUpdated = \App\Models\Employee::where('email', $oldEmail)->update(['email' => $newEmail]);
-
-        // Update business table
-        $businessUpdated = Business::where('business_email', $oldEmail)->update(['business_email' => $newEmail]);
-
-        // Send Notification
-        $message = "Hello, the email address for your business account has been updated from {$oldEmail} to {$newEmail}.";
-        
-        // 1. Send Email to both old and new addresses
         try {
-            \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($oldEmail, $newEmail) {
-                $msg->to([$oldEmail, $newEmail])->subject('Business Email Updated');
-            });
+            $oldEmail = $request->old_email;
+            $newEmail = $request->new_email;
+
+            // Update employee table
+            $employeeUpdated = \App\Models\Employee::where('email', $oldEmail)->update(['email' => $newEmail]);
+
+            // Update business table
+            $businessUpdated = Business::where('business_email', $oldEmail)->update(['business_email' => $newEmail]);
+
+            // Send Notification
+            $message = "Hello, the email address for your business account has been updated from {$oldEmail} to {$newEmail}.";
+            
+            // 1. Send Email to both old and new addresses
+            try {
+                \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($oldEmail, $newEmail) {
+                    $msg->to([$oldEmail, $newEmail])->subject('Business Email Updated');
+                });
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to send email update notification: " . $e->getMessage());
+            }
+
+            // 2. Send SMS if phone is provided
+            if ($request->filled('phone')) {
+                \App\Services\NotificationService::sendSms($request->phone, $message);
+            }
+
+            return response()->json([
+                'message' => 'Email updated successfully and notifications sent',
+                'employee_updated' => (bool)$employeeUpdated,
+                'business_updated' => (bool)$businessUpdated
+            ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to send email update notification: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("changeEmail API error: " . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while changing the email.'], 500);
         }
-
-        // 2. Send SMS if phone is provided
-        if ($request->filled('phone')) {
-            \App\Services\NotificationService::sendSms($request->phone, $message);
-        }
-
-        return response()->json([
-            'message' => 'Email updated successfully and notifications sent',
-            'employee_updated' => (bool)$employeeUpdated,
-            'business_updated' => (bool)$businessUpdated
-        ]);
     }
 
     public function toggleStatus(Request $request)
@@ -77,20 +82,25 @@ class BusinessController extends Controller
             'status' => 'required|string|in:active,inactive'
         ]);
 
-        $email = $request->business_email;
-        $status = $request->status;
+        try {
+            $email = $request->business_email;
+            $status = $request->status;
 
-        // Update business table
-        $businessUpdated = Business::where('business_email', $email)->update(['business_status' => $status]);
+            // Update business table
+            $businessUpdated = Business::where('business_email', $email)->update(['business_status' => $status]);
 
-        // Update employee table (optional, but good practice to sync the main user account)
-        $employeeUpdated = \App\Models\Employee::where('email', $email)->update(['status' => $status]);
+            // Update employee table (optional, but good practice to sync the main user account)
+            $employeeUpdated = \App\Models\Employee::where('email', $email)->update(['status' => $status]);
 
-        return response()->json([
-            'message' => "Business account marked as {$status}",
-            'business_updated' => (bool)$businessUpdated,
-            'employee_updated' => (bool)$employeeUpdated
-        ]);
+            return response()->json([
+                'message' => "Business account marked as {$status}",
+                'business_updated' => (bool)$businessUpdated,
+                'employee_updated' => (bool)$employeeUpdated
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("toggleStatus API error: " . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while toggling the business status.'], 500);
+        }
     }
 
     public function createAdmin(Request $request)
@@ -103,61 +113,66 @@ class BusinessController extends Controller
             'phone' => 'required|string',
         ]);
 
-        // 1. Create Business
-        $business = Business::create([
-            'name' => $request->business_name,
-            'business_email' => $request->email,
-            'joined_date' => now(),
-            'business_status' => 'active'
-        ]);
-
-        // 2. Set Global Clinic Name
-        $globalSetting = \App\Models\GlobalSetting::getSettings();
-        $globalSetting->clinic_name = $request->business_name;
-        $globalSetting->save();
-
-        // 3. Create Branch
-        $branch = \App\Models\Branch::create([
-            'name' => $request->branch_name,
-        ]);
-
-        // 4. Create Employee (SuperAdmin)
-        $password = \Illuminate\Support\Str::random(10);
-        $employee = \App\Models\Employee::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'role' => 'Super Admin', 
-            'role_id' =>1,
-            'status' => 'Active',
-            'hire_date' => now(),
-            'branch_id' => $branch->id,
-            'password' => \Illuminate\Support\Facades\Hash::make($password),
-        ]);
-
-        // 5. Send Welcome Email and SMS
-        $message = \App\Services\NotificationService::getWelcomeMessage(
-            $request->business_name,
-            $request->email,
-            $password
-        );
-
-        // Send Email
         try {
-            \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($request) {
-                $msg->to($request->email)->subject('Welcome to DentiChair!');
-            });
+            // 1. Create Business
+            $business = Business::create([
+                'name' => $request->business_name,
+                'business_email' => $request->email,
+                'joined_date' => now(),
+                'business_status' => 'active'
+            ]);
+
+            // 2. Set Global Clinic Name
+            $globalSetting = \App\Models\GlobalSetting::getSettings();
+            $globalSetting->clinic_name = $request->business_name;
+            $globalSetting->save();
+
+            // 3. Create Branch
+            $branch = \App\Models\Branch::create([
+                'name' => $request->branch_name,
+            ]);
+
+            // 4. Create Employee (SuperAdmin)
+            $password = \Illuminate\Support\Str::random(10);
+            $employee = \App\Models\Employee::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'role' => 'Super Admin', 
+                'role_id' =>1,
+                'status' => 'Active',
+                'hire_date' => now(),
+                'branch_id' => $branch->id,
+                'password' => \Illuminate\Support\Facades\Hash::make($password),
+            ]);
+
+            // 5. Send Welcome Email and SMS
+            $message = \App\Services\NotificationService::getWelcomeMessage(
+                $request->business_name,
+                $request->email,
+                $password
+            );
+
+            // Send Email
+            try {
+                \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($request) {
+                    $msg->to($request->email)->subject('Welcome to DentiChair!');
+                });
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to send welcome email: " . $e->getMessage());
+            }
+
+            // Send SMS
+            \App\Services\NotificationService::sendSms($request->phone, $message);
+
+            return response()->json([
+                'message' => 'Admin created successfully',
+                'business' => $business,
+                'branch' => $branch,
+                'employee' => $employee,
+            ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to send welcome email: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("createAdmin API error: " . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while creating the admin account.'], 500);
         }
-
-        // Send SMS
-        \App\Services\NotificationService::sendSms($request->phone, $message);
-
-        return response()->json([
-            'message' => 'Admin created successfully',
-            'business' => $business,
-            'branch' => $branch,
-            'employee' => $employee,
-        ], 201);
     }
 }

@@ -20,6 +20,10 @@ class ActivityLogTest extends TestCase
     {
         parent::setUp();
 
+        // Enable activity logging for testing
+        $setting = \App\Models\GlobalSetting::getSettings();
+        $setting->update(['activity_log_enabled' => true]);
+
         $role = RolePermission::create([
             'id' => 1,
             'name' => 'Dentist',

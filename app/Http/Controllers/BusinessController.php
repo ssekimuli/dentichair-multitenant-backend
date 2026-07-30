@@ -53,7 +53,7 @@ class BusinessController extends Controller
             // 1. Send Email to both old and new addresses
             try {
                 \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($oldEmail, $newEmail) {
-                    $msg->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
+                    $msg->from(config('mail.from.address'), config('mail.from.name'));
                     $msg->to([$oldEmail, $newEmail])->subject('Business Email Updated');
                 });
             } catch (\Exception $e) {
@@ -154,7 +154,7 @@ class BusinessController extends Controller
             // Send Email
             try {
                 \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($request) {
-                    $msg->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
+                    $msg->from(config('mail.from.address'), config('mail.from.name'));
                     $msg->to($request->email)->subject('Welcome to DentiChair!');
                 });
             } catch (\Exception $e) {

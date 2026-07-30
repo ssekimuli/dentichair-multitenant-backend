@@ -673,33 +673,30 @@ class PatientController extends Controller
         $attachments = [];
         
         foreach ($documents as $doc) {
+            // Ensure $doc->url is always a full public URL (so both email and WhatsApp send actual file links, not relative paths)
+            if (!str_starts_with($doc->url, 'http')) {
+                $doc->url = url('/storage/' . ltrim($doc->url, '/'));
+            }
+
+            $storageUrl = url('/storage');
+            if (str_starts_with($doc->url, $storageUrl)) {
+                $path = str_replace($storageUrl, storage_path('app/public'), $doc->url);
+                if (file_exists($path)) {
+                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                }
+            } else {
+                // Remote URL (e.g. Cloudflare R2 / S3), attach it using fromUrl
+                try {
+                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromUrl($doc->url);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("Could not attach remote file: " . $doc->url . ". Error: " . $e->getMessage());
+                }
+            }
+
             $links[] = [
                 'name' => $doc->description ?? 'Document',
                 'url' => $doc->url
             ];
-            
-            if (str_starts_with($doc->url, 'http')) {
-                $storageUrl = url('/storage');
-                if (str_starts_with($doc->url, $storageUrl)) {
-                    $path = str_replace($storageUrl, storage_path('app/public'), $doc->url);
-                    if (file_exists($path)) {
-                        $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
-                    }
-                } else {
-                    // Remote URL (e.g. Cloudflare R2 / S3), attach it using fromUrl
-                    try {
-                        $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromUrl($doc->url);
-                    } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::warning("Could not attach remote file: " . $doc->url . ". Error: " . $e->getMessage());
-                    }
-                }
-            } else {
-                $path = storage_path('app/public/' . $doc->url);
-                if (file_exists($path)) {
-                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
-                    $doc->url = url('/storage/' . $doc->url);
-                }
-            }
         }
 
         $channel = $request->channel;

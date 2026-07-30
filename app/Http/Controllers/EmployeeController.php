@@ -563,8 +563,7 @@ class EmployeeController extends Controller
             
             return $this->resendPassword($employee->id);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("resetPasswordByEmail API error: " . $e->getMessage());
-            return response()->json(['error' => 'An error occurred while resetting the password.'], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 

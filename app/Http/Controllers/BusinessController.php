@@ -53,10 +53,11 @@ class BusinessController extends Controller
             // 1. Send Email to both old and new addresses
             try {
                 \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($oldEmail, $newEmail) {
+                    $msg->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
                     $msg->to([$oldEmail, $newEmail])->subject('Business Email Updated');
                 });
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Failed to send email update notification: " . $e->getMessage());
+                return response()->json(['error' => $e->getMessage()], 500);
             }
 
             // 2. Send SMS if phone is provided
@@ -70,8 +71,7 @@ class BusinessController extends Controller
                 'business_updated' => (bool)$businessUpdated
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("changeEmail API error: " . $e->getMessage());
-            return response()->json(['error' => 'An error occurred while changing the email.'], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -98,8 +98,7 @@ class BusinessController extends Controller
                 'employee_updated' => (bool)$employeeUpdated
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("toggleStatus API error: " . $e->getMessage());
-            return response()->json(['error' => 'An error occurred while toggling the business status.'], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -155,10 +154,11 @@ class BusinessController extends Controller
             // Send Email
             try {
                 \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($request) {
+                    $msg->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
                     $msg->to($request->email)->subject('Welcome to DentiChair!');
                 });
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Failed to send welcome email: " . $e->getMessage());
+                return response()->json(['error' => $e->getMessage()], 500);
             }
 
             // Send SMS
@@ -171,8 +171,7 @@ class BusinessController extends Controller
                 'employee' => $employee,
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("createAdmin API error: " . $e->getMessage());
-            return response()->json(['error' => 'An error occurred while creating the admin account.'], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

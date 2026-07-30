@@ -298,4 +298,23 @@ class NotificationService
             ];
         }
     }
+
+    public static function getWelcomeMessage($businessName, $email, $password)
+    {
+        $loginUrl = env('VITE_APP_URL');
+
+        $message = "**Welcome to DentiChair! 🦷**\n\n";
+        $message .= "Dear **{$businessName}**,\n\n";
+        $message .= "Welcome to the DentiChair family! We're excited to have you onboard.\n\n";
+        $message .= "DentiChair is designed to simplify the daily operations of your dental practice by helping you manage patients, appointments, treatment records, billing, and much more—all in one place.\n\n";
+        $message .= "If you need any assistance getting started, our support team is always ready to help.\n\n";
+        $message .= "Thank you for choosing DentiChair. We look forward to helping your clinic grow and operate more efficiently.\n\n";
+        $message .= "**Login:** {$loginUrl}\n";
+        $message .= "**Username:** {$email}\n";
+        $message .= "**Temporary Password:** {$password}\n\n";
+        $message .= "Best regards,\n";
+        $message .= "**The DentiChair Team**";
+
+        return $message;
+    }
 }

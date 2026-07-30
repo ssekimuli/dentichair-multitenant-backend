@@ -542,6 +542,27 @@ class EmployeeController extends Controller
         return response()->json(['error' => 'Employee has no email address'], 400);
     }
 
+    /**
+     * Reset Employee Password by Email
+     * 
+     * Resets the employee's password via their email and sends an email with the new credentials.
+     * 
+     * @authenticated
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetPasswordByEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:employees,email'
+        ]);
+
+        $employee = Employee::where('email', $request->email)->firstOrFail();
+        
+        return $this->resendPassword($employee->id);
+    }
+
     public function getDoctors(Request $request)
     {
         $query = Employee::with(['branch'])->whereIn('role', [

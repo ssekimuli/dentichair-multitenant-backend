@@ -26,10 +26,17 @@ Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
 
 Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function () {
     // Notifications API
-
+    //change business emaill
+    //activate/deactive business account
+    //Create Admin
+    //Reset Password
     Route::post('/send-sms', [NotificationController::class, 'sendSms']);
-
     Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
+    Route::post('/change-business-email', [BusinessController::class, 'changeEmail']);
+    Route::post('/toggle-business-status', [BusinessController::class, 'toggleStatus']);
+    Route::post('/create-admin', [BusinessController::class, 'createAdmin']);
+    Route::post('/reset-password', [EmployeeController::class, 'resetPasswordByEmail']);
+    
 });
 
 // Public template download (browser direct access)
@@ -37,7 +44,7 @@ Route::get('/import/templates/download/{filename}', [ImportController::class, 'd
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
-    
+
     Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
     Route::post('/verify-transaction', [NotificationController::class, 'verifyWebhook']);
     Route::post('/update-top-up-balance', [NotificationController::class, 'updateTopUpBalance']);

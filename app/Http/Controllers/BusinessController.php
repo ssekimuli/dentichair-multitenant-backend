@@ -34,6 +34,7 @@ class BusinessController extends Controller
         $request->validate([
             'old_email' => 'required|email',
             'new_email' => 'required|email|unique:employees,email',
+            'phone' => 'nullable|string',
         ]);
 
         $oldEmail = $request->old_email;
@@ -45,8 +46,25 @@ class BusinessController extends Controller
         // Update business table
         $businessUpdated = Business::where('business_email', $oldEmail)->update(['business_email' => $newEmail]);
 
+        // Send Notification
+        $message = "Hello, the email address for your business account has been updated from {$oldEmail} to {$newEmail}.";
+        
+        // 1. Send Email to both old and new addresses
+        try {
+            \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($oldEmail, $newEmail) {
+                $msg->to([$oldEmail, $newEmail])->subject('Business Email Updated');
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send email update notification: " . $e->getMessage());
+        }
+
+        // 2. Send SMS if phone is provided
+        if ($request->filled('phone')) {
+            \App\Services\NotificationService::sendSms($request->phone, $message);
+        }
+
         return response()->json([
-            'message' => 'Email updated successfully',
+            'message' => 'Email updated successfully and notifications sent',
             'employee_updated' => (bool)$employeeUpdated,
             'business_updated' => (bool)$businessUpdated
         ]);

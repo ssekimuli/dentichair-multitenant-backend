@@ -130,23 +130,33 @@ class NotificationController extends Controller
         }
     }
 
-    /**
-     * Send WhatsApp Media
-     */
     public function sendWhatsAppMedia(Request $request)
     {
         try {
             $request->validate([
                 'phone' => 'required|string',
-                'media_url' => 'required|url',
-                'file_name' => 'required|string',
+                'media_url' => 'required_without:file|nullable|url',
+                'file' => 'required_without:media_url|nullable|file|max:20480',
+                'file_name' => 'required_without:file|nullable|string',
                 'caption' => 'nullable|string',
             ]);
 
+            $mediaUrl = $request->media_url;
+            $fileName = $request->file_name;
+
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $fileName = $fileName ?? $file->getClientOriginalName();
+                
+                // Upload file to Cloudflare R2
+                $r2Service = app(\App\Services\CloudflareR2Service::class);
+                $mediaUrl = $r2Service->upload($file, 'whatsapp-media');
+            }
+
             $response = NotificationService::sendMediaWhatsApp(
                 $request->phone,
-                $request->media_url,
-                $request->file_name,
+                $mediaUrl,
+                $fileName,
                 $request->caption ?? ''
             );
 

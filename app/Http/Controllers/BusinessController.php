@@ -52,10 +52,11 @@ class BusinessController extends Controller
             
             // 1. Send Email to both old and new addresses
             try {
-                \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($oldEmail, $newEmail) {
-                    $msg->from(config('mail.from.address'), config('mail.from.name'));
-                    $msg->to([$oldEmail, $newEmail])->subject('Business Email Updated');
-                });
+                \Illuminate\Support\Facades\Mail::to([$oldEmail, $newEmail])->send(new \App\Mail\GenericMarkdownMail(
+                    'emails.business-email-updated',
+                    ['oldEmail' => $oldEmail, 'newEmail' => $newEmail],
+                    'Business Email Updated'
+                ));
             } catch (\Exception $e) {
                 return response()->json(['error' => $e->getMessage()], 500);
             }
@@ -153,10 +154,14 @@ class BusinessController extends Controller
 
             // Send Email
             try {
-                \Illuminate\Support\Facades\Mail::raw($message, function($msg) use ($request) {
-                    $msg->from(config('mail.from.address'), config('mail.from.name'));
-                    $msg->to($request->email)->subject('Welcome to DentiChair!');
-                });
+                \Illuminate\Support\Facades\Mail::to($request->email)->send(new \App\Mail\EmployeeWelcomeMail([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'temporaryPassword' => $password,
+                    'role' => 'Super Admin',
+                    'branchName' => $request->branch_name,
+                    'clinicName' => $request->business_name
+                ], 'Welcome to DentiChair!'));
             } catch (\Exception $e) {
                 return response()->json(['error' => $e->getMessage()], 500);
             }

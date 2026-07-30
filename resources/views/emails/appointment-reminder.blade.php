@@ -3,7 +3,7 @@
 
 Dear {{ $patientName }},
 
-This is a friendly reminder that you have an appointment scheduled for tomorrow. Please find the details below:
+This is a friendly reminder that you have an appointment scheduled {{ $timeWord ?? 'soon' }}. Please find the details below:
 
 @component('mail::panel')
 **Token Number:** **{{ $tokenNumber }}**

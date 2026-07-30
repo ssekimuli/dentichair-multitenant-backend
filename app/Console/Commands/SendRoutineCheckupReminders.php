@@ -16,22 +16,23 @@ class SendRoutineCheckupReminders extends Command
         $settings = \App\Models\GlobalSetting::firstOrCreate(['id' => 1]);
         $clinicName = $settings->clinic_name ?: 'Dental Clinic';
 
-        // Find patients whose last visit was exactly 6 months ago today
-        $targetDate = now()->subMonths(6)->toDateString();
+        // Find patients whose last appointment was exactly 6 months ago today
+        $appointmentDate = now()->subMonths(6)->toDateString();
 
-        $patients = Patient::whereDate('last_visit', $targetDate)
+        $patients = Patient::whereHas('appointments', function ($query) use ($appointmentDate) {
+                $query->whereDate('date', $appointmentDate);
+            })
+            ->whereDoesntHave('appointments', function ($query) use ($appointmentDate) {
+                // Ensure they don't have any newer appointments after that date
+                $query->whereDate('date', '>', $appointmentDate);
+            })
             ->where(function($q) {
                 $q->whereNotNull('email')->orWhereNotNull('phone');
-            })
-            ->whereDoesntHave('appointments', function ($query) {
-                // Ensure they don't already have a future appointment scheduled
-                $query->whereDate('date', '>=', now()->toDateString())
-                      ->whereIn('status', ['Scheduled', 'Confirmed']);
             })
             ->get();
 
         if ($patients->isEmpty()) {
-            $this->info("No routine checkup reminders to send today for visits on {$targetDate}.");
+            $this->info("No routine checkup reminders to send today for visits on {$appointmentDate}.");
             return Command::SUCCESS;
         }
 
@@ -46,7 +47,7 @@ class SendRoutineCheckupReminders extends Command
                 try {
                     Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.routine-checkup', [
                         'patientName' => $patient->first_name . ' ' . $patient->last_name,
-                        'lastVisit' => $patient->last_visit->format('M d, Y'),
+                        'lastVisit' => \Carbon\Carbon::parse($appointmentDate)->format('M d, Y'),
                         'clinicName' => $clinicName
                     ], "Time for your 6-month dental checkup! - {$clinicName}"));
                 } catch (\Exception $e) {

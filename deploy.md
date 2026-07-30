@@ -131,7 +131,7 @@ To automate scheduled tasks (like overdue invoice marking and appointment remind
 
 2. Paste the following line:
    ```text
-   * * * * * cd /home/poslycloud-newsite/htdocs/newsite.poslycloud.com && php artisan schedule:run >> /dev/null 2>&1
+    * * * * * cd /home/poslycloud-newsite/htdocs/newsite.poslycloud.com && php artisan schedule:run >> /home/poslycloud-newsite/htdocs/newsite.poslycloud.com/storage/logs/cron.log 2>&1
    ```
 
 3. Save and close the editor.

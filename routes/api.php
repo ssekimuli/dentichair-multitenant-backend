@@ -71,6 +71,9 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/businesses', [BusinessController::class, 'index']);
     Route::post('/businesses', [BusinessController::class, 'store']);
 
+    // Clients
+    Route::apiResource('clients', App\Http\Controllers\ClientController::class);
+
     // Patients
     Route::apiResource('patients', PatientController::class);
     Route::put('/patients/{id}/next-visit', [PatientController::class, 'updateNextVisit']);

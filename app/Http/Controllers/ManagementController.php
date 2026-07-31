@@ -317,7 +317,7 @@ class ManagementController extends Controller
      */
     public function getLabOrders(Request $request)
     {
-        $query = LaboratoryOrder::with(['patient', 'branch', 'doctor']);
+        $query = LaboratoryOrder::with(['client', 'branch', 'doctor']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
         $orders = $query->latest()->paginate($request->input('per_page', 10));
         return response()->json([
@@ -346,7 +346,14 @@ class ManagementController extends Controller
         ]);
 
         $order->update($validated);
-        return response()->json($order->load(['patient', 'branch']));
+        
+        \App\Models\ActivityLog::log(
+            'Lab Order Status Updated', 
+            "Lab order #{$order->id} status updated to {$validated['status']}.", 
+            ['lab_order_id' => $order->id, 'status' => $validated['status']]
+        );
+
+        return response()->json($order->load(['client', 'branch']));
     }
 
     /**
@@ -1130,7 +1137,8 @@ class ManagementController extends Controller
     public function createLabOrder(Request $request)
     {
         $validated = $request->validate([
-            'patientId' => 'required|exists:patients,id',
+            'clientId' => 'required|exists:clients,id',
+            'patientName' => 'required|string',
             'lab' => 'required|string',
             'item' => 'required|string',
             'tooth' => 'nullable|integer',
@@ -1147,11 +1155,9 @@ class ManagementController extends Controller
             'doctorId' => 'nullable|exists:employees,id',
         ]);
 
-        $patient = Patient::find($validated['patientId']);
-
         $labOrder = LaboratoryOrder::create([
-            'patient_id' => $validated['patientId'],
-            'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+            'client_id' => $validated['clientId'],
+            'patient_name' => $validated['patientName'],
             'lab' => $validated['lab'],
             'item' => $validated['item'],
             'tooth' => $validated['tooth'] ?? null,
@@ -1168,7 +1174,13 @@ class ManagementController extends Controller
             'doctor_id' => $validated['doctorId'] ?? null,
         ]);
 
-        return response()->json($labOrder->load(['patient', 'branch']), 201);
+        \App\Models\ActivityLog::log(
+            'Lab Order Created', 
+            "Lab order for patient {$validated['patientName']} was created.", 
+            ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
+        );
+
+        return response()->json($labOrder->load(['client', 'branch']), 201);
     }
 
     public function createInventoryItem(Request $request)

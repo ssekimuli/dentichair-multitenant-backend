@@ -14,7 +14,7 @@ use HasFactory;
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'patient_id', 'patient_name', 'lab', 'item', 'tooth', 'doctor_id',
+        'id', 'client_id', 'patient_name', 'lab', 'item', 'tooth', 'doctor_id',
         'status', 'sent_date', 'due_date', 'branch_id',
         'received_date', 'shade', 'material', 'instructions', 'cost', 'invoice_number'
     ];
@@ -25,9 +25,9 @@ use HasFactory;
         'received_date' => 'date',
     ];
 
-    public function patient(): BelongsTo
+    public function client(): BelongsTo
     {
-        return $this->belongsTo(Patient::class);
+        return $this->belongsTo(Client::class);
     }
 
     public function branch(): BelongsTo

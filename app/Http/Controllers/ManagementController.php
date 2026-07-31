@@ -1304,4 +1304,65 @@ class ManagementController extends Controller
 
         return response()->json($currencies);
     }
+
+    public function sendLabOrder(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'channel' => 'required|in:email,whatsapp,sms',
+            'customMessage' => 'nullable|string'
+        ]);
+
+        $order = LaboratoryOrder::with(['client', 'branch'])->find($id);
+        if (!$order) {
+            return response()->json(['error' => 'Lab order not found'], 404);
+        }
+
+        $client = $order->client;
+        if (!$client) {
+            return response()->json(['error' => 'No client associated with this order'], 400);
+        }
+
+        $channel = $validated['channel'];
+        $recipient = $channel === 'email' ? $client->email : $client->phone;
+
+        if (!$recipient) {
+            return response()->json(['error' => "Client does not have a valid {$channel} configured"], 400);
+        }
+
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $defaultMsg = "Hello {$client->name},\n\nA new lab order has been assigned to your laboratory.\n*Patient Name:* {$order->patient_name}\n*Item:* {$order->item}\n" . ($order->tooth ? "*Tooth:* {$order->tooth}\n" : "") . "*Status:* {$order->status}\n*Due Date:* {$order->due_date}\n\nThank you.";
+        $msg = $validated['customMessage'] ?? $defaultMsg;
+
+        if ($channel === 'whatsapp') {
+            if (!$settings->isWhatsappActive()) {
+                return response()->json(['error' => 'WhatsApp integration is not active'], 400);
+            }
+            \App\Services\NotificationService::sendWhatsApp($recipient, $msg);
+        } else if ($channel === 'sms') {
+            if (!$settings->deductSms()) {
+                return response()->json(['error' => 'Insufficient SMS balance or SMS integration not active'], 400);
+            }
+            \App\Services\NotificationService::sendSms($recipient, $msg);
+        } else {
+            $viewData = [
+                'clientName' => $client->name,
+                'patientName' => $order->patient_name,
+                'item' => $order->item,
+                'tooth' => $order->tooth,
+                'status' => $order->status,
+                'dueDate' => $order->due_date,
+                'customMessage' => isset($validated['customMessage']) ? nl2br($validated['customMessage']) : null,
+            ];
+            $subject = isset($validated['customMessage']) ? "Message regarding Lab Order #{$order->id}" : 'New Lab Order';
+            \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\GenericMarkdownMail('emails.lab-order', $viewData, $subject));
+        }
+
+        \App\Models\ActivityLog::log(
+            "Lab Order Sent",
+            "Lab order #{$order->id} sent to client {$client->name} via {$channel}.",
+            ['lab_order_id' => $order->id, 'channel' => $channel]
+        );
+
+        return response()->json(['message' => "Lab order sent successfully via {$channel}"]);
+    }
 }

@@ -68,7 +68,32 @@ class InsuranceClaimController extends Controller
             'date_processed' => 'nullable|date',
         ]);
 
+        $oldStatus = $claim->status;
         $claim->update($validated);
+        
+        // If status changed to paid and there is an attached invoice, record the payment
+        if (isset($validated['status']) && $validated['status'] === 'paid' && $oldStatus !== 'paid' && $claim->invoice_id) {
+            $invoice = \App\Models\Invoice::find($claim->invoice_id);
+            if ($invoice) {
+                $claim->load('patientInsurance');
+                $providerName = $claim->patientInsurance ? $claim->patientInsurance->provider_name : 'Insurance';
+                $amount = $validated['approved_amount'] ?? $claim->claimed_amount;
+                
+                $invoice->transactions()->create([
+                    'amount' => $amount,
+                    'method' => 'Insurance (' . $providerName . ')',
+                    'date' => now()->format('Y-m-d'),
+                ]);
+
+                $newPaidAmount = $invoice->paid_amount + $amount;
+                $invoice->update([
+                    'paid_amount' => $newPaidAmount,
+                    'status' => $newPaidAmount >= $invoice->amount ? 'Paid' : 'Pending',
+                    'payment_method' => 'Insurance',
+                ]);
+            }
+        }
+
         return response()->json($claim);
     }
 

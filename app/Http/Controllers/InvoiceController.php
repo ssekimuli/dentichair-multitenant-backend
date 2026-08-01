@@ -412,6 +412,23 @@ class InvoiceController extends Controller
             }
         }
 
+        // Auto-create insurance claim if coverage > 0
+        if (!empty($validated['insurance_coverage']) && $validated['insurance_coverage'] > 0 && $invoice->patient_id) {
+            $activePolicy = \App\Models\PatientInsurance::where('patient_id', $invoice->patient_id)
+                                ->where('is_active', true)
+                                ->first();
+            if ($activePolicy) {
+                \App\Models\InsuranceClaim::create([
+                    'patient_insurance_id' => $activePolicy->id,
+                    'invoice_id' => $invoice->id,
+                    'claim_number' => 'CLM-' . strtoupper(Str::random(8)),
+                    'total_amount' => $invoice->amount,
+                    'claimed_amount' => $validated['insurance_coverage'],
+                    'status' => 'pending',
+                ]);
+            }
+        }
+
         $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions']);
 
         $settings = \App\Models\GlobalSetting::getSettings();

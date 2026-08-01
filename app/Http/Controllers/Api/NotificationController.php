@@ -79,7 +79,6 @@ class NotificationController extends Controller
             $request->validate([
                 'type' => 'required|in:sms,whatsapp',
                 'amount' => 'required|numeric',
-                'expiredate' => 'required_if:type,whatsapp|date',
             ]);
 
             $globalSetting = \App\Models\GlobalSetting::getSettings();
@@ -88,9 +87,15 @@ class NotificationController extends Controller
                 $globalSetting->sms_balance += $request->amount;
             } else if ($request->type === 'whatsapp') {
                 $globalSetting->whatsapp_balance += $request->amount;
-                $globalSetting->whatsapp_expires_at = \Carbon\Carbon::parse($request->expiredate);
+                $globalSetting->whatsapp_expires_at = \Carbon\Carbon::now()->addMonth();
             }
             $globalSetting->save();
+
+            $payload = $request->all();
+            if ($request->type === 'whatsapp') {
+                $payload['expiredate'] = $globalSetting->whatsapp_expires_at->toDateTimeString();
+            }
+            NotificationService::syncTopUpBalance($payload);
 
             return response()->json([
                 'success' => true,

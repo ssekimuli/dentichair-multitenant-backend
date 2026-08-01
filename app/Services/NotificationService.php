@@ -317,4 +317,21 @@ class NotificationService
 
         return $message;
     }
+    public static function syncTopUpBalance(array $data)
+    {
+        $clientId = env('SMS_CLIENT_ID');
+        if (!$clientId) {
+            Log::warning("Cannot sync top up balance: SMS_CLIENT_ID is missing.");
+            return;
+        }
+
+        try {
+            Http::withHeaders([
+                'X-Client-Id' => $clientId,
+                'X-Client-domain' => env('APP_URL'),
+            ])->timeout(5)->post('https://onboarddental.poslycloud.com/api/update-top-up-balance', $data);
+        } catch (\Exception $e) {
+            Log::error("Failed to send top up update to poslycloud: " . $e->getMessage());
+        }
+    }
 }

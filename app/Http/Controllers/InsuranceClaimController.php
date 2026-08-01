@@ -41,6 +41,8 @@ class InsuranceClaimController extends Controller
         ]);
 
         $claim = \App\Models\InsuranceClaim::create($validated);
+        $claim->load(['patientInsurance.patient', 'invoice']);
+        
         return response()->json($claim, 201);
     }
 

@@ -81,6 +81,15 @@ class PatientController extends Controller
             $query->where('gender', $request->gender);
         }
 
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('first_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('patient_id', 'like', "%{$searchTerm}%");
+            });
+        }
+
         $patients = $query->latest()->paginate($request->input('per_page', 10));
 
         return response()->json([

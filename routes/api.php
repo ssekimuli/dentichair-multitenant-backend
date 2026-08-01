@@ -147,6 +147,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Invoices
     Route::apiResource('invoices', InvoiceController::class);
+
+    // Insurance & Claims
+    Route::apiResource('patient-insurances', \App\Http\Controllers\PatientInsuranceController::class);
+    Route::get('/patients/{patientId}/insurances', [\App\Http\Controllers\PatientInsuranceController::class, 'getByPatient']);
+    Route::apiResource('insurance-claims', \App\Http\Controllers\InsuranceClaimController::class);
     Route::get('/income-records', [InvoiceController::class, 'getIncomeRecords']);
     Route::post('/invoices/{id}/payments', [InvoiceController::class, 'addPayment']);
 

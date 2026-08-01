@@ -75,6 +75,11 @@ class Invoice extends Model
         return $this->hasMany(PaymentTransaction::class);
     }
 
+    public function insuranceClaims(): HasMany
+    {
+        return $this->hasMany(InsuranceClaim::class);
+    }
+
     public function getMedicinesAttribute($value)
     {
         $items = is_string($value) ? json_decode($value, true) : $value;

@@ -117,4 +117,9 @@ class Patient extends Model
     {
         return $this->hasMany(Prescription::class)->orderBy('id', 'desc');
     }
+
+    public function insurances(): HasMany
+    {
+        return $this->hasMany(PatientInsurance::class);
+    }
 }

@@ -151,6 +151,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Insurance & Claims
     Route::apiResource('patient-insurances', \App\Http\Controllers\PatientInsuranceController::class);
     Route::get('/patients/{patientId}/insurances', [\App\Http\Controllers\PatientInsuranceController::class, 'getByPatient']);
+    Route::get('/insurance-claims/stats', [\App\Http\Controllers\InsuranceClaimController::class, 'stats']);
     Route::apiResource('insurance-claims', \App\Http\Controllers\InsuranceClaimController::class);
     Route::get('/income-records', [InvoiceController::class, 'getIncomeRecords']);
     Route::post('/invoices/{id}/payments', [InvoiceController::class, 'addPayment']);

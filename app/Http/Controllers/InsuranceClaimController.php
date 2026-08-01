@@ -7,6 +7,19 @@ use Illuminate\Http\Request;
 
 class InsuranceClaimController extends Controller
 {
+    public function stats()
+    {
+        $totalClaims = \App\Models\InsuranceClaim::count();
+        $paidClaimsAmount = \App\Models\InsuranceClaim::where('status', 'paid')->sum('approved_amount') ?? 0;
+        $pendingCount = \App\Models\InsuranceClaim::where('status', 'pending')->count();
+        
+        return response()->json([
+            'total_claims' => $totalClaims,
+            'paid_amount' => $paidClaimsAmount,
+            'pending_count' => $pendingCount
+        ]);
+    }
+
     public function index()
     {
         return response()->json(\App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice'])->get());

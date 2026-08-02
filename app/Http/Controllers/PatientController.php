@@ -2367,14 +2367,20 @@ class PatientController extends Controller
     /**
      * Get all invoices of a patient.
      */
-    public function getInvoices($id)
+    public function getInvoices(Request $request, $id)
     {
         $patient = Patient::find($id);
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        $invoices = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions'])->latest()->get();
+        $query = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions']);
+        
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $invoices = $query->latest()->get();
         return response()->json($invoices);
     }
 

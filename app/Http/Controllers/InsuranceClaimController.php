@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\CloudflareR2Service;
 
 class InsuranceClaimController extends Controller
 {
@@ -22,7 +23,7 @@ class InsuranceClaimController extends Controller
 
     public function index()
     {
-        return response()->json(\App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice'])->latest()->get());
+        return response()->json(\App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice', 'documents'])->latest()->get());
     }
 
     public function store(Request $request)
@@ -54,14 +55,14 @@ class InsuranceClaimController extends Controller
             $statusCode = 201;
         }
 
-        $claim->load(['patientInsurance.patient', 'invoice']);
+        $claim->load(['patientInsurance.patient', 'invoice', 'documents']);
         
         return response()->json($claim, $statusCode);
     }
 
     public function show($id)
     {
-        $claim = \App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice'])->findOrFail($id);
+        $claim = \App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice', 'documents'])->findOrFail($id);
         return response()->json($claim);
     }
 
@@ -153,5 +154,38 @@ class InsuranceClaimController extends Controller
     {
         \App\Models\InsuranceClaim::findOrFail($id)->delete();
         return response()->json(null, 204);
+    }
+
+    public function uploadDocument(Request $request, $id)
+    {
+        $claim = \App\Models\InsuranceClaim::findOrFail($id);
+
+        $request->validate([
+            'description' => 'required|string',
+            'file' => 'required|file|max:20480',
+        ]);
+
+        $service = app(CloudflareR2Service::class);
+        $url = $service->upload($request->file('file'), 'insurance-claims');
+
+        $document = $claim->documents()->create([
+            'url' => $url,
+            'description' => $request->description,
+        ]);
+
+        return response()->json($document, 201);
+    }
+
+    public function deleteDocument($id, $documentId)
+    {
+        $claim = \App\Models\InsuranceClaim::findOrFail($id);
+        $document = $claim->documents()->findOrFail($documentId);
+
+        $service = app(CloudflareR2Service::class);
+        $service->delete($document->url);
+        
+        $document->delete();
+
+        return response()->json(['message' => 'Document deleted successfully']);
     }
 }

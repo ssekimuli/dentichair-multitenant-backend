@@ -36,4 +36,9 @@ class InsuranceClaim extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
+
+    public function documents()
+    {
+        return $this->hasMany(InsuranceClaimDocument::class);
+    }
 }

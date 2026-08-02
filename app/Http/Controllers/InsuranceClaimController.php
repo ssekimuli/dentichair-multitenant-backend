@@ -27,10 +27,15 @@ class InsuranceClaimController extends Controller
 
     public function store(Request $request)
     {
+        $existingClaim = null;
+        if ($request->filled('invoice_id')) {
+            $existingClaim = \App\Models\InsuranceClaim::where('invoice_id', $request->invoice_id)->first();
+        }
+
         $validated = $request->validate([
             'patient_insurance_id' => 'required|exists:patient_insurances,id',
             'invoice_id' => 'nullable|exists:invoices,id',
-            'claim_number' => 'required|string|unique:insurance_claims,claim_number',
+            'claim_number' => 'required|string|unique:insurance_claims,claim_number' . ($existingClaim ? ',' . $existingClaim->id : ''),
             'total_amount' => 'required|numeric',
             'claimed_amount' => 'required|numeric',
             'approved_amount' => 'nullable|numeric',
@@ -40,10 +45,18 @@ class InsuranceClaimController extends Controller
             'date_processed' => 'nullable|date',
         ]);
 
-        $claim = \App\Models\InsuranceClaim::create($validated);
+        if ($existingClaim) {
+            $existingClaim->update($validated);
+            $claim = $existingClaim;
+            $statusCode = 200;
+        } else {
+            $claim = \App\Models\InsuranceClaim::create($validated);
+            $statusCode = 201;
+        }
+
         $claim->load(['patientInsurance.patient', 'invoice']);
         
-        return response()->json($claim, 201);
+        return response()->json($claim, $statusCode);
     }
 
     public function show($id)

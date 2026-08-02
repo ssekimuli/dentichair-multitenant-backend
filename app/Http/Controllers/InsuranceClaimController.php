@@ -22,7 +22,7 @@ class InsuranceClaimController extends Controller
 
     public function index()
     {
-        return response()->json(\App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice'])->get());
+        return response()->json(\App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice'])->latest()->get());
     }
 
     public function store(Request $request)

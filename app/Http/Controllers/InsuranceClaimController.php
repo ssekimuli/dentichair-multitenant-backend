@@ -75,6 +75,7 @@ class InsuranceClaimController extends Controller
             'total_amount' => 'sometimes|numeric',
             'claimed_amount' => 'sometimes|numeric',
             'approved_amount' => 'nullable|numeric',
+            'write_off_amount' => 'nullable|numeric',
             'status' => 'nullable|in:pending,submitted,paid,denied',
             'notes' => 'nullable|string',
             'date_submitted' => 'nullable|date',
@@ -84,26 +85,64 @@ class InsuranceClaimController extends Controller
         $oldStatus = $claim->status;
         $claim->update($validated);
         
-        // If status changed to paid and there is an attached invoice, record the payment
-        if (isset($validated['status']) && $validated['status'] === 'paid' && $oldStatus !== 'paid' && $claim->invoice_id) {
-            $invoice = \App\Models\Invoice::find($claim->invoice_id);
-            if ($invoice) {
-                $claim->load('patientInsurance');
-                $providerName = $claim->patientInsurance ? $claim->patientInsurance->provider_name : 'Insurance';
-                $amount = $validated['approved_amount'] ?? $claim->claimed_amount;
-                
-                $invoice->transactions()->create([
-                    'amount' => $amount,
-                    'method' => 'Insurance (' . $providerName . ')',
-                    'date' => now()->format('Y-m-d'),
-                ]);
+        // If status changed to paid
+        if (isset($validated['status']) && $validated['status'] === 'paid' && $oldStatus !== 'paid') {
+            $claim->load(['patientInsurance.patient']);
+            $providerName = $claim->patientInsurance ? $claim->patientInsurance->provider_name : 'Insurance';
+            $amount = $validated['approved_amount'] ?? $claim->claimed_amount;
+            $writeOff = $validated['write_off_amount'] ?? 0;
+            $patientBalance = $claim->total_amount - $amount - $writeOff;
 
-                $newPaidAmount = $invoice->paid_amount + $amount;
-                $invoice->update([
-                    'paid_amount' => $newPaidAmount,
-                    'status' => $newPaidAmount >= $invoice->amount ? 'Paid' : 'Pending',
-                    'payment_method' => 'Insurance',
-                ]);
+            if ($claim->invoice_id) {
+                // Claim is linked to an invoice
+                $invoice = \App\Models\Invoice::find($claim->invoice_id);
+                if ($invoice) {
+                    $invoice->transactions()->create([
+                        'amount' => $amount,
+                        'method' => 'Insurance (' . $providerName . ')',
+                        'date' => now()->format('Y-m-d'),
+                    ]);
+
+                    $newPaidAmount = $invoice->paid_amount + $amount;
+                    $newInvoiceAmount = $invoice->amount;
+
+                    if ($writeOff > 0) {
+                        $newInvoiceAmount = max(0, $invoice->amount - $writeOff);
+                        $invoice->discount = ($invoice->discount ?? 0) + $writeOff;
+                    }
+
+                    $invoice->update([
+                        'amount' => $newInvoiceAmount,
+                        'paid_amount' => $newPaidAmount,
+                        'status' => $newPaidAmount >= $newInvoiceAmount ? 'Paid' : 'Pending',
+                        'payment_method' => 'Insurance',
+                    ]);
+                }
+            } else {
+                // Claim is NOT linked to an invoice. Bill the patient for any remaining balance.
+                if ($patientBalance > 0 && $claim->patientInsurance && $claim->patientInsurance->patient) {
+                    $patient = $claim->patientInsurance->patient;
+                    
+                    $newInvoice = \App\Models\Invoice::create([
+                        'patient_id' => $patient->id,
+                        'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+                        'amount' => $patientBalance,
+                        'paid_amount' => 0,
+                        'status' => 'Pending',
+                        'issue_date' => now()->format('Y-m-d'),
+                        'due_date' => now()->addDays(30)->format('Y-m-d'),
+                        'branch_id' => $patient->branch_id ?? \App\Models\Branch::first()->id,
+                    ]);
+
+                    $newInvoice->otherCharges()->create([
+                        'description' => 'Patient Balance for Insurance Claim ' . $claim->claim_number,
+                        'amount' => $patientBalance,
+                    ]);
+
+                    // Link the newly generated invoice back to the claim
+                    $claim->invoice_id = $newInvoice->id;
+                    $claim->save();
+                }
             }
         }
 

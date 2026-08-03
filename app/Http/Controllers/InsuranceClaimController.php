@@ -23,7 +23,19 @@ class InsuranceClaimController extends Controller
 
     public function index()
     {
-        return response()->json(\App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice', 'documents'])->latest()->get());
+        $claims = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->latest()->get();
+        // format claims for the frontend which expects patient_insurance.patient, etc
+        $claims->transform(function ($claim) {
+            $claim->patient_insurance = [
+                'patient' => $claim->patient,
+                'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
+                'policy_number' => $claim->policy->policy_number ?? 'Unknown'
+            ];
+            $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
+            $claim->claimed_amount = $claim->submitted_amount;
+            return $claim;
+        });
+        return response()->json($claims);
     }
 
     public function store(Request $request)
@@ -34,7 +46,7 @@ class InsuranceClaimController extends Controller
         }
 
         $validated = $request->validate([
-            'patient_insurance_id' => 'required|exists:patient_insurances,id',
+            'patient_insurance_id' => 'required|exists:patient_insurance_policies,id',
             'invoice_id' => 'nullable|exists:invoices,id',
             'claim_number' => 'required|string|unique:insurance_claims,claim_number' . ($existingClaim ? ',' . $existingClaim->id : ''),
             'total_amount' => 'required|numeric',
@@ -46,23 +58,48 @@ class InsuranceClaimController extends Controller
             'date_processed' => 'nullable|date',
         ]);
 
+        $pivot = \Illuminate\Support\Facades\DB::table('patient_insurance_policies')
+            ->join('insurance_policies', 'insurance_policies.id', '=', 'patient_insurance_policies.insurance_policy_id')
+            ->join('insurance_packages', 'insurance_packages.id', '=', 'insurance_policies.insurance_package_id')
+            ->where('patient_insurance_policies.id', $request->patient_insurance_id)
+            ->select('patient_insurance_policies.patient_id', 'patient_insurance_policies.insurance_policy_id', 'insurance_packages.insurance_company_id')
+            ->first();
+
+        $claimData = [
+            'patient_id' => $pivot->patient_id,
+            'insurance_policy_id' => $pivot->insurance_policy_id,
+            'insurance_company_id' => $pivot->insurance_company_id,
+            'claim_number' => $validated['claim_number'],
+            'invoice_id' => $validated['invoice_id'] ?? null,
+            'submitted_amount' => $validated['claimed_amount'],
+            'status' => $validated['status'] ?? 'pending',
+            'notes' => $validated['notes'] ?? null,
+        ];
+
         if ($existingClaim) {
-            $existingClaim->update($validated);
+            $existingClaim->update($claimData);
             $claim = $existingClaim;
             $statusCode = 200;
         } else {
-            $claim = \App\Models\InsuranceClaim::create($validated);
+            $claim = \App\Models\InsuranceClaim::create($claimData);
             $statusCode = 201;
         }
 
-        $claim->load(['patientInsurance.patient', 'invoice', 'documents']);
+        $claim->load(['policy', 'patient', 'invoice']);
         
         return response()->json($claim, $statusCode);
     }
 
     public function show($id)
     {
-        $claim = \App\Models\InsuranceClaim::with(['patientInsurance.patient', 'invoice', 'documents'])->findOrFail($id);
+        $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->findOrFail($id);
+        $claim->patient_insurance = [
+            'patient' => $claim->patient,
+            'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
+            'policy_number' => $claim->policy->policy_number ?? 'Unknown'
+        ];
+        $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
+        $claim->claimed_amount = $claim->submitted_amount;
         return response()->json($claim);
     }
 
@@ -88,11 +125,15 @@ class InsuranceClaimController extends Controller
         
         // If status changed to paid
         if (isset($validated['status']) && $validated['status'] === 'paid' && $oldStatus !== 'paid') {
-            $claim->load(['patientInsurance.patient']);
-            $providerName = $claim->patientInsurance ? $claim->patientInsurance->provider_name : 'Insurance';
-            $amount = $validated['approved_amount'] ?? $claim->claimed_amount;
+            $claim->load(['patient', 'policy.package.company']);
+            $providerName = $claim->policy && $claim->policy->package && $claim->policy->package->company 
+                ? $claim->policy->package->company->name 
+                : 'Insurance';
+            
+            $amount = $validated['approved_amount'] ?? $claim->submitted_amount;
             $writeOff = $validated['write_off_amount'] ?? 0;
-            $patientBalance = $claim->total_amount - $amount - $writeOff;
+            $totalAmount = $claim->invoice_id ? (\App\Models\Invoice::find($claim->invoice_id)->amount ?? $claim->submitted_amount) : $claim->submitted_amount;
+            $patientBalance = $totalAmount - $amount - $writeOff;
 
             if ($claim->invoice_id) {
                 // Claim is linked to an invoice
@@ -121,8 +162,8 @@ class InsuranceClaimController extends Controller
                 }
             } else {
                 // Claim is NOT linked to an invoice. Bill the patient for any remaining balance.
-                if ($patientBalance > 0 && $claim->patientInsurance && $claim->patientInsurance->patient) {
-                    $patient = $claim->patientInsurance->patient;
+                if ($patientBalance > 0 && $claim->patient) {
+                    $patient = $claim->patient;
                     
                     $newInvoice = \App\Models\Invoice::create([
                         'patient_id' => $patient->id,
@@ -146,6 +187,15 @@ class InsuranceClaimController extends Controller
                 }
             }
         }
+
+        $claim->load(['patient', 'policy.package.company', 'invoice', 'documents']);
+        $claim->patient_insurance = [
+            'patient' => $claim->patient,
+            'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
+            'policy_number' => $claim->policy->policy_number ?? 'Unknown'
+        ];
+        $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
+        $claim->claimed_amount = $claim->submitted_amount;
 
         return response()->json($claim);
     }

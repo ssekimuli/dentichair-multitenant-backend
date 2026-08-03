@@ -148,99 +148,112 @@ class InsuranceClaimController extends Controller
 
     public function update(Request $request, $id)
     {
-        $claim = \App\Models\InsuranceClaim::findOrFail($id);
-        
-        $validated = $request->validate([
-            'invoice_id' => 'nullable|exists:invoices,id',
-            'claim_number' => 'sometimes|string|unique:insurance_claims,claim_number,'.$id,
-            'total_amount' => 'sometimes|numeric',
-            'claimed_amount' => 'sometimes|numeric',
-            'approved_amount' => 'nullable|numeric',
-            'write_off_amount' => 'nullable|numeric',
-            'status' => 'nullable|in:Draft,Submitted,Under Review,Approved,Partially Approved,Rejected,Paid,Cancelled',
-            'notes' => 'nullable|string',
-            'date_submitted' => 'nullable|date',
-            'date_processed' => 'nullable|date',
-        ]);
-
-        $oldStatus = $claim->status;
-        $claim->update($validated);
-        
-        // If status changed to paid
-        if (isset($validated['status']) && strtolower($validated['status']) === 'paid' && strtolower($oldStatus) !== 'paid') {
-            $claim->load(['patient', 'policy.package.company']);
-            $providerName = $claim->policy && $claim->policy->package && $claim->policy->package->company 
-                ? $claim->policy->package->company->name 
-                : 'Insurance';
+        try {
+            $claim = \App\Models\InsuranceClaim::findOrFail($id);
             
-            $amount = $validated['approved_amount'] ?? $claim->submitted_amount;
-            $writeOff = $validated['write_off_amount'] ?? 0;
-            $totalAmount = $claim->invoice_id ? (\App\Models\Invoice::find($claim->invoice_id)->amount ?? $claim->submitted_amount) : $claim->submitted_amount;
-            $patientBalance = $totalAmount - $amount - $writeOff;
+            $validated = $request->validate([
+                'invoice_id' => 'nullable|exists:invoices,id',
+                'claim_number' => 'sometimes|string|unique:insurance_claims,claim_number,'.$id,
+                'total_amount' => 'sometimes|numeric',
+                'claimed_amount' => 'sometimes|numeric',
+                'approved_amount' => 'nullable|numeric',
+                'write_off_amount' => 'nullable|numeric',
+                'status' => 'nullable|in:Draft,Submitted,Under Review,Approved,Partially Approved,Rejected,Paid,Cancelled',
+                'notes' => 'nullable|string',
+                'date_submitted' => 'nullable|date',
+                'date_processed' => 'nullable|date',
+            ]);
 
-            if ($claim->invoice_id) {
-                // Claim is linked to an invoice
-                $invoice = \App\Models\Invoice::find($claim->invoice_id);
-                if ($invoice) {
-                    $invoice->transactions()->create([
-                        'amount' => $amount,
-                        'method' => 'Insurance (' . $providerName . ')',
-                        'date' => now()->format('Y-m-d'),
-                    ]);
+            $oldStatus = $claim->status;
+            $claim->update($validated);
+            
+            // If status changed to paid
+            if (isset($validated['status']) && strtolower($validated['status']) === 'paid' && strtolower($oldStatus) !== 'paid') {
+                $claim->load(['patient', 'policy.package.company']);
+                $providerName = $claim->policy && $claim->policy->package && $claim->policy->package->company 
+                    ? $claim->policy->package->company->name 
+                    : 'Insurance';
+                
+                $amount = $validated['approved_amount'] ?? $claim->submitted_amount;
+                $writeOff = $validated['write_off_amount'] ?? 0;
+                $totalAmount = $claim->invoice_id ? (\App\Models\Invoice::find($claim->invoice_id)->amount ?? $claim->submitted_amount) : $claim->submitted_amount;
+                $patientBalance = $totalAmount - $amount - $writeOff;
 
-                    $newPaidAmount = $invoice->paid_amount + $amount;
-                    $newInvoiceAmount = $invoice->amount;
+                if ($claim->invoice_id) {
+                    // Claim is linked to an invoice
+                    $invoice = \App\Models\Invoice::find($claim->invoice_id);
+                    if ($invoice) {
+                        $invoice->transactions()->create([
+                            'amount' => $amount,
+                            'method' => 'Insurance (' . $providerName . ')',
+                            'date' => now()->format('Y-m-d'),
+                        ]);
 
-                    if ($writeOff > 0) {
-                        $newInvoiceAmount = max(0, $invoice->amount - $writeOff);
-                        $invoice->discount = ($invoice->discount ?? 0) + $writeOff;
+                        $newPaidAmount = $invoice->paid_amount + $amount;
+                        $newInvoiceAmount = $invoice->amount;
+
+                        if ($writeOff > 0) {
+                            $newInvoiceAmount = max(0, $invoice->amount - $writeOff);
+                            $invoice->discount = ($invoice->discount ?? 0) + $writeOff;
+                        }
+
+                        $invoice->update([
+                            'amount' => $newInvoiceAmount,
+                            'paid_amount' => $newPaidAmount,
+                            'status' => $newPaidAmount >= $newInvoiceAmount ? 'Paid' : 'Pending',
+                            'payment_method' => 'Insurance',
+                        ]);
                     }
+                } else {
+                    // Claim is NOT linked to an invoice. Bill the patient for any remaining balance.
+                    if ($patientBalance > 0 && $claim->patient) {
+                        $patient = $claim->patient;
+                        
+                        $newInvoice = \App\Models\Invoice::create([
+                            'patient_id' => $patient->id,
+                            'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+                            'amount' => $patientBalance,
+                            'paid_amount' => 0,
+                            'status' => 'Pending',
+                            'issue_date' => now()->format('Y-m-d'),
+                            'due_date' => now()->addDays(30)->format('Y-m-d'),
+                            'branch_id' => $patient->branch_id ?? \App\Models\Branch::first()->id,
+                        ]);
 
-                    $invoice->update([
-                        'amount' => $newInvoiceAmount,
-                        'paid_amount' => $newPaidAmount,
-                        'status' => $newPaidAmount >= $newInvoiceAmount ? 'Paid' : 'Pending',
-                        'payment_method' => 'Insurance',
-                    ]);
-                }
-            } else {
-                // Claim is NOT linked to an invoice. Bill the patient for any remaining balance.
-                if ($patientBalance > 0 && $claim->patient) {
-                    $patient = $claim->patient;
-                    
-                    $newInvoice = \App\Models\Invoice::create([
-                        'patient_id' => $patient->id,
-                        'patient_name' => $patient->first_name . ' ' . $patient->last_name,
-                        'amount' => $patientBalance,
-                        'paid_amount' => 0,
-                        'status' => 'Pending',
-                        'issue_date' => now()->format('Y-m-d'),
-                        'due_date' => now()->addDays(30)->format('Y-m-d'),
-                        'branch_id' => $patient->branch_id ?? \App\Models\Branch::first()->id,
-                    ]);
+                        $newInvoice->otherCharges()->create([
+                            'description' => 'Patient Balance for Insurance Claim ' . $claim->claim_number,
+                            'amount' => $patientBalance,
+                        ]);
 
-                    $newInvoice->otherCharges()->create([
-                        'description' => 'Patient Balance for Insurance Claim ' . $claim->claim_number,
-                        'amount' => $patientBalance,
-                    ]);
-
-                    // Link the newly generated invoice back to the claim
-                    $claim->invoice_id = $newInvoice->id;
-                    $claim->save();
+                        // Link the newly generated invoice back to the claim
+                        $claim->invoice_id = $newInvoice->id;
+                        $claim->save();
+                    }
                 }
             }
+
+            $claim->load(['patient', 'policy.package.company', 'invoice.treatments']);
+            $claim->patient_insurance = [
+                'patient' => $claim->patient,
+                'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
+                'policy_number' => $claim->policy->policy_number ?? 'Unknown'
+            ];
+            $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
+            $claim->claimed_amount = $claim->submitted_amount;
+
+            return response()->json($claim);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Insurance claim not found'], 404);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error updating insurance claim: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'id' => $id
+            ]);
+            return response()->json([
+                'message' => 'An error occurred while updating the insurance claim',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $claim->load(['patient', 'policy.package.company', 'invoice', 'documents']);
-        $claim->patient_insurance = [
-            'patient' => $claim->patient,
-            'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
-            'policy_number' => $claim->policy->policy_number ?? 'Unknown'
-        ];
-        $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
-        $claim->claimed_amount = $claim->submitted_amount;
-
-        return response()->json($claim);
     }
 
     public function destroy($id)

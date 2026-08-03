@@ -12,12 +12,6 @@ class PatientInsurancePolicy extends Pivot
     public $incrementing = true;
 
     protected $casts = [
-        'coverage_start_date' => 'date',
-        'coverage_end_date' => 'date',
-        'individual_coverage_limit' => 'decimal:2',
-        'used_amount' => 'decimal:2',
-        'remaining_balance' => 'decimal:2',
-        'requires_approval' => 'boolean',
         'is_primary' => 'boolean',
     ];
 
@@ -29,10 +23,5 @@ class PatientInsurancePolicy extends Pivot
     public function policy(): BelongsTo
     {
         return $this->belongsTo(InsurancePolicy::class, 'insurance_policy_id');
-    }
-
-    public function principalPatient(): BelongsTo
-    {
-        return $this->belongsTo(Patient::class, 'principal_patient_id');
     }
 }

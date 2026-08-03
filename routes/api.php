@@ -273,6 +273,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         
         Route::get('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'index']);
         Route::post('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'attach']);
+        Route::delete('patients/{patient}/policies/{pivotId}', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'detach']);
         Route::patch('patients/{patient}/policies/{pivotId}/primary', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'setPrimary']);
 
         Route::post('billing/estimate/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'estimate']);

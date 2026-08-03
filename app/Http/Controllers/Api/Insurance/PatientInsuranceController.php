@@ -34,18 +34,21 @@ class PatientInsuranceController extends Controller
                     ->update(['is_primary' => false]);
             }
 
-            DB::table('patient_insurance_policies')->insert([
-                'patient_id' => $patient->id,
-                'insurance_policy_id' => $data['insurance_policy_id'],
-                'subscriber_id' => $data['subscriber_id'],
-                'group_number' => $data['group_number'] ?? null,
-                'relationship_to_subscriber' => $data['relationship_to_subscriber'],
-                'subscriber_name' => $data['subscriber_name'] ?? null,
-                'is_primary' => $data['is_primary'] ?? false,
-                'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('patient_insurance_policies')->updateOrInsert(
+                [
+                    'patient_id' => $patient->id,
+                    'insurance_policy_id' => $data['insurance_policy_id'],
+                ],
+                [
+                    'subscriber_id' => $data['subscriber_id'],
+                    'group_number' => $data['group_number'] ?? null,
+                    'relationship_to_subscriber' => $data['relationship_to_subscriber'],
+                    'subscriber_name' => $data['subscriber_name'] ?? null,
+                    'is_primary' => $data['is_primary'] ?? false,
+                    'status' => 'active',
+                    'updated_at' => now()
+                ]
+            );
         });
 
         return response()->json(['message' => 'Policy attached successfully.']);
@@ -64,5 +67,15 @@ class PatientInsuranceController extends Controller
         });
 
         return response()->json(['message' => 'Primary policy updated.']);
+    }
+
+    public function detach(Request $request, Patient $patient, $pivotId)
+    {
+        DB::table('patient_insurance_policies')
+            ->where('id', $pivotId)
+            ->where('patient_id', $patient->id)
+            ->delete();
+
+        return response()->json(['message' => 'Policy detached successfully.']);
     }
 }

@@ -37,11 +37,9 @@ class InsurancePolicy extends Model
         return $this->belongsToMany(Patient::class, 'patient_insurance_policies')
                     ->using(PatientInsurancePolicy::class)
                     ->withPivot([
-                        'id', 'membership_number', 'principal_patient_id', 'principal_member_name', 
-                        'relationship', 'coverage_start_date', 'coverage_end_date', 
-                        'individual_coverage_limit', 'used_amount', 'remaining_balance', 
-                        'requires_approval', 'is_primary', 'insurance_card', 
-                        'verification_status', 'status'
+                        'id', 'subscriber_id', 'group_number', 
+                        'relationship_to_subscriber', 'subscriber_name',
+                        'is_primary', 'status'
                     ])
                     ->withTimestamps();
     }

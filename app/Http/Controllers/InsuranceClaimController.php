@@ -11,8 +11,8 @@ class InsuranceClaimController extends Controller
     public function stats()
     {
         $totalClaims = \App\Models\InsuranceClaim::count();
-        $paidClaimsAmount = \App\Models\InsuranceClaim::where('status', 'paid')->sum('approved_amount') ?? 0;
-        $pendingCount = \App\Models\InsuranceClaim::where('status', 'pending')->count();
+        $paidClaimsAmount = \App\Models\InsuranceClaim::where('status', 'Paid')->sum('approved_amount') ?? 0;
+        $pendingCount = \App\Models\InsuranceClaim::whereIn('status', ['Draft', 'Submitted', 'Under Review'])->count();
         
         return response()->json([
             'total_claims' => $totalClaims,
@@ -123,7 +123,7 @@ class InsuranceClaimController extends Controller
     public function show($id)
     {
         try {
-            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice'])->findOrFail($id);
+            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice.treatments'])->findOrFail($id);
             $claim->patient_insurance = [
                 'patient' => $claim->patient,
                 'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
@@ -167,7 +167,7 @@ class InsuranceClaimController extends Controller
         $claim->update($validated);
         
         // If status changed to paid
-        if (isset($validated['status']) && $validated['status'] === 'paid' && $oldStatus !== 'paid') {
+        if (isset($validated['status']) && strtolower($validated['status']) === 'paid' && strtolower($oldStatus) !== 'paid') {
             $claim->load(['patient', 'policy.package.company']);
             $providerName = $claim->policy && $claim->policy->package && $claim->policy->package->company 
                 ? $claim->policy->package->company->name 

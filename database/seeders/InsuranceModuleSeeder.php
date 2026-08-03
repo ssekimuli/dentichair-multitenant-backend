@@ -15,19 +15,19 @@ class InsuranceModuleSeeder extends Seeder
         // 1. Ensure we have some basic dental treatments first
         $consultation = Treatment::firstOrCreate(
             ['treatment_code' => 'D0120'], 
-            ['treatment_name' => 'Periodic Oral Evaluation', 'cost' => 50000]
+            ['procedure' => 'Periodic Oral Evaluation', 'cost' => 50000]
         );
         $cleaning = Treatment::firstOrCreate(
             ['treatment_code' => 'D1110'], 
-            ['treatment_name' => 'Prophylaxis - Adult (Cleaning)', 'cost' => 120000]
+            ['procedure' => 'Prophylaxis - Adult (Cleaning)', 'cost' => 120000]
         );
         $extraction = Treatment::firstOrCreate(
             ['treatment_code' => 'D7140'], 
-            ['treatment_name' => 'Extraction - Erupted Tooth', 'cost' => 80000]
+            ['procedure' => 'Extraction - Erupted Tooth', 'cost' => 80000]
         );
         $rootCanal = Treatment::firstOrCreate(
             ['treatment_code' => 'D3310'], 
-            ['treatment_name' => 'Root Canal - Anterior', 'cost' => 450000]
+            ['procedure' => 'Root Canal - Anterior', 'cost' => 450000]
         );
         
         // 2. Create Jubilee Insurance

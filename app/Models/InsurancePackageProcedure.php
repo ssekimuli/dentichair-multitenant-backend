@@ -10,6 +10,8 @@ class InsurancePackageProcedure extends Model
 {
     use HasFactory;
 
+    protected $table = 'insurance_package_treatments';
+
     protected $fillable = [
         'insurance_package_id', 'procedure_id', 'coverage_type', 
         'coverage_value', 'maximum_covered_amount', 'frequency_limit', 

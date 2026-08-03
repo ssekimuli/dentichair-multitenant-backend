@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Api\Insurance;
 
 use App\Http\Controllers\Controller;
-use App\Models\Package;
+use App\Models\InsurancePackage;
 use Illuminate\Http\Request;
 
 class InsurancePackageController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Package::query();
+        $query = InsurancePackage::query();
         if ($request->has('company_id')) {
             $query->where('insurance_company_id', $request->company_id);
         }
@@ -31,7 +31,7 @@ class InsurancePackageController extends Controller
             'status' => 'in:active,inactive'
         ]);
 
-        $package = Package::create($data);
+        $package = InsurancePackage::create($data);
         return response()->json(['message' => 'Package created', 'data' => $package]);
     }
 }

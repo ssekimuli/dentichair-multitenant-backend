@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Api\Insurance;
 
 use App\Http\Controllers\Controller;
-use App\Models\Policy;
+use App\Models\InsurancePolicy;
 use Illuminate\Http\Request;
 
 class InsurancePolicyController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Policy::with('package');
+        $query = InsurancePolicy::with('package');
         if ($request->has('package_id')) {
             $query->where('insurance_package_id', $request->package_id);
         }
@@ -32,7 +32,7 @@ class InsurancePolicyController extends Controller
         ]);
 
         $data['remaining_balance'] = $data['total_coverage_limit'] ?? null;
-        $policy = Policy::create($data);
+        $policy = InsurancePolicy::create($data);
         
         return response()->json(['message' => 'Policy created', 'data' => $policy]);
     }

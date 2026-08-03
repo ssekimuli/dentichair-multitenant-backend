@@ -23,19 +23,29 @@ class InsuranceClaimController extends Controller
 
     public function index()
     {
-        $claims = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->latest()->get();
-        // format claims for the frontend which expects patient_insurance.patient, etc
-        $claims->transform(function ($claim) {
-            $claim->patient_insurance = [
-                'patient' => $claim->patient,
-                'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
-                'policy_number' => $claim->policy->policy_number ?? 'Unknown'
-            ];
-            $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
-            $claim->claimed_amount = $claim->submitted_amount;
-            return $claim;
-        });
-        return response()->json($claims);
+        try {
+            $claims = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->latest()->get();
+            // format claims for the frontend which expects patient_insurance.patient, etc
+            $claims->transform(function ($claim) {
+                $claim->patient_insurance = [
+                    'patient' => $claim->patient,
+                    'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
+                    'policy_number' => $claim->policy->policy_number ?? 'Unknown'
+                ];
+                $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
+                $claim->claimed_amount = $claim->submitted_amount;
+                return $claim;
+            });
+            return response()->json($claims);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error fetching insurance claims: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'An error occurred while fetching insurance claims',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)
@@ -112,15 +122,28 @@ class InsuranceClaimController extends Controller
 
     public function show($id)
     {
-        $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->findOrFail($id);
-        $claim->patient_insurance = [
-            'patient' => $claim->patient,
-            'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
-            'policy_number' => $claim->policy->policy_number ?? 'Unknown'
-        ];
-        $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
-        $claim->claimed_amount = $claim->submitted_amount;
-        return response()->json($claim);
+        try {
+            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->findOrFail($id);
+            $claim->patient_insurance = [
+                'patient' => $claim->patient,
+                'provider_name' => $claim->policy->package->company->name ?? 'Unknown',
+                'policy_number' => $claim->policy->policy_number ?? 'Unknown'
+            ];
+            $claim->total_amount = $claim->invoice ? $claim->invoice->amount : $claim->submitted_amount;
+            $claim->claimed_amount = $claim->submitted_amount;
+            return response()->json($claim);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Insurance claim not found'], 404);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error fetching insurance claim: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'id' => $id
+            ]);
+            return response()->json([
+                'message' => 'An error occurred while fetching the insurance claim',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)

@@ -101,10 +101,10 @@ class TreatmentPlan extends Model
         }
 
         // Fetch patient's primary active policy
-        $primaryPolicy = \App\Models\PatientInsurancePolicy::with('policy.package.packageProcedures')
-            ->where('patient_id', $patientId)
-            ->where('is_primary', true)
-            ->where('status', 'active')
+        $primaryPolicy = $patient->insurancePolicies()
+            ->with('package.packageProcedures')
+            ->wherePivot('is_primary', true)
+            ->wherePivot('status', 'active')
             ->first();
 
         // Delete existing treatments for this invoice and recreate them from current completed treatments
@@ -121,9 +121,9 @@ class TreatmentPlan extends Model
             $treatmentModel = \App\Models\Treatment::where('procedure', $ct->procedure)->first();
             $procedureId = $treatmentModel ? $treatmentModel->id : null;
 
-            if ($primaryPolicy && $primaryPolicy->policy && $primaryPolicy->policy->package && $procedureId) {
+            if ($primaryPolicy && $primaryPolicy->package && $procedureId) {
                 // Check if specific rule exists for this procedure
-                $rule = $primaryPolicy->policy->package->packageProcedures->where('procedure_id', $procedureId)->first();
+                $rule = $primaryPolicy->package->packageProcedures->where('procedure_id', $procedureId)->first();
                 if ($rule) {
                     if ($rule->coverage_type === 'percentage') {
                         $insuranceAmount = ($rule->coverage_value / 100) * $cost;
@@ -136,7 +136,7 @@ class TreatmentPlan extends Model
                     $patientAmount = $cost - $insuranceAmount;
                 } else {
                     // Check default package coverage
-                    $defaultCoverage = $primaryPolicy->policy->package->default_coverage_percentage ?? 0;
+                    $defaultCoverage = $primaryPolicy->package->default_coverage_percentage ?? 0;
                     if ($defaultCoverage > 0) {
                         $insuranceAmount = ($defaultCoverage / 100) * $cost;
                         $patientAmount = $cost - $insuranceAmount;

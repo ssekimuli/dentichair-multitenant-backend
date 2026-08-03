@@ -20,10 +20,10 @@ class PatientInsuranceController extends Controller
     {
         $data = $request->validate([
             'insurance_policy_id' => 'required|exists:insurance_policies,id',
-            'relationship' => 'required|string',
-            'membership_number' => 'nullable|string',
-            'coverage_start_date' => 'nullable|date',
-            'coverage_end_date' => 'nullable|date',
+            'subscriber_id' => 'required|string',
+            'group_number' => 'nullable|string',
+            'relationship_to_subscriber' => 'required|in:self,spouse,child,other',
+            'subscriber_name' => 'nullable|string',
             'is_primary' => 'boolean',
         ]);
         
@@ -34,14 +34,17 @@ class PatientInsuranceController extends Controller
                     ->update(['is_primary' => false]);
             }
 
-            $patient->insurancePolicies()->attach($data['insurance_policy_id'], [
-                'membership_number' => $data['membership_number'] ?? null,
-                'relationship' => $data['relationship'],
-                'coverage_start_date' => $data['coverage_start_date'] ?? null,
-                'coverage_end_date' => $data['coverage_end_date'] ?? null,
+            DB::table('patient_insurance_policies')->insert([
+                'patient_id' => $patient->id,
+                'insurance_policy_id' => $data['insurance_policy_id'],
+                'subscriber_id' => $data['subscriber_id'],
+                'group_number' => $data['group_number'] ?? null,
+                'relationship_to_subscriber' => $data['relationship_to_subscriber'],
+                'subscriber_name' => $data['subscriber_name'] ?? null,
                 'is_primary' => $data['is_primary'] ?? false,
-                'verification_status' => 'pending',
                 'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
         });
 

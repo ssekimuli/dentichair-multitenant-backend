@@ -1717,35 +1717,40 @@ class PatientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date']);
-        $patient->treatmentPlans()->create($treatmentData);
+        try {
+            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date']);
+            $patient->treatmentPlans()->create($treatmentData);
 
-        if (isset($request->condition) && !empty($validated['tooth'])) {
-            // Find existing record for this tooth
-            $existingRecord = $patient->dentalRecords()
-                ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'
-                ->first();
+            if (isset($request->condition) && !empty($validated['tooth'])) {
+                // Find existing record for this tooth
+                $existingRecord = $patient->dentalRecords()
+                    ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'
+                    ->first();
 
-            if ($existingRecord) {
-                // Update existing record
-                $existingRecord->update([
-                    'condition' => $request->condition,
-                    'tooth_id' => $validated['tooth'], // Changed from 'tooth_id' to 'tooth'
-                    'notes' => $validated['notes'] ?? $existingRecord->notes
-                ]);
-                $record = $existingRecord;
-            } else {
-                // Create new record - you need to map 'tooth' to 'tooth_id'
-                $recordData = [
-                    'condition' => $request->condition,
-                    'tooth_id' => $validated['tooth'],
-                    'notes' => $validated['notes'] ?? null
-                ];
-                $record = $patient->dentalRecords()->create($recordData);
+                if ($existingRecord) {
+                    // Update existing record
+                    $existingRecord->update([
+                        'condition' => $request->condition,
+                        'tooth_id' => $validated['tooth'], // Changed from 'tooth_id' to 'tooth'
+                        'notes' => $validated['notes'] ?? $existingRecord->notes
+                    ]);
+                    $record = $existingRecord;
+                } else {
+                    // Create new record - you need to map 'tooth' to 'tooth_id'
+                    $recordData = [
+                        'condition' => $request->condition,
+                        'tooth_id' => $validated['tooth'],
+                        'notes' => $validated['notes'] ?? null
+                    ];
+                    $record = $patient->dentalRecords()->create($recordData);
+                }
             }
-        }
 
-        return response()->json($patient->load('treatmentPlans'));
+            return response()->json($patient->load('treatmentPlans'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to add treatment: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Failed to save treatment.', 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**

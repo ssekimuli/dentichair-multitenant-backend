@@ -53,7 +53,7 @@ class InsuranceClaimController extends Controller
                 'total_amount' => 'required|numeric',
                 'claimed_amount' => 'required|numeric',
                 'approved_amount' => 'nullable|numeric',
-                'status' => 'nullable|in:pending,submitted,paid,denied',
+                'status' => 'nullable|in:Draft,Submitted,Under Review,Approved,Partially Approved,Rejected,Paid,Cancelled',
                 'notes' => 'nullable|string',
                 'date_submitted' => 'nullable|date',
                 'date_processed' => 'nullable|date',
@@ -77,7 +77,7 @@ class InsuranceClaimController extends Controller
                 'claim_number' => $validated['claim_number'],
                 'invoice_id' => $validated['invoice_id'] ?? null,
                 'submitted_amount' => $validated['claimed_amount'],
-                'status' => $validated['status'] ?? 'pending',
+                'status' => $validated['status'] ?? 'Draft',
                 'notes' => $validated['notes'] ?? null,
             ];
 
@@ -134,7 +134,7 @@ class InsuranceClaimController extends Controller
             'claimed_amount' => 'sometimes|numeric',
             'approved_amount' => 'nullable|numeric',
             'write_off_amount' => 'nullable|numeric',
-            'status' => 'nullable|in:pending,submitted,paid,denied',
+            'status' => 'nullable|in:Draft,Submitted,Under Review,Approved,Partially Approved,Rejected,Paid,Cancelled',
             'notes' => 'nullable|string',
             'date_submitted' => 'nullable|date',
             'date_processed' => 'nullable|date',

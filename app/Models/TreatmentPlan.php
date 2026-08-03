@@ -162,8 +162,26 @@ class TreatmentPlan extends Model
 
         // Calculate total amount
         $otherChargesTotal = $invoice->otherCharges()->sum('amount');
-        $newTotal = $treatmentsTotal + $otherChargesTotal;
-        $patientResponsibilityTotal += $otherChargesTotal;
+        
+        $medicinesTotal = 0;
+        $medicines = is_string($invoice->getRawOriginal('medicines')) 
+            ? json_decode($invoice->getRawOriginal('medicines'), true) 
+            : $invoice->getRawOriginal('medicines');
+            
+        if (is_array($medicines)) {
+            foreach ($medicines as $med) {
+                $medicinesTotal += (float)($med['price'] ?? 0) * (int)($med['quantity'] ?? 1);
+            }
+        }
+
+        $subtotal = $treatmentsTotal + $otherChargesTotal + $medicinesTotal;
+        $discountAmount = $subtotal * ((float)($invoice->discount ?? 0) / 100);
+        $taxAmount = ($subtotal - $discountAmount) * ((float)($invoice->tax ?? 0) / 100);
+        
+        $newTotal = $subtotal - $discountAmount + $taxAmount;
+        
+        // Add medicines and other charges to patient responsibility, adjusted for discount/tax
+        $patientResponsibilityTotal += $otherChargesTotal + $medicinesTotal - $discountAmount + $taxAmount;
 
         $patientPaid = $invoice->patient_paid_amount ?? 0;
         $insurancePaid = $invoice->insurance_paid_amount ?? 0;

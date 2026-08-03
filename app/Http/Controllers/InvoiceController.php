@@ -379,8 +379,6 @@ class InvoiceController extends Controller
 
         if (isset($validated['treatments'])) {
             foreach ($validated['treatments'] as $treatment) {
-                $invoice->treatments()->create($treatment);
-
                 // Create a corresponding completed treatment plan if patient exists
                 if ($invoice->patient_id) {
                     $tp = new \App\Models\TreatmentPlan([
@@ -410,6 +408,15 @@ class InvoiceController extends Controller
                     $medUnit->decrement('stock_quantity', $med['quantity']);
                 }
             }
+        }
+
+        // Trigger insurance sync which recreates treatments with exact splits and computes new total
+        if ($invoice->patient_id) {
+            \App\Models\TreatmentPlan::syncInvoiceForPatientAndDate(
+                $invoice->patient_id, 
+                \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d')
+            );
+            $invoice->refresh();
         }
 
         $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions']);
@@ -564,11 +571,6 @@ class InvoiceController extends Controller
 
         // Update treatments if provided
         if (isset($validated['treatments'])) {
-            $invoice->treatments()->delete();
-            foreach ($validated['treatments'] as $treatment) {
-                $invoice->treatments()->create($treatment);
-            }
-
             // Sync updated treatments to treatment plans
             \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->delete();
             foreach ($validated['treatments'] as $treatment) {
@@ -627,6 +629,15 @@ class InvoiceController extends Controller
 
             // Save JSON directly
             $invoice->update(['medicines' => $validated['medicines']]);
+        }
+
+        // Trigger insurance sync which recreates treatments with exact splits and computes new total
+        if ($invoice->patient_id) {
+            \App\Models\TreatmentPlan::syncInvoiceForPatientAndDate(
+                $invoice->patient_id, 
+                \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d')
+            );
+            $invoice->refresh();
         }
 
         return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch']));

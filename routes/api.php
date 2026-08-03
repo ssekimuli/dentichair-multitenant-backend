@@ -258,6 +258,12 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::get('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'index']);
         Route::post('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'store']);
         
+        Route::get('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'index']);
+        Route::post('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'store']);
+        
+        Route::get('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'index']);
+        Route::post('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'store']);
+        
         Route::get('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'index']);
         Route::post('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'attach']);
         Route::patch('patients/{patient}/policies/{pivotId}/primary', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'setPrimary']);

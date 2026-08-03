@@ -101,7 +101,7 @@ class TreatmentPlan extends Model
         }
 
         // Fetch patient's primary active policy
-        $primaryPolicy = \App\Models\PatientInsurancePolicy::with('policy.package.treatments')
+        $primaryPolicy = \App\Models\PatientInsurancePolicy::with('policy.package.packageProcedures')
             ->where('patient_id', $patientId)
             ->where('is_primary', true)
             ->where('status', 'active')
@@ -123,7 +123,7 @@ class TreatmentPlan extends Model
 
             if ($primaryPolicy && $primaryPolicy->policy && $primaryPolicy->policy->package && $procedureId) {
                 // Check if specific rule exists for this procedure
-                $rule = $primaryPolicy->policy->package->treatments->where('procedure_id', $procedureId)->first();
+                $rule = $primaryPolicy->policy->package->packageProcedures->where('procedure_id', $procedureId)->first();
                 if ($rule) {
                     if ($rule->coverage_type === 'percentage') {
                         $insuranceAmount = ($rule->coverage_value / 100) * $cost;

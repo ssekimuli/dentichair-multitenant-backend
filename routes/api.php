@@ -261,6 +261,10 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::get('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'index']);
         Route::post('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'store']);
         
+        Route::get('packages/{packageId}/treatments', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'index']);
+        Route::post('packages/{packageId}/treatments', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'store']);
+        Route::delete('packages/{packageId}/treatments/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'destroy']);
+        
         Route::get('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'index']);
         Route::post('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'store']);
         

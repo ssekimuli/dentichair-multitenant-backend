@@ -8,9 +8,17 @@ use Illuminate\Http\Request;
 
 class InsuranceCompanyController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $companies = InsuranceCompany::withCount('packages')->get();
+        $query = InsuranceCompany::withCount('packages');
+        
+        if ($request->has('search') && $request->search != '') {
+            $searchTerm = '%' . $request->search . '%';
+            $query->where('name', 'like', $searchTerm)
+                  ->orWhere('code', 'like', $searchTerm);
+        }
+
+        $companies = $query->get();
         return response()->json(['data' => $companies]);
     }
 

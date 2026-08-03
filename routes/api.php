@@ -142,7 +142,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'update']);
     Route::delete('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'destroy']);
 
-    Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
+    // Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);
 
     // Invoices

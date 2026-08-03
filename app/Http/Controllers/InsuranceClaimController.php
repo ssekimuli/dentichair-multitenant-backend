@@ -24,7 +24,7 @@ class InsuranceClaimController extends Controller
     public function index()
     {
         try {
-            $claims = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->latest()->get();
+            $claims = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice'])->latest()->get();
             // format claims for the frontend which expects patient_insurance.patient, etc
             $claims->transform(function ($claim) {
                 $claim->patient_insurance = [
@@ -123,7 +123,7 @@ class InsuranceClaimController extends Controller
     public function show($id)
     {
         try {
-            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice', 'documents'])->findOrFail($id);
+            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice'])->findOrFail($id);
             $claim->patient_insurance = [
                 'patient' => $claim->patient,
                 'provider_name' => $claim->policy->package->company->name ?? 'Unknown',

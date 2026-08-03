@@ -253,17 +253,19 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::delete('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'deletePrescription']);
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
 
+    // --- NEW INSURANCE MODULE ROUTES ---
+    Route::prefix('insurance')->group(function () {
+        Route::get('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'index']);
+        Route::post('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'store']);
+        
+        Route::get('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'index']);
+        Route::post('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'attach']);
+        Route::patch('patients/{patient}/policies/{pivotId}/primary', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'setPrimary']);
+
+        Route::post('billing/estimate/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'estimate']);
+        Route::post('billing/invoice/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'createInvoice']);
+    });
 });
 
-use App\Http\Controllers\Api\Insurance\PatientInsuranceController;
-use App\Http\Controllers\Api\Insurance\InsuranceBillingController;
 
-Route::prefix('insurance')->group(function () {
-    Route::get('patients/{patient}/policies', [PatientInsuranceController::class, 'index']);
-    Route::post('patients/{patient}/policies', [PatientInsuranceController::class, 'attach']);
-    Route::patch('patients/{patient}/policies/{pivotId}/primary', [PatientInsuranceController::class, 'setPrimary']);
-
-    Route::post('billing/estimate/{patientPolicyId}', [InsuranceBillingController::class, 'estimate']);
-    Route::post('billing/invoice/{patientPolicyId}', [InsuranceBillingController::class, 'createInvoice']);
-});
 

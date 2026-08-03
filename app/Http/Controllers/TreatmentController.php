@@ -8,42 +8,32 @@ use Illuminate\Http\Request;
 
 class TreatmentController extends Controller
 {
+    /**
+     * Store a new treatment for the given patient.
+     */
     public function store(Request $request, Patient $patient)
     {
         $validated = $request->validate([
             'procedure' => 'required|string',
-            'tooth' => 'nullable|integer',
-            'status' => 'required|in:Proposed,Completed',
             'cost' => 'required|numeric',
-            'date' => 'required|date',
-            'condition' => 'nullable|string',
+            'treatment_id' => 'nullable|integer|exists:treatments,id',
+            'appointment_id' => 'nullable|integer|exists:appointments,id',
+            'doctor_id' => 'nullable|integer',
+            'status' => 'nullable|string',
             'notes' => 'nullable|string',
+            'date' => 'nullable|date',
+            'time' => 'nullable|date_format:H:i',
+            'token_number' => 'nullable|string',
+            'tooth' => 'nullable|string',
         ]);
 
-        $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date']);
-        $treatmentPlan = $patient->treatmentPlans()->create($treatmentData);
+        $validated['branch_id'] = $patient->branch_id;
 
-        if (isset($request->condition) && !empty($validated['tooth'])) {
-            $existingRecord = $patient->dentalRecords()
-                ->where('tooth_id', $validated['tooth'])
-                ->first();
+        $treatmentPlan = $patient->treatmentPlans()->create($validated);
 
-            if ($existingRecord) {
-                $existingRecord->update([
-                    'condition' => $request->condition,
-                    'tooth_id' => $validated['tooth'],
-                    'notes' => $validated['notes'] ?? $existingRecord->notes
-                ]);
-            } else {
-                $recordData = [
-                    'condition' => $request->condition,
-                    'tooth_id' => $validated['tooth'],
-                    'notes' => $validated['notes'] ?? null
-                ];
-                $patient->dentalRecords()->create($recordData);
-            }
-        }
-
-        return response()->json($treatmentPlan, 201);
+        return response()->json([
+            'message' => 'Treatment created successfully',
+            'data' => $treatmentPlan
+        ], 201);
     }
 }

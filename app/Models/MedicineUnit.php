@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MedicineUnit extends Model
 {
-    use HasFactory;
+use HasFactory;
 
     protected $fillable = ['medicine_id', 'unit_name', 'price', 'stock_quantity'];
 

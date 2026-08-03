@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
+
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Employee extends Model implements AuthenticatableContract
 {
+    use LogsActivity;
       use Authenticatable, HasFactory, HasApiTokens;
 
     // protected $keyType = 'string';

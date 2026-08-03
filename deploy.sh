@@ -16,11 +16,11 @@ fi
 # ==========================================
 # CONFIGURATION VARIABLES
 # ==========================================
-DOMAIN="icondentalapi.poslycloud.com"
-SITE_USER="poslycloud-icondentalapi"
-DB_NAME="icondentalapidb"
-DB_USER="icondentalapibsuser"
-DB_PASS="icondentalapi3KYkz"
+DOMAIN="shalomdentalcareapi.poslycloud.com"
+SITE_USER="poslycloud-shalomdentalcare"
+DB_NAME="shalomdentalcaredb"
+DB_USER="shalomdentalcarebsuser"
+DB_PASS="shalomdentalcare3KYkz"
 GIT_REPO="git@github.com:ssekimuli/chart-backend.git"
 GIT_BRANCH="production"  # Specify the production branch
 
@@ -134,7 +134,7 @@ fi
 
 # 5. Configure the Cron Scheduler
 echo "[5/6] Setting up cron..."
-CRON_JOB="* * * * * cd $HTDOCS_DIR && php artisan schedule:run >> /dev/null 2>&1"
+CRON_JOB="* * * * * cd $HTDOCS_DIR && php artisan schedule:run >> \$HTDOCS_DIR/storage/logs/cron.log 2>&1"
 (crontab -u "$SITE_USER" -l 2>/dev/null; echo "$CRON_JOB") | sort -u | crontab -u "$SITE_USER" -
 
 # 6. Install SSL Certificate

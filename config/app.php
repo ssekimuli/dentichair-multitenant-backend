@@ -123,4 +123,14 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log Enabled
+    |--------------------------------------------------------------------------
+    |
+    | This value determines whether activity logging is enabled or not.
+    |
+    */
+    'activity_log_enabled' => env('ACTIVITY_LOG_ENABLED', true),
+
 ];

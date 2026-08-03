@@ -10,5 +10,5 @@ Regular checkups are essential for maintaining a healthy and beautiful smile. A 
 Please contact our clinic to schedule your next appointment. We look forward to seeing you again soon!
 
 Thanks,<br>
-{{ config('app.name', 'Dental Management System') }}
+{{ $clinicName ?? config('app.name', 'Dental Management System') }}
 @endcomponent

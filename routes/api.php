@@ -11,6 +11,8 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\MigrationController;
+use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,9 +21,35 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
+
+
+Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function () {
+    // Notifications API
+    //change business emaill
+    //activate/deactive business account
+    //Create Admin
+    //Reset Password
+    Route::post('/send-sms', [NotificationController::class, 'sendSms']);
+    Route::post('/send-whatsapp-media', [NotificationController::class, 'sendWhatsAppMedia']);
+    Route::post('/change-business-email', [BusinessController::class, 'changeEmail']);
+    Route::post('/toggle-business-status', [BusinessController::class, 'toggleStatus']);
+    Route::post('/create-admin', [BusinessController::class, 'createAdmin']);
+    Route::post('/reset-password', [EmployeeController::class, 'resetPasswordByEmail']);
+    
+});
+
+// Public template download (browser direct access)
+Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
+
+    Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
+    Route::post('/verify-transaction', [NotificationController::class, 'verifyWebhook']);
+    Route::post('/update-top-up-balance', [NotificationController::class, 'updateTopUpBalance']);
+
+    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index']);
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
@@ -29,11 +57,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
 
     // Imports
+    Route::post('/migrate', [MigrationController::class, 'migrate']);
     Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
     Route::get('/import/templates', [ImportController::class, 'listTemplates']);
-    Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
     Route::post('/branches', [ManagementController::class, 'createBranch']);
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
@@ -43,15 +71,22 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/businesses', [BusinessController::class, 'index']);
     Route::post('/businesses', [BusinessController::class, 'store']);
 
+    // Clients
+    Route::apiResource('clients', App\Http\Controllers\ClientController::class);
+
     // Patients
     Route::apiResource('patients', PatientController::class);
     Route::put('/patients/{id}/next-visit', [PatientController::class, 'updateNextVisit']);
     Route::get('/patients-list', [PatientController::class, 'patientList']);
     Route::get('/patients/{id}/invoices', [PatientController::class, 'getInvoices']);
 
+    // Appointments
+    Route::apiResource('appointments', AppointmentController::class);
 
-    // Patient Images
+
     Route::get('/patients/{patientId}/images', [PatientController::class, 'getImages']);
+    Route::post('/patients/{patientId}/images/send', [PatientController::class, 'sendDocuments']);
+    Route::post('/patients/{patientId}/periodontal/send', [PatientController::class, 'sendPeriodontalResult']);
     Route::post('/patients/{patientId}/images', [PatientController::class, 'addImage']);
     Route::put('/patients/{patientId}/images/{imageId}', [PatientController::class, 'updateImage']);
     Route::delete('/patients/{patientId}/images/{imageId}', [PatientController::class, 'deleteImage']);
@@ -112,6 +147,14 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Invoices
     Route::apiResource('invoices', InvoiceController::class);
+
+    // Insurance & Claims
+    Route::apiResource('patient-insurances', \App\Http\Controllers\PatientInsuranceController::class);
+    Route::get('/patients/{patientId}/insurances', [\App\Http\Controllers\PatientInsuranceController::class, 'getByPatient']);
+    Route::get('/insurance-claims/stats', [\App\Http\Controllers\InsuranceClaimController::class, 'stats']);
+    Route::post('/insurance-claims/{id}/documents', [\App\Http\Controllers\InsuranceClaimController::class, 'uploadDocument']);
+    Route::delete('/insurance-claims/{id}/documents/{documentId}', [\App\Http\Controllers\InsuranceClaimController::class, 'deleteDocument']);
+    Route::apiResource('insurance-claims', \App\Http\Controllers\InsuranceClaimController::class);
     Route::get('/income-records', [InvoiceController::class, 'getIncomeRecords']);
     Route::post('/invoices/{id}/payments', [InvoiceController::class, 'addPayment']);
 
@@ -151,6 +194,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::get('/lab-orders', [ManagementController::class, 'getLabOrders']);
         Route::post('/lab-orders', [ManagementController::class, 'createLabOrder']);
         Route::patch('/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus']);
+        Route::post('/lab-orders/{id}/send', [ManagementController::class, 'sendLabOrder']);
 
         // Leave Requests
         Route::post('/leave-requests', [ManagementController::class, 'createLeaveRequest']);
@@ -170,6 +214,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);
         Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
     });
+
+    // Branch Settings
+    Route::get('/settings/branch', [\App\Http\Controllers\BranchSettingController::class, 'getSettings']);
+    Route::post('/settings/branch', [\App\Http\Controllers\BranchSettingController::class, 'updateSettings']);
+    Route::post('/settings/branch/top-up', [\App\Http\Controllers\BranchSettingController::class, 'topUpCredits']);
 
     // Get all roles with permissions (Super Admin only)
     Route::get('/settings/roles', [RolePermissionController::class, 'getAllRolesWithPermissions']);
@@ -191,7 +240,6 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
     Route::get('/import/templates', [ImportController::class, 'listTemplates']);
-    Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 
     // Pharmacy Module
     Route::get('/pharmacy/medicines', [PharmacyController::class, 'getMedicines']);
@@ -204,4 +252,5 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'updatePrescription']);
     Route::delete('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'deletePrescription']);
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
+
 });

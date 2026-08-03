@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
+
 use Illuminate\Database\Eloquent\Model;
 
 class TreatmentPlan extends Model
 {
+    use LogsActivity;
     //
     // procedure
     protected $fillable = ['procedure', 'cost', 'treatment_id', 'appointment_id', 'patient_id', 'doctor_id', 'branch_id', 'status', 'notes', 'date', 'time', 'token_number', 'tooth'];

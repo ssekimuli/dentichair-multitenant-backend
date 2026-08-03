@@ -36,6 +36,7 @@ class CheckLowStockInventory extends Command
         }
 
         $sent = 0;
+        $notifiedAdmins = [];
 
         foreach ($admins as $admin) {
             try {
@@ -44,6 +45,10 @@ class CheckLowStockInventory extends Command
                     'outOfStockItems' => $outOfStockItems,
                 ], 'Inventory Alert - Low Stock Items'));
 
+                $notifiedAdmins[] = [
+                    'name' => $admin->name,
+                    'email' => $admin->email,
+                ];
                 $sent++;
             } catch (\Exception $e) {
                 logger()->error("Failed to send low stock alert to {$admin->email}: " . $e->getMessage());
@@ -52,6 +57,12 @@ class CheckLowStockInventory extends Command
         }
 
         $this->info("Sent low stock alerts to {$sent} admin(s).");
+
+        \App\Models\ActivityLog::log(
+            'cron_job',
+            "Found {$outOfStockItems->count()} out-of-stock and {$lowStockItems->count()} low-stock item(s). Sent alerts to {$sent} admin(s).",
+            ['admins' => $notifiedAdmins]
+        );
 
         return Command::SUCCESS;
     }

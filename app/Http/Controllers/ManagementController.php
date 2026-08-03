@@ -317,7 +317,7 @@ class ManagementController extends Controller
      */
     public function getLabOrders(Request $request)
     {
-        $query = LaboratoryOrder::with(['patient', 'branch']);
+        $query = LaboratoryOrder::with(['client', 'branch', 'doctor']);
         if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
         $orders = $query->latest()->paginate($request->input('per_page', 10));
         return response()->json([
@@ -346,7 +346,14 @@ class ManagementController extends Controller
         ]);
 
         $order->update($validated);
-        return response()->json($order->load(['patient', 'branch']));
+        
+        \App\Models\ActivityLog::log(
+            'Lab Order Status Updated', 
+            "Lab order #{$order->id} status updated to {$validated['status']}.", 
+            ['lab_order_id' => $order->id, 'status' => $validated['status']]
+        );
+
+        return response()->json($order->load(['client', 'branch']));
     }
 
     /**
@@ -1130,7 +1137,8 @@ class ManagementController extends Controller
     public function createLabOrder(Request $request)
     {
         $validated = $request->validate([
-            'patientId' => 'required|exists:patients,id',
+            'clientId' => 'required|exists:clients,id',
+            'patientName' => 'required|string',
             'lab' => 'required|string',
             'item' => 'required|string',
             'tooth' => 'nullable|integer',
@@ -1138,13 +1146,18 @@ class ManagementController extends Controller
             'sentDate' => 'required|date',
             'dueDate' => 'required|date',
             'branchId' => 'required|exists:branches,id',
+            'receivedDate' => 'nullable|date',
+            'shade' => 'nullable|string',
+            'material' => 'nullable|string',
+            'instructions' => 'nullable|string',
+            'cost' => 'nullable|numeric',
+            'invoiceNumber' => 'nullable|string',
+            'doctorId' => 'nullable|exists:employees,id',
         ]);
 
-        $patient = Patient::find($validated['patientId']);
-
         $labOrder = LaboratoryOrder::create([
-            'patient_id' => $validated['patientId'],
-            'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+            'client_id' => $validated['clientId'],
+            'patient_name' => $validated['patientName'],
             'lab' => $validated['lab'],
             'item' => $validated['item'],
             'tooth' => $validated['tooth'] ?? null,
@@ -1152,9 +1165,22 @@ class ManagementController extends Controller
             'sent_date' => $validated['sentDate'],
             'due_date' => $validated['dueDate'],
             'branch_id' => $validated['branchId'],
+            'received_date' => $validated['receivedDate'] ?? null,
+            'shade' => $validated['shade'] ?? null,
+            'material' => $validated['material'] ?? null,
+            'instructions' => $validated['instructions'] ?? null,
+            'cost' => $validated['cost'] ?? null,
+            'invoice_number' => $validated['invoiceNumber'] ?? null,
+            'doctor_id' => $validated['doctorId'] ?? null,
         ]);
 
-        return response()->json($labOrder->load(['patient', 'branch']), 201);
+        \App\Models\ActivityLog::log(
+            'Lab Order Created', 
+            "Lab order for patient {$validated['patientName']} was created.", 
+            ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
+        );
+
+        return response()->json($labOrder->load(['client', 'branch']), 201);
     }
 
     public function createInventoryItem(Request $request)
@@ -1277,5 +1303,66 @@ class ManagementController extends Controller
         ];
 
         return response()->json($currencies);
+    }
+
+    public function sendLabOrder(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'channel' => 'required|in:email,whatsapp,sms',
+            'customMessage' => 'nullable|string'
+        ]);
+
+        $order = LaboratoryOrder::with(['client', 'branch'])->find($id);
+        if (!$order) {
+            return response()->json(['error' => 'Lab order not found'], 404);
+        }
+
+        $client = $order->client;
+        if (!$client) {
+            return response()->json(['error' => 'No client associated with this order'], 400);
+        }
+
+        $channel = $validated['channel'];
+        $recipient = $channel === 'email' ? $client->email : $client->phone;
+
+        if (!$recipient) {
+            return response()->json(['error' => "Client does not have a valid {$channel} configured"], 400);
+        }
+
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $defaultMsg = "Hello {$client->name},\n\nA new lab order has been assigned to your laboratory.\n*Patient Name:* {$order->patient_name}\n*Item:* {$order->item}\n" . ($order->tooth ? "*Tooth:* {$order->tooth}\n" : "") . "*Status:* {$order->status}\n*Due Date:* {$order->due_date}\n\nThank you.";
+        $msg = $validated['customMessage'] ?? $defaultMsg;
+
+        if ($channel === 'whatsapp') {
+            if (!$settings->isWhatsappActive()) {
+                return response()->json(['error' => 'WhatsApp integration is not active'], 400);
+            }
+            \App\Services\NotificationService::sendWhatsApp($recipient, $msg);
+        } else if ($channel === 'sms') {
+            if (!$settings->deductSms()) {
+                return response()->json(['error' => 'Insufficient SMS balance or SMS integration not active'], 400);
+            }
+            \App\Services\NotificationService::sendSms($recipient, $msg);
+        } else {
+            $viewData = [
+                'clientName' => $client->name,
+                'patientName' => $order->patient_name,
+                'item' => $order->item,
+                'tooth' => $order->tooth,
+                'status' => $order->status,
+                'dueDate' => $order->due_date,
+                'customMessage' => isset($validated['customMessage']) ? nl2br($validated['customMessage']) : null,
+            ];
+            $subject = isset($validated['customMessage']) ? "Message regarding Lab Order #{$order->id}" : 'New Lab Order';
+            \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\GenericMarkdownMail('emails.lab-order', $viewData, $subject));
+        }
+
+        \App\Models\ActivityLog::log(
+            "Lab Order Sent",
+            "Lab order #{$order->id} sent to client {$client->name} via {$channel}.",
+            ['lab_order_id' => $order->id, 'channel' => $channel]
+        );
+
+        return response()->json(['message' => "Lab order sent successfully via {$channel}"]);
     }
 }

@@ -156,7 +156,29 @@ class EmployeeController extends Controller
 
         $employee->load('branch');
 
-        if ($employee->email) {
+        $settings = \App\Models\GlobalSetting::getSettings();
+
+        if ($settings && isset($settings->notifications['staff_created'])) {
+            $sendEmail = $settings->notifications['staff_created']['email'] ?? true;
+            $sendSms = $settings->notifications['staff_created']['sms'] ?? false;
+            $sendWa = $settings->notifications['staff_created']['whatsapp'] ?? false;
+            $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+            if ($sendSms && isset($employee->phone) && $settings->deductSms()) {
+                $msg = "Welcome {$employee->name}! You have been added as {$employee->role} at {$clinicName}. Your temporary password is: {$temporaryPassword}";
+                \App\Services\NotificationService::sendSms($employee->phone, $msg);
+            }
+
+            if ($sendWa && isset($employee->phone) && $settings->isWhatsappActive()) {
+                $msg = "Welcome {$employee->name}! You have been added as {$employee->role} at {$clinicName}. Your temporary password is: {$temporaryPassword}";
+                \App\Services\NotificationService::sendWhatsApp($employee->phone, $msg);
+            }
+        }
+
+        $sendEmail = $settings->notifications['staff_created']['email'] ?? true;
+        $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+        if ($sendEmail && $employee->email) {
             try {
                 Mail::to($employee->email)->send(new EmployeeWelcomeMail([
                     'name' => $employee->name,
@@ -164,7 +186,8 @@ class EmployeeController extends Controller
                     'temporaryPassword' => $temporaryPassword,
                     'role' => $employee->role,
                     'branchName' => $employee->branch->name ?? 'Dental Clinic',
-                ], 'Welcome to the Team! - Dental Management System'));
+                    'clinicName' => $clinicName
+                ], 'Welcome to ' . $clinicName));
             } catch (\Exception $e) {
                 logger()->error("Failed to send employee welcome email: " . $e->getMessage());
             }
@@ -517,6 +540,31 @@ class EmployeeController extends Controller
         }
         
         return response()->json(['error' => 'Employee has no email address'], 400);
+    }
+
+    /**
+     * Reset Employee Password by Email
+     * 
+     * Resets the employee's password via their email and sends an email with the new credentials.
+     * 
+     * @authenticated
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetPasswordByEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:employees,email'
+        ]);
+
+        try {
+            $employee = Employee::where('email', $request->email)->firstOrFail();
+            
+            return $this->resendPassword($employee->id);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function getDoctors(Request $request)

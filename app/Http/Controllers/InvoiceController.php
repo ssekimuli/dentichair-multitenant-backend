@@ -414,7 +414,29 @@ class InvoiceController extends Controller
 
         $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions']);
 
-        if ($invoice->patient && $invoice->patient->email) {
+        $settings = \App\Models\GlobalSetting::getSettings();
+
+        if ($settings && isset($settings->notifications['billing'])) {
+            $sendEmail = $settings->notifications['billing']['email'] ?? true;
+            $sendSms = $settings->notifications['billing']['sms'] ?? false;
+            $sendWa = $settings->notifications['billing']['whatsapp'] ?? false;
+
+            $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+            if ($sendSms && $invoice->patient->phone && $settings->deductSms()) {
+                $msg = "Dear {$invoice->patient->first_name}, your new invoice (#{$invoice->id}) for amount {$invoice->amount} from {$clinicName} is ready.";
+                \App\Services\NotificationService::sendSms($invoice->patient->phone, $msg);
+            }
+
+            if ($sendWa && $invoice->patient->phone && $settings->isWhatsappActive()) {
+                $msg = "Dear {$invoice->patient->first_name}, your new invoice (#{$invoice->id}) for amount {$invoice->amount} from {$clinicName} is ready.";
+                \App\Services\NotificationService::sendWhatsApp($invoice->patient->phone, $msg);
+            }
+        }
+
+        $sendEmail = $settings->notifications['billing']['email'] ?? true;
+
+        if ($sendEmail && $invoice->patient && $invoice->patient->email) {
             try {
                 Mail::to($invoice->patient->email)->send(new \App\Mail\GenericMarkdownMail(
                     'emails.invoice-created',
@@ -425,8 +447,9 @@ class InvoiceController extends Controller
                         'amount' => $invoice->amount,
                         'treatments' => $invoice->treatments->toArray(),
                         'otherCharges' => $invoice->otherCharges->toArray(),
+                        'clinicName' => $settings->clinic_name ?? 'Our Clinic',
                     ],
-                    "New Invoice Issued (#{$invoice->id}) - Dental Management System"
+                    'New Invoice #' . $invoice->id . ' - ' . ($settings->clinic_name ?? 'Our Clinic')
                 ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send invoice creation email: " . $e->getMessage());
@@ -688,9 +711,30 @@ class InvoiceController extends Controller
             'payment_method' => $validated['method'],
         ]);
 
+        \App\Models\ActivityLog::log('pay_invoice', "Payment of {$validated['amount']} added to Invoice #{$invoice->id}", ['invoice_id' => $invoice->id, 'amount' => $validated['amount'], 'method' => $validated['method']]);
+
         $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient']);
 
-        if ($invoice->patient && $invoice->patient->email) {
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $sendEmail = $settings->notifications['payment_success']['email'] ?? true;
+        $sendSms = $settings->notifications['payment_success']['sms'] ?? false;
+        $sendWa = $settings->notifications['payment_success']['whatsapp'] ?? false;
+        
+        $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+        if ($sendSms && $invoice->patient && $invoice->patient->phone && $settings->deductSms()) {
+            $msg = "Payment Receipt from {$clinicName}: Thank you {$invoice->patient->first_name} for your payment of {$transaction->amount} towards Invoice #{$invoice->id}.";
+            \App\Services\NotificationService::sendSms($invoice->patient->phone, $msg);
+        }
+
+        if ($sendWa && $invoice->patient && $invoice->patient->phone && $settings->isWhatsappActive()) {
+            $msg = "Payment Receipt from {$clinicName}: Thank you {$invoice->patient->first_name} for your payment of {$transaction->amount} towards Invoice #{$invoice->id}.";
+            \App\Services\NotificationService::sendWhatsApp($invoice->patient->phone, $msg);
+        }
+
+        $sendEmail = $settings->notifications['payment_success']['email'] ?? true;
+
+        if ($sendEmail && $invoice->patient && $invoice->patient->email) {
             try {
                 Mail::to($invoice->patient->email)->send(new \App\Mail\GenericMarkdownMail(
                     'emails.payment-receipt',
@@ -700,10 +744,11 @@ class InvoiceController extends Controller
                         'paymentDate' => $transaction->date,
                         'paymentMethod' => $transaction->method,
                         'amountPaid' => $transaction->amount,
-                        'remainingBalance' => max(0, $invoice->amount - $invoice->paid_amount),
-                        'invoiceStatus' => $invoice->status,
+                        'totalAmount' => $invoice->amount,
+                        'remainingBalance' => $invoice->amount - $invoice->payments()->sum('amount'),
+                        'clinicName' => $settings->clinic_name ?? 'Our Clinic',
                     ],
-                    "Payment Receipt (#{$invoice->id}) - Dental Management System"
+                    'Payment Receipt - Invoice #' . $invoice->id . ' - ' . ($settings->clinic_name ?? 'Our Clinic')
                 ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send payment receipt email: " . $e->getMessage());

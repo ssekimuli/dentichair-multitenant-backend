@@ -15,4 +15,5 @@ Schedule::command('inventory:check-low-stock')->dailyAt('08:00');
 Schedule::command('payroll:send-reminder')->dailyAt('08:00');
 Schedule::command('appointments:send-reminders')->dailyAt('18:00');
 Schedule::command('patients:routine-checkup')->dailyAt('09:00');
+Schedule::command('patients:send-birthday-wishes')->dailyAt('09:00');
 Schedule::command('app:auto-schedule-next-visits')->daily();

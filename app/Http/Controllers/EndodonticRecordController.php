@@ -11,6 +11,7 @@ class EndodonticRecordController extends Controller
     public function store(Request $request, Patient $patient)
     {
         $validated = $request->validate([
+            'date' => 'required|date',
             'tooth_id' => 'required|integer',
             'pulpal_diagnosis' => 'required|string',
             'periapical_diagnosis' => 'required|string',
@@ -20,10 +21,7 @@ class EndodonticRecordController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $record = $patient->endodonticRecords()->create([
-            ...$validated,
-            'date' => now()->format('Y-m-d'),
-        ]);
+        $record = $patient->endodonticRecords()->create($validated);
 
         return response()->json($record, 201);
     }
@@ -35,10 +33,11 @@ class EndodonticRecordController extends Controller
         }
 
         $validated = $request->validate([
-            'tooth_id' => 'sometimes|required|integer',
-            'pulpal_diagnosis' => 'sometimes|required|string',
-            'periapical_diagnosis' => 'sometimes|required|string',
-            'canals' => 'sometimes|required|array',
+            'date' => 'sometimes|date',
+            'tooth_id' => 'sometimes|integer',
+            'pulpal_diagnosis' => 'sometimes|string',
+            'periapical_diagnosis' => 'sometimes|string',
+            'canals' => 'sometimes|array',
             'obturation_material' => 'nullable|string',
             'post_type' => 'nullable|string',
             'notes' => 'nullable|string',

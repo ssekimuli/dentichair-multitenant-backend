@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Patient extends Model
 {
+    use LogsActivity;
     use HasFactory;
 
     // protected $keyType = 'string';
@@ -29,6 +32,7 @@ class Patient extends Model
     'branch_id',
     'history',
     'occlusal_records',
+    'nationality',
 ];
 
 
@@ -112,5 +116,10 @@ class Patient extends Model
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class)->orderBy('id', 'desc');
+    }
+
+    public function insurances(): HasMany
+    {
+        return $this->hasMany(PatientInsurance::class);
     }
 }

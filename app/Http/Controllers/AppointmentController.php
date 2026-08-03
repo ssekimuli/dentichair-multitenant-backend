@@ -173,9 +173,31 @@ class AppointmentController extends Controller
 
         $appointment->load(['patient', 'doctor', 'branch']);
 
+        $settings = \App\Models\GlobalSetting::getSettings();
+
+        if ($settings && isset($settings->notifications['appointments_created'])) {
+            $sendEmail = $settings->notifications['appointments_created']['email'] ?? true;
+            $sendSms = $settings->notifications['appointments_created']['sms'] ?? false;
+            $sendWa = $settings->notifications['appointments_created']['whatsapp'] ?? false;
+            $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+            if ($sendSms && $appointment->patient->phone && $settings->deductSms()) {
+                $msg = "Dear {$appointment->patient->first_name}, your appointment at {$clinicName} is confirmed for {$appointment->date->toDateString()} at {$appointment->time}. Token: {$appointment->token_number}.";
+                \App\Services\NotificationService::sendSms($appointment->patient->phone, $msg);
+            }
+
+            if ($sendWa && $appointment->patient->phone && $settings->isWhatsappActive()) {
+                $msg = "Dear {$appointment->patient->first_name}, your appointment at {$clinicName} is confirmed for {$appointment->date->toDateString()} at {$appointment->time}. Token: {$appointment->token_number}.";
+                \App\Services\NotificationService::sendWhatsApp($appointment->patient->phone, $msg);
+            }
+        }
+
+        $sendEmail = $settings->notifications['appointments_created']['email'] ?? true;
+
         // Send Email notification to patient if they have an email
-        if ($appointment->patient && $appointment->patient->email) {
+        if ($sendEmail && $appointment->patient && $appointment->patient->email) {
             try {
+                $clinicName = $settings->clinic_name ?? 'Our Clinic';
                 Mail::to($appointment->patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-confirmation', [
                     'patientName' => $appointment->patient->first_name . ' ' . $appointment->patient->last_name,
                     'tokenNumber' => $appointment->token_number,
@@ -183,8 +205,9 @@ class AppointmentController extends Controller
                     'treatment' => $appointment->treatment,
                     'date' => $appointment->date->toDateString(),
                     'time' => $appointment->time,
+                    'clinicName' => $clinicName,
                     'branchName' => $appointment->branch->name ?? 'Dental Clinic',
-                ], 'Appointment Scheduled - Dental Management System'));
+                ], 'Appointment Confirmation - ' . $clinicName));
             } catch (\Exception $e) {
                 logger()->error("Failed to send appointment confirmation email: " . $e->getMessage());
             }

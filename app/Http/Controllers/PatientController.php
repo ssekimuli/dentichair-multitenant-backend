@@ -8,6 +8,7 @@ use App\Models\OrthodonticRecord;
 use App\Services\CloudflareR2Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -78,6 +79,15 @@ class PatientController extends Controller
 
         if ($request->filled('gender')) {
             $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('first_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('patient_id', 'like', "%{$searchTerm}%");
+            });
         }
 
         $patients = $query->latest()->paginate($request->input('per_page', 10));
@@ -270,6 +280,7 @@ class PatientController extends Controller
             'status' => $patient->status,
             'branch' => $patient->branch,
             'history' => $patient->history,
+            'nationality' => $patient->nationality,
             'appointments' => $patient->appointments->map(function ($appointment) {
                 return [
                     'id' => $appointment->id,
@@ -352,8 +363,8 @@ class PatientController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'avatar' => 'nullable|string',
-            'email' => 'required|email|unique:patients,email',
-            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|unique:patients,email',
+            'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'required|date',
@@ -362,18 +373,42 @@ class PatientController extends Controller
             'branch_id' => 'required|exists:branches,id',
             'history' => 'nullable|string',
             'occlusal_records' => 'nullable|json',
+            'nationality' => 'nullable|string|max:255',
         ]);
 
         $patient = Patient::create($validated);
         $patient->load('branch');
 
-        if ($patient->email) {
+        $settings = \App\Models\GlobalSetting::getSettings();
+
+        if ($settings && isset($settings->notifications['patient_created'])) {
+            $sendEmail = $settings->notifications['patient_created']['email'] ?? true;
+            $sendSms = $settings->notifications['patient_created']['sms'] ?? false;
+            $sendWa = $settings->notifications['patient_created']['whatsapp'] ?? false;
+
+            $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+            if ($sendSms && $patient->phone && $settings->deductSms()) {
+                $msg = "Welcome {$patient->first_name}! Your profile has been created at {$clinicName}.";
+                \App\Services\NotificationService::sendSms($patient->phone, $msg);
+            }
+
+            if ($sendWa && $patient->phone && $settings->isWhatsappActive()) {
+                $msg = "Welcome {$patient->first_name}! Your profile has been created at {$clinicName}.";
+                \App\Services\NotificationService::sendWhatsApp($patient->phone, $msg);
+            }
+        }
+
+        $sendEmail = $settings->notifications['patient_created']['email'] ?? true;
+
+        if ($sendEmail && $patient->email) {
             try {
+                $clinicName = $settings->clinic_name ?? 'Our Clinic';
                 Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.patient-welcome', [
                     'name' => $patient->first_name . ' ' . $patient->last_name,
-                    'email' => $patient->email,
-                    'branchName' => $patient->branch->name ?? 'Dental Clinic',
-                ], 'Welcome to Our Practice! - Dental Management System'));
+                    'patientId' => $patient->patient_id,
+                    'clinicName' => $clinicName
+                ], 'Welcome to ' . $clinicName));
             } catch (\Exception $e) {
                 logger()->error("Failed to send patient welcome email: " . $e->getMessage());
             }
@@ -455,8 +490,8 @@ class PatientController extends Controller
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'avatar' => 'nullable|string',
-            'email' => 'sometimes|email|unique:patients,email,' . $id,
-            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|unique:patients,email,' . $id,
+            'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'sometimes|date',
@@ -465,6 +500,7 @@ class PatientController extends Controller
             'branch_id' => 'sometimes|exists:branches,id',
             'history' => 'nullable|string',
             'occlusal_records' => 'nullable|json',
+            'nationality' => 'nullable|string|max:255',
         ]);
 
         $patient->update($validated);
@@ -503,7 +539,7 @@ class PatientController extends Controller
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        \DB::transaction(function () use ($patient) {
+        DB::transaction(function () use ($patient) {
             // Delete related invoices and their sub-records
             foreach ($patient->invoices as $invoice) {
                 $invoice->treatments()->delete();
@@ -583,6 +619,195 @@ class PatientController extends Controller
             'message' => 'Images retrieved successfully.',
             'data' => $query->latest()->get()
         ]);
+    }
+
+    /**
+     * Add Patient Image
+     *
+     * Add a new image to patient's records (X-rays, clinical photos, etc.).
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @bodyParam url string required URL of the image. Example: https://picsum.photos/800/600
+     * @bodyParam description string required Description of the image. Example: Panoramic X-ray showing full dentition
+     *
+     * @response 200 {
+     *   "id": "1",
+     *   "name": "John Doe",
+     *   "imaging": [
+     *     {
+     *       "url": "https://picsum.photos/800/600",
+     *       "description": "Panoramic X-ray showing full dentition",
+     *       "date": "2024-07-15"
+     *     }
+     *   ]
+     * }
+     * @response 404 {
+     *   "error": "Patient not found"
+     * }
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function sendDocuments(Request $request, $patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $request->validate([
+            'document_ids' => 'required|array',
+            'document_ids.*' => 'integer|exists:patient_images,id',
+            'channel' => 'required|in:email,whatsapp',
+            'recipient' => 'required|string',
+            'custom_message' => 'nullable|string'
+        ]);
+
+        $documents = \App\Models\PatientImage::whereIn('id', $request->document_ids)
+            ->where('patient_id', $patientId)
+            ->get();
+
+        if ($documents->isEmpty()) {
+            return response()->json(['error' => 'No valid documents found for this patient'], 404);
+        }
+
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $clinicName = $settings->clinic_name ?? 'Our Clinic';
+
+        $links = [];
+        $attachments = [];
+        
+        foreach ($documents as $doc) {
+            // Ensure $doc->url is always a full public URL (so both email and WhatsApp send actual file links, not relative paths)
+            if (!str_starts_with($doc->url, 'http')) {
+                $doc->url = url('/storage/' . ltrim($doc->url, '/'));
+            }
+
+            $storageUrl = url('/storage');
+            if (str_starts_with($doc->url, $storageUrl)) {
+                $path = str_replace($storageUrl, storage_path('app/public'), $doc->url);
+                if (file_exists($path)) {
+                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                }
+            } else {
+                // Remote URL (e.g. Cloudflare R2 / S3), attach it using fromUrl
+                try {
+                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromUrl($doc->url);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("Could not attach remote file: " . $doc->url . ". Error: " . $e->getMessage());
+                }
+            }
+
+            $links[] = [
+                'name' => $doc->description ?? 'Document',
+                'url' => $doc->url
+            ];
+        }
+
+        $channel = $request->channel;
+        $recipient = $request->recipient;
+        $customMessage = $request->custom_message;
+
+        // Send Email
+        if ($channel === 'email') {
+            $mail = new \App\Mail\GenericMarkdownMail(
+                'emails.patient-documents',
+                [
+                    'name' => $patient->first_name,
+                    'clinicName' => $clinicName,
+                    'links' => $links,
+                    'customMessage' => $customMessage,
+                ],
+                "Your Documents from {$clinicName}",
+                $attachments
+            );
+            \Illuminate\Support\Facades\Mail::to($recipient)->send($mail);
+        }
+
+        // Send WhatsApp
+        if ($channel === 'whatsapp' && $settings->isWhatsappActive()) {
+            // First, send the links in a text message
+            $msg = "Hello {$patient->first_name}, here are your requested documents from {$clinicName}:\n\n";
+            if (!empty($customMessage)) {
+                $msg .= "{$customMessage}\n\n";
+            }
+            foreach ($links as $link) {
+                $msg .= "- {$link['name']}: {$link['url']}\n";
+            }
+            \App\Services\NotificationService::sendWhatsApp($recipient, $msg);
+
+            // Also send media using our new method if applicable
+            foreach ($links as $link) {
+                \App\Services\NotificationService::sendMediaWhatsApp($recipient, $link['url'], $link['name']);
+            }
+        }
+
+        return response()->json(['message' => 'Documents sent successfully.']);
+    }
+
+    /**
+     * Send Periodontal Results
+     *
+     * Send periodontal chart summary via email or WhatsApp
+     */
+    public function sendPeriodontalResult(Request $request, $patientId)
+    {
+        $patient = Patient::findOrFail($patientId);
+        $settings = \App\Models\GlobalSetting::firstOrCreate(['id' => 1]);
+        $clinicName = $settings->clinic_name ?: 'Our Clinic';
+
+        $request->validate([
+            'channel' => 'required|in:email,whatsapp',
+            'recipient' => 'required|string',
+            'custom_message' => 'nullable|string',
+            'data' => 'required|array'
+        ]);
+
+        $channel = $request->channel;
+        $recipient = $request->recipient;
+        $customMessage = $request->custom_message;
+        $data = $request->data;
+
+        // Send Email
+        if ($channel === 'email') {
+            $mail = new \App\Mail\GenericMarkdownMail(
+                'emails.patient-periodontal-result',
+                [
+                    'name' => $patient->first_name,
+                    'clinicName' => $clinicName,
+                    'customMessage' => $customMessage,
+                    'data' => $data
+                ],
+                "Your Periodontal Examination Results from {$clinicName}"
+            );
+            \Illuminate\Support\Facades\Mail::to($recipient)->send($mail);
+        }
+
+        // Send WhatsApp
+        if ($channel === 'whatsapp' && $settings->isWhatsappActive()) {
+            $msg = "Hello {$patient->first_name}, here is the summary of your recent periodontal examination at {$clinicName}:\n\n";
+            if (!empty($customMessage)) {
+                $msg .= "{$customMessage}\n\n";
+            }
+            $msg .= "Key Indices:\n";
+            $msg .= "- Bleeding Index: {$data['bleeding_index']}%\n";
+            $msg .= "- Plaque Index: {$data['plaque_index']}%\n\n";
+            $msg .= "PSR Scores:\n";
+            $msg .= "- Upper Right: {$data['psr_scores'][0]}\n";
+            $msg .= "- Upper Anterior: {$data['psr_scores'][1]}\n";
+            $msg .= "- Upper Left: {$data['psr_scores'][2]}\n";
+            $msg .= "- Lower Right: {$data['psr_scores'][3]}\n";
+            $msg .= "- Lower Anterior: {$data['psr_scores'][4]}\n";
+            $msg .= "- Lower Left: {$data['psr_scores'][5]}\n";
+            
+            \App\Services\NotificationService::sendWhatsApp($recipient, $msg);
+        }
+
+        return response()->json(['message' => 'Results sent successfully']);
     }
 
     /**
@@ -2142,14 +2367,20 @@ class PatientController extends Controller
     /**
      * Get all invoices of a patient.
      */
-    public function getInvoices($id)
+    public function getInvoices(Request $request, $id)
     {
         $patient = Patient::find($id);
         if (!$patient) {
             return response()->json(['error' => 'Patient not found'], 404);
         }
 
-        $invoices = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions'])->latest()->get();
+        $query = $patient->invoices()->with(['branch', 'treatments', 'otherCharges', 'transactions']);
+        
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $invoices = $query->latest()->get();
         return response()->json($invoices);
     }
 

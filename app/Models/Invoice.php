@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,13 +11,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
+    use LogsActivity;
     use HasFactory;
 
     // protected $keyType = 'string';
     // public $incrementing = false;
 
     protected $fillable = [
-        'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
+        'receipt_number', 'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
         'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines',
         'discount', 'tax', 'insurance_coverage'
     ];
@@ -27,6 +30,15 @@ class Invoice extends Model
         'paid_amount' => 'decimal:2',
         'medicines' => 'array',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($invoice) {
+            if (empty($invoice->receipt_number)) {
+                $invoice->receipt_number = 'REC-' . strtoupper(\Illuminate\Support\Str::random(8));
+            }
+        });
+    }
 
     public function patient(): BelongsTo
     {
@@ -61,6 +73,11 @@ class Invoice extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(PaymentTransaction::class);
+    }
+
+    public function insuranceClaims(): HasMany
+    {
+        return $this->hasMany(InsuranceClaim::class);
     }
 
     public function getMedicinesAttribute($value)

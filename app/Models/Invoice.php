@@ -28,6 +28,12 @@ class Invoice extends Model
         'due_date' => 'date',
         'amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'patient_responsibility' => 'decimal:2',
+        'insurance_responsibility' => 'decimal:2',
+        'patient_paid_amount' => 'decimal:2',
+        'insurance_paid_amount' => 'decimal:2',
+        'patient_balance' => 'decimal:2',
+        'insurance_balance' => 'decimal:2',
         'medicines' => 'array',
     ];
 

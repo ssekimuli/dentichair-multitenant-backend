@@ -122,4 +122,23 @@ class Patient extends Model
     {
         return $this->hasMany(PatientInsurance::class);
     }
+
+    public function insurancePolicies()
+    {
+        return $this->belongsToMany(InsurancePolicy::class, 'patient_insurance_policies')
+                    ->using(PatientInsurancePolicy::class)
+                    ->withPivot([
+                        'id', 'membership_number', 'principal_patient_id', 'principal_member_name', 
+                        'relationship', 'coverage_start_date', 'coverage_end_date', 
+                        'individual_coverage_limit', 'used_amount', 'remaining_balance', 
+                        'requires_approval', 'is_primary', 'insurance_card', 
+                        'verification_status', 'status'
+                    ])
+                    ->withTimestamps();
+    }
+
+    public function primaryInsurancePolicy()
+    {
+        return $this->insurancePolicies()->wherePivot('is_primary', true)->wherePivot('status', 'active');
+    }
 }

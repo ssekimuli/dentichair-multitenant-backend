@@ -254,3 +254,16 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
 
 });
+
+use App\Http\Controllers\Api\Insurance\PatientInsuranceController;
+use App\Http\Controllers\Api\Insurance\InsuranceBillingController;
+
+Route::prefix('insurance')->group(function () {
+    Route::get('patients/{patient}/policies', [PatientInsuranceController::class, 'index']);
+    Route::post('patients/{patient}/policies', [PatientInsuranceController::class, 'attach']);
+    Route::patch('patients/{patient}/policies/{pivotId}/primary', [PatientInsuranceController::class, 'setPrimary']);
+
+    Route::post('billing/estimate/{patientPolicyId}', [InsuranceBillingController::class, 'estimate']);
+    Route::post('billing/invoice/{patientPolicyId}', [InsuranceBillingController::class, 'createInvoice']);
+});
+

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
-            $table->decimal('patient_responsibility', 15, 2)->default(0)->after('total_amount');
+            $table->decimal('patient_responsibility', 15, 2)->default(0)->after('amount');
             $table->decimal('insurance_responsibility', 15, 2)->default(0)->after('patient_responsibility');
             $table->decimal('patient_paid_amount', 15, 2)->default(0)->after('insurance_responsibility');
             $table->decimal('insurance_paid_amount', 15, 2)->default(0)->after('patient_paid_amount');
@@ -18,6 +18,10 @@ return new class extends Migration
         });
 
         Schema::table('invoice_treatments', function (Blueprint $table) {
+            $table->unsignedBigInteger('procedure_id')->nullable()->after('procedure');
+            $table->integer('quantity')->default(1)->after('cost');
+            $table->decimal('unit_price', 15, 2)->default(0)->after('quantity');
+            $table->decimal('total_amount', 15, 2)->default(0)->after('unit_price');
             $table->decimal('covered_amount', 15, 2)->default(0)->after('total_amount');
             $table->decimal('insurance_amount', 15, 2)->default(0)->after('covered_amount');
             $table->decimal('patient_amount', 15, 2)->default(0)->after('insurance_amount');
@@ -44,6 +48,7 @@ return new class extends Migration
 
         Schema::table('invoice_treatments', function (Blueprint $table) {
             $table->dropColumn([
+                'procedure_id', 'quantity', 'unit_price', 'total_amount',
                 'covered_amount', 'insurance_amount', 'patient_amount', 
                 'excluded_amount', 'coverage_percentage', 'coverage_rule_snapshot', 
                 'pre_authorization_number'

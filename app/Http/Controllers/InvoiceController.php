@@ -405,6 +405,7 @@ class InvoiceController extends Controller
                         // Update cost just in case it was modified on the invoice form
                         $tp->cost = $treatment['cost'];
                         $tp->status = 'Completed';
+                        $tp->date = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d');
                     }
                     $tp->invoice_id = 'inv' . $invoice->id;
                     $tp->saveQuietly();
@@ -571,8 +572,11 @@ class InvoiceController extends Controller
             'insurance_coverage' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|string',
             'treatments' => 'sometimes|array',
+            'treatments.*.procedure_id' => 'nullable',
             'treatments.*.procedure' => 'required|string',
             'treatments.*.cost' => 'required|numeric',
+            'treatments.*.tooth' => 'nullable',
+            'treatments.*.notes' => 'nullable|string',
             'other_charges' => 'sometimes|array',
             'other_charges.*.description' => 'required|string',
             'other_charges.*.amount' => 'required|numeric',
@@ -589,17 +593,38 @@ class InvoiceController extends Controller
 
         // Update treatments if provided
         if (isset($validated['treatments'])) {
-            // Sync updated treatments to treatment plans
-            \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->delete();
+            // First unlink all existing treatments for this invoice so we only link the ones provided
+            $existingTps = \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->get();
+            foreach ($existingTps as $tp) {
+                $tp->invoice_id = null;
+                $tp->saveQuietly();
+            }
+
             foreach ($validated['treatments'] as $treatment) {
                 if ($invoice->patient_id) {
-                    $tp = new \App\Models\TreatmentPlan([
-                        'patient_id' => $invoice->patient_id,
-                        'procedure' => $treatment['procedure'],
-                        'cost' => $treatment['cost'],
-                        'status' => 'Completed',
-                        'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
-                    ]);
+                    $tp = null;
+                    if (!empty($treatment['procedure_id'])) {
+                        $tp = \App\Models\TreatmentPlan::find($treatment['procedure_id']);
+                    }
+                    if (!$tp) {
+                        $tp = new \App\Models\TreatmentPlan([
+                            'patient_id' => $invoice->patient_id,
+                            'procedure' => $treatment['procedure'],
+                            'cost' => $treatment['cost'],
+                            'status' => 'Completed',
+                            'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
+                        ]);
+                        if (isset($treatment['tooth'])) {
+                            $tp->tooth = $treatment['tooth'];
+                        }
+                        if (isset($treatment['notes'])) {
+                            $tp->notes = $treatment['notes'];
+                        }
+                    } else {
+                        $tp->cost = $treatment['cost'];
+                        $tp->status = 'Completed';
+                        $tp->date = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d');
+                    }
                     $tp->invoice_id = 'inv' . $invoice->id;
                     $tp->saveQuietly();
                 }

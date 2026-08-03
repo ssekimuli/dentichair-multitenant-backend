@@ -34,4 +34,12 @@ class InsurancePackageController extends Controller
         $package = InsurancePackage::create($data);
         return response()->json(['message' => 'Package created', 'data' => $package]);
     }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:active,inactive']);
+        $package = InsurancePackage::findOrFail($id);
+        $package->update(['status' => $request->status]);
+        return response()->json(['message' => 'Status updated']);
+    }
 }

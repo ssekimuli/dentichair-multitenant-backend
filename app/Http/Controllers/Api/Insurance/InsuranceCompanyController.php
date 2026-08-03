@@ -25,15 +25,23 @@ class InsuranceCompanyController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'code' => 'required|string|unique:insurance_companies',
             'name' => 'required|string',
+            'code' => 'required|string|unique:insurance_companies',
             'email' => 'nullable|email',
             'phone' => 'nullable|string',
-            'address' => 'nullable|string',
             'status' => 'in:active,inactive'
         ]);
 
         $company = InsuranceCompany::create($data);
-        return response()->json(['message' => 'Company created', 'data' => $company]);
+        
+        return response()->json(['message' => 'Company added', 'data' => $company]);
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:active,inactive']);
+        $company = InsuranceCompany::findOrFail($id);
+        $company->update(['status' => $request->status]);
+        return response()->json(['message' => 'Status updated']);
     }
 }

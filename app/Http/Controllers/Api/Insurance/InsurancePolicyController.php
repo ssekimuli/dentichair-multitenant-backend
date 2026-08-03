@@ -34,6 +34,15 @@ class InsurancePolicyController extends Controller
         $data['remaining_balance'] = $data['total_coverage_limit'] ?? null;
         $policy = InsurancePolicy::create($data);
         
+        
         return response()->json(['message' => 'Policy created', 'data' => $policy]);
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:pending,active,suspended,expired,cancelled']);
+        $policy = InsurancePolicy::findOrFail($id);
+        $policy->update(['status' => $request->status]);
+        return response()->json(['message' => 'Status updated']);
     }
 }

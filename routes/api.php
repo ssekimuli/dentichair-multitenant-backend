@@ -257,9 +257,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::prefix('insurance')->group(function () {
         Route::get('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'index']);
         Route::post('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'store']);
+        Route::patch('companies/{id}/status', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'updateStatus']);
         
         Route::get('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'index']);
         Route::post('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'store']);
+        Route::patch('packages/{id}/status', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'updateStatus']);
         
         Route::get('packages/{packageId}/treatments', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'index']);
         Route::post('packages/{packageId}/treatments', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'store']);
@@ -267,6 +269,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         
         Route::get('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'index']);
         Route::post('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'store']);
+        Route::patch('policies/{id}/status', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'updateStatus']);
         
         Route::get('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'index']);
         Route::post('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'attach']);

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class InvoiceTreatment extends Model
 {
     protected $fillable = [
-        'invoice_id', 'procedure_id', 'quantity', 'unit_price', 'total_amount',
+        'invoice_id', 'procedure', 'procedure_id', 'cost', 'quantity', 'unit_price', 'total_amount',
         'covered_amount', 'insurance_amount', 'patient_amount', 'excluded_amount',
         'coverage_percentage', 'coverage_rule_snapshot', 'pre_authorization_number'
     ];

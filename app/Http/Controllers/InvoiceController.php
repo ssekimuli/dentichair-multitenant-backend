@@ -855,6 +855,11 @@ class InvoiceController extends Controller
                 }
             }
 
+            // Delete child relations to prevent foreign key constraint violations
+            $invoice->treatments()->delete();
+            $invoice->otherCharges()->delete();
+            $invoice->transactions()->delete();
+
             $invoice->delete();
 
             return response()->json(['success' => true]);

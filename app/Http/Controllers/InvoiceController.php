@@ -71,12 +71,11 @@ class InvoiceController extends Controller
      *   ]
      * }
      * 
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions']);
+        $query = Invoice::with(['patient.insurancePolicies.package.company', 'branch', 'treatments', 'otherCharges', 'transactions']);
 
         if ($request->has('branch_id')) {
             $query->where('branch_id', $request->branch_id);
@@ -230,7 +229,7 @@ class InvoiceController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])->find($id);
+        $invoice = Invoice::with(['patient.insurancePolicies.package.company', 'branch', 'treatments', 'otherCharges', 'transactions'])->find($id);
 
         if (!$invoice) {
             return response()->json(['error' => 'Invoice not found'], 404);
@@ -314,8 +313,11 @@ class InvoiceController extends Controller
             'tax' => 'nullable|numeric|min:0',
             'insurance_coverage' => 'nullable|numeric|min:0',
             'treatments' => 'sometimes|array',
+            'treatments.*.procedure_id' => 'nullable',
             'treatments.*.procedure' => 'required|string',
             'treatments.*.cost' => 'required|numeric',
+            'treatments.*.tooth' => 'nullable',
+            'treatments.*.notes' => 'nullable|string',
             'other_charges' => 'nullable|array',
             'other_charges.*.description' => 'required|string',
             'other_charges.*.amount' => 'required|numeric',
@@ -379,17 +381,32 @@ class InvoiceController extends Controller
 
         if (isset($validated['treatments'])) {
             foreach ($validated['treatments'] as $treatment) {
-                $invoice->treatments()->create($treatment);
-
-                // Create a corresponding completed treatment plan if patient exists
+                // Link or create a corresponding completed treatment plan if patient exists
                 if ($invoice->patient_id) {
-                    $tp = new \App\Models\TreatmentPlan([
-                        'patient_id' => $invoice->patient_id,
-                        'procedure' => $treatment['procedure'],
-                        'cost' => $treatment['cost'],
-                        'status' => 'Completed',
-                        'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
-                    ]);
+                    $tp = null;
+                    if (!empty($treatment['procedure_id'])) {
+                        $tp = \App\Models\TreatmentPlan::find($treatment['procedure_id']);
+                    }
+                    if (!$tp) {
+                        $tp = new \App\Models\TreatmentPlan([
+                            'patient_id' => $invoice->patient_id,
+                            'procedure' => $treatment['procedure'],
+                            'cost' => $treatment['cost'],
+                            'status' => 'Completed',
+                            'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
+                        ]);
+                        if (isset($treatment['tooth'])) {
+                            $tp->tooth = $treatment['tooth'];
+                        }
+                        if (isset($treatment['notes'])) {
+                            $tp->notes = $treatment['notes'];
+                        }
+                    } else {
+                        // Update cost just in case it was modified on the invoice form
+                        $tp->cost = $treatment['cost'];
+                        $tp->status = 'Completed';
+                        $tp->date = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d');
+                    }
                     $tp->invoice_id = 'inv' . $invoice->id;
                     $tp->saveQuietly();
                 }
@@ -410,6 +427,15 @@ class InvoiceController extends Controller
                     $medUnit->decrement('stock_quantity', $med['quantity']);
                 }
             }
+        }
+
+        // Trigger insurance sync which recreates treatments with exact splits and computes new total
+        if ($invoice->patient_id) {
+            \App\Models\TreatmentPlan::syncInvoiceForPatientAndDate(
+                $invoice->patient_id, 
+                \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d')
+            );
+            $invoice->refresh();
         }
 
         $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions']);
@@ -546,8 +572,11 @@ class InvoiceController extends Controller
             'insurance_coverage' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|string',
             'treatments' => 'sometimes|array',
+            'treatments.*.procedure_id' => 'nullable',
             'treatments.*.procedure' => 'required|string',
             'treatments.*.cost' => 'required|numeric',
+            'treatments.*.tooth' => 'nullable',
+            'treatments.*.notes' => 'nullable|string',
             'other_charges' => 'sometimes|array',
             'other_charges.*.description' => 'required|string',
             'other_charges.*.amount' => 'required|numeric',
@@ -564,22 +593,38 @@ class InvoiceController extends Controller
 
         // Update treatments if provided
         if (isset($validated['treatments'])) {
-            $invoice->treatments()->delete();
-            foreach ($validated['treatments'] as $treatment) {
-                $invoice->treatments()->create($treatment);
+            // First unlink all existing treatments for this invoice so we only link the ones provided
+            $existingTps = \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->get();
+            foreach ($existingTps as $tp) {
+                $tp->invoice_id = null;
+                $tp->saveQuietly();
             }
 
-            // Sync updated treatments to treatment plans
-            \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->delete();
             foreach ($validated['treatments'] as $treatment) {
                 if ($invoice->patient_id) {
-                    $tp = new \App\Models\TreatmentPlan([
-                        'patient_id' => $invoice->patient_id,
-                        'procedure' => $treatment['procedure'],
-                        'cost' => $treatment['cost'],
-                        'status' => 'Completed',
-                        'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
-                    ]);
+                    $tp = null;
+                    if (!empty($treatment['procedure_id'])) {
+                        $tp = \App\Models\TreatmentPlan::find($treatment['procedure_id']);
+                    }
+                    if (!$tp) {
+                        $tp = new \App\Models\TreatmentPlan([
+                            'patient_id' => $invoice->patient_id,
+                            'procedure' => $treatment['procedure'],
+                            'cost' => $treatment['cost'],
+                            'status' => 'Completed',
+                            'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
+                        ]);
+                        if (isset($treatment['tooth'])) {
+                            $tp->tooth = $treatment['tooth'];
+                        }
+                        if (isset($treatment['notes'])) {
+                            $tp->notes = $treatment['notes'];
+                        }
+                    } else {
+                        $tp->cost = $treatment['cost'];
+                        $tp->status = 'Completed';
+                        $tp->date = \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d');
+                    }
                     $tp->invoice_id = 'inv' . $invoice->id;
                     $tp->saveQuietly();
                 }
@@ -627,6 +672,15 @@ class InvoiceController extends Controller
 
             // Save JSON directly
             $invoice->update(['medicines' => $validated['medicines']]);
+        }
+
+        // Trigger insurance sync which recreates treatments with exact splits and computes new total
+        if ($invoice->patient_id) {
+            \App\Models\TreatmentPlan::syncInvoiceForPatientAndDate(
+                $invoice->patient_id, 
+                \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d')
+            );
+            $invoice->refresh();
         }
 
         return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch']));
@@ -780,17 +834,36 @@ class InvoiceController extends Controller
      */
     public function destroy($id)
     {
-        $invoice = Invoice::find($id);
-        
-        if (!$invoice) {
-            return response()->json(['error' => 'Invoice not found'], 404);
+        try {
+            $invoice = Invoice::find($id);
+            
+            if (!$invoice) {
+                return response()->json(['error' => 'Invoice not found'], 404);
+            }
+
+            // Unlink associated treatment plans rather than deleting them
+            \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->update(['invoice_id' => null]);
+
+            // Restore medicine stock
+            $medicines = $invoice->medicines ?? [];
+            foreach ($medicines as $med) {
+                if (isset($med['medicine_unit_id']) && isset($med['quantity'])) {
+                    $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
+                    if ($medUnit) {
+                        $medUnit->increment('stock_quantity', $med['quantity']);
+                    }
+                }
+            }
+
+            $invoice->delete();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete invoice: ' . $e->getMessage(), ['id' => $id, 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'An error occurred while deleting the invoice',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Delete associated treatment plans
-        \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->delete();
-
-        $invoice->delete();
-
-        return response()->json(['success' => true]);
     }
 }

@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
 {
+    use SoftDeletes;
     use LogsActivity;
     use HasFactory;
 
@@ -20,7 +22,10 @@ class Invoice extends Model
     protected $fillable = [
         'receipt_number', 'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
         'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines',
-        'discount', 'tax', 'insurance_coverage'
+        'discount', 'tax', 'insurance_coverage',
+        'patient_responsibility', 'insurance_responsibility', 
+        'patient_paid_amount', 'insurance_paid_amount', 
+        'patient_balance', 'insurance_balance'
     ];
 
     protected $casts = [
@@ -28,6 +33,12 @@ class Invoice extends Model
         'due_date' => 'date',
         'amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'patient_responsibility' => 'decimal:2',
+        'insurance_responsibility' => 'decimal:2',
+        'patient_paid_amount' => 'decimal:2',
+        'insurance_paid_amount' => 'decimal:2',
+        'patient_balance' => 'decimal:2',
+        'insurance_balance' => 'decimal:2',
         'medicines' => 'array',
     ];
 

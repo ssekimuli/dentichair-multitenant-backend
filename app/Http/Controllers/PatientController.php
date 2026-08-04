@@ -181,24 +181,31 @@ class PatientController extends Controller
      */
     public function show($id)
     {
-        $patient = Patient::with([
-            'dentalRecords' => fn($q) => $q->latest(),
-            'treatmentPlans' => fn($q) => $q->latest(),
-            'images' => fn($q) => $q->latest(),
-            'periodontalRecords' => fn($q) => $q->latest(),
-            'softTissueRecords' => fn($q) => $q->latest(),
-            'orthodonticRecords' => fn($q) => $q->latest(),
-            'endodonticRecords' => fn($q) => $q->latest(),
-            'restorativeRecords' => fn($q) => $q->latest(),
-            'paidInvoices' => fn($q) => $q->latest(),
-            'unpaidInvoices' => fn($q) => $q->latest()
-        ])->find($id);
+        try {
+            $patient = Patient::with([
+                'dentalRecords' => fn($q) => $q->latest(),
+                'treatmentPlans' => fn($q) => $q->latest(),
+                'images' => fn($q) => $q->latest(),
+                'periodontalRecords' => fn($q) => $q->latest(),
+                'softTissueRecords' => fn($q) => $q->latest(),
+                'orthodonticRecords' => fn($q) => $q->latest(),
+                'endodonticRecords' => fn($q) => $q->latest(),
+                'restorativeRecords' => fn($q) => $q->latest(),
+                'paidInvoices' => fn($q) => $q->latest(),
+                'unpaidInvoices' => fn($q) => $q->latest()
+            ])->find($id);
 
-        if (!$patient) {
-            return response()->json(['error' => 'Patient not found'], 404);
+            if (!$patient) {
+                return response()->json(['error' => 'Patient not found'], 404);
+            }
+
+            return response()->json($patient);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while fetching the patient details',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($patient);
     }
 
     /**
@@ -1717,35 +1724,40 @@ class PatientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date']);
-        $patient->treatmentPlans()->create($treatmentData);
+        try {
+            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date']);
+            $patient->treatmentPlans()->create($treatmentData);
 
-        if (isset($request->condition) && !empty($validated['tooth'])) {
-            // Find existing record for this tooth
-            $existingRecord = $patient->dentalRecords()
-                ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'
-                ->first();
+            if (isset($request->condition) && !empty($validated['tooth'])) {
+                // Find existing record for this tooth
+                $existingRecord = $patient->dentalRecords()
+                    ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'
+                    ->first();
 
-            if ($existingRecord) {
-                // Update existing record
-                $existingRecord->update([
-                    'condition' => $request->condition,
-                    'tooth_id' => $validated['tooth'], // Changed from 'tooth_id' to 'tooth'
-                    'notes' => $validated['notes'] ?? $existingRecord->notes
-                ]);
-                $record = $existingRecord;
-            } else {
-                // Create new record - you need to map 'tooth' to 'tooth_id'
-                $recordData = [
-                    'condition' => $request->condition,
-                    'tooth_id' => $validated['tooth'],
-                    'notes' => $validated['notes'] ?? null
-                ];
-                $record = $patient->dentalRecords()->create($recordData);
+                if ($existingRecord) {
+                    // Update existing record
+                    $existingRecord->update([
+                        'condition' => $request->condition,
+                        'tooth_id' => $validated['tooth'], // Changed from 'tooth_id' to 'tooth'
+                        'notes' => $validated['notes'] ?? $existingRecord->notes
+                    ]);
+                    $record = $existingRecord;
+                } else {
+                    // Create new record - you need to map 'tooth' to 'tooth_id'
+                    $recordData = [
+                        'condition' => $request->condition,
+                        'tooth_id' => $validated['tooth'],
+                        'notes' => $validated['notes'] ?? null
+                    ];
+                    $record = $patient->dentalRecords()->create($recordData);
+                }
             }
-        }
 
-        return response()->json($patient->load('treatmentPlans'));
+            return response()->json($patient->load('treatmentPlans'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to add treatment: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Failed to save treatment.', 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -2515,6 +2527,33 @@ class PatientController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to upload document.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateAvatar(Request $request, $id)
+    {
+        try {
+            $patient = Patient::findOrFail($id);
+
+            $request->validate([
+                'avatar' => 'required|image|max:5120', // Max 5MB
+            ]);
+
+            $service = app(CloudflareR2Service::class);
+            $url = $service->upload($request->file('avatar'), 'patient-avatars');
+
+            $patient->avatar = $url;
+            $patient->save();
+
+            return response()->json([
+                'message' => 'Patient avatar updated successfully.',
+                'avatar' => $url
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while updating the avatar',
                 'error' => $e->getMessage()
             ], 500);
         }

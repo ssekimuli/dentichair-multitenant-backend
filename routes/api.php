@@ -79,6 +79,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/patients/{id}/next-visit', [PatientController::class, 'updateNextVisit']);
     Route::get('/patients-list', [PatientController::class, 'patientList']);
     Route::get('/patients/{id}/invoices', [PatientController::class, 'getInvoices']);
+    Route::post('/patients/{id}/avatar', [PatientController::class, 'updateAvatar']);
 
     // Appointments
     Route::apiResource('appointments', AppointmentController::class);
@@ -142,7 +143,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'update']);
     Route::delete('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'destroy']);
 
-    Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
+    // Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);
 
     // Invoices
@@ -253,4 +254,41 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::delete('/pharmacy/prescriptions/{id}', [PharmacyController::class, 'deletePrescription']);
     Route::get('/patients/{patientId}/prescriptions', [PharmacyController::class, 'getPatientPrescriptions']);
 
+    // --- NEW INSURANCE MODULE ROUTES ---
+    Route::prefix('insurance')->group(function () {
+        Route::get('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'index']);
+        Route::post('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'store']);
+        Route::put('companies/{id}', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'update']);
+        Route::delete('companies/{id}', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'destroy']);
+        Route::patch('companies/{id}/status', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'updateStatus']);
+        
+        Route::get('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'index']);
+        Route::post('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'store']);
+        Route::put('packages/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'update']);
+        Route::delete('packages/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'destroy']);
+        Route::patch('packages/{id}/status', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'updateStatus']);
+        
+        Route::get('attached-policies', \App\Http\Controllers\Api\Insurance\AllAttachedPoliciesController::class);
+        
+        Route::get('packages/{packageId}/treatments', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'index']);
+        Route::post('packages/{packageId}/treatments', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'store']);
+        Route::delete('packages/{packageId}/treatments/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePackageTreatmentController::class, 'destroy']);
+        
+        Route::get('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'index']);
+        Route::post('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'store']);
+        Route::put('policies/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'update']);
+        Route::delete('policies/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'destroy']);
+        Route::patch('policies/{id}/status', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'updateStatus']);
+        
+        Route::get('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'index']);
+        Route::post('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'attach']);
+        Route::delete('patients/{patient}/policies/{pivotId}', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'detach']);
+        Route::patch('patients/{patient}/policies/{pivotId}/primary', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'setPrimary']);
+
+        Route::post('billing/estimate/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'estimate']);
+        Route::post('billing/invoice/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'createInvoice']);
+    });
 });
+
+
+

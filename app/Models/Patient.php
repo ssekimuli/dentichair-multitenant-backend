@@ -122,4 +122,21 @@ class Patient extends Model
     {
         return $this->hasMany(PatientInsurance::class);
     }
+
+    public function insurancePolicies()
+    {
+        return $this->belongsToMany(InsurancePolicy::class, 'patient_insurance_policies')
+                    ->using(PatientInsurancePolicy::class)
+                    ->withPivot([
+                        'id', 'subscriber_id', 'group_number', 
+                        'relationship_to_subscriber', 'subscriber_name',
+                        'is_primary', 'status'
+                    ])
+                    ->withTimestamps();
+    }
+
+    public function primaryInsurancePolicy()
+    {
+        return $this->insurancePolicies()->wherePivot('is_primary', true)->wherePivot('status', 'active');
+    }
 }

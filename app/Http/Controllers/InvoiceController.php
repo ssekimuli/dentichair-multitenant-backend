@@ -840,8 +840,19 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'Invoice not found'], 404);
         }
 
-        // Delete associated treatment plans
-        \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->delete();
+        // Unlink associated treatment plans rather than deleting them
+        \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->update(['invoice_id' => null]);
+
+        // Restore medicine stock
+        $medicines = $invoice->medicines ?? [];
+        foreach ($medicines as $med) {
+            if (isset($med['medicine_unit_id']) && isset($med['quantity'])) {
+                $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
+                if ($medUnit) {
+                    $medUnit->increment('stock_quantity', $med['quantity']);
+                }
+            }
+        }
 
         $invoice->delete();
 

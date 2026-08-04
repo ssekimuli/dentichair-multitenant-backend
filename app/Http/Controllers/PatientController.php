@@ -181,24 +181,31 @@ class PatientController extends Controller
      */
     public function show($id)
     {
-        $patient = Patient::with([
-            'dentalRecords' => fn($q) => $q->latest(),
-            'treatmentPlans' => fn($q) => $q->latest(),
-            'images' => fn($q) => $q->latest(),
-            'periodontalRecords' => fn($q) => $q->latest(),
-            'softTissueRecords' => fn($q) => $q->latest(),
-            'orthodonticRecords' => fn($q) => $q->latest(),
-            'endodonticRecords' => fn($q) => $q->latest(),
-            'restorativeRecords' => fn($q) => $q->latest(),
-            'paidInvoices' => fn($q) => $q->latest(),
-            'unpaidInvoices' => fn($q) => $q->latest()
-        ])->find($id);
+        try {
+            $patient = Patient::with([
+                'dentalRecords' => fn($q) => $q->latest(),
+                'treatmentPlans' => fn($q) => $q->latest(),
+                'images' => fn($q) => $q->latest(),
+                'periodontalRecords' => fn($q) => $q->latest(),
+                'softTissueRecords' => fn($q) => $q->latest(),
+                'orthodonticRecords' => fn($q) => $q->latest(),
+                'endodonticRecords' => fn($q) => $q->latest(),
+                'restorativeRecords' => fn($q) => $q->latest(),
+                'paidInvoices' => fn($q) => $q->latest(),
+                'unpaidInvoices' => fn($q) => $q->latest()
+            ])->find($id);
 
-        if (!$patient) {
-            return response()->json(['error' => 'Patient not found'], 404);
+            if (!$patient) {
+                return response()->json(['error' => 'Patient not found'], 404);
+            }
+
+            return response()->json($patient);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while fetching the patient details',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($patient);
     }
 
     /**

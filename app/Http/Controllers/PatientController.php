@@ -2531,4 +2531,31 @@ class PatientController extends Controller
             ], 500);
         }
     }
+
+    public function updateAvatar(Request $request, $id)
+    {
+        try {
+            $patient = Patient::findOrFail($id);
+
+            $request->validate([
+                'avatar' => 'required|image|max:5120', // Max 5MB
+            ]);
+
+            $service = app(CloudflareR2Service::class);
+            $url = $service->upload($request->file('avatar'), 'patient-avatars');
+
+            $patient->avatar = $url;
+            $patient->save();
+
+            return response()->json([
+                'message' => 'Patient avatar updated successfully.',
+                'avatar' => $url
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while updating the avatar',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

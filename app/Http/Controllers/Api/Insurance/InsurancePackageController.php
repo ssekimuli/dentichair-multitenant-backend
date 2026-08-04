@@ -42,4 +42,30 @@ class InsurancePackageController extends Controller
         $package->update(['status' => $request->status]);
         return response()->json(['message' => 'Status updated']);
     }
+
+    public function update(Request $request, $id)
+    {
+        $data = $request->validate([
+            'insurance_company_id' => 'required|exists:insurance_companies,id',
+            'name' => 'required|string',
+            'code' => 'required|string',
+            'default_coverage_percentage' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $package = InsurancePackage::findOrFail($id);
+        $package->update($data);
+        return response()->json(['message' => 'Package updated', 'data' => $package]);
+    }
+
+    public function destroy($id)
+    {
+        $package = InsurancePackage::findOrFail($id);
+        
+        if ($package->policies()->count() > 0) {
+            return response()->json(['message' => 'Cannot delete package with associated policies'], 400);
+        }
+        
+        $package->delete();
+        return response()->json(['message' => 'Package deleted']);
+    }
 }

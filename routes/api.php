@@ -257,10 +257,14 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::prefix('insurance')->group(function () {
         Route::get('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'index']);
         Route::post('companies', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'store']);
+        Route::put('companies/{id}', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'update']);
+        Route::delete('companies/{id}', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'destroy']);
         Route::patch('companies/{id}/status', [\App\Http\Controllers\Api\Insurance\InsuranceCompanyController::class, 'updateStatus']);
         
         Route::get('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'index']);
         Route::post('packages', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'store']);
+        Route::put('packages/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'update']);
+        Route::delete('packages/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'destroy']);
         Route::patch('packages/{id}/status', [\App\Http\Controllers\Api\Insurance\InsurancePackageController::class, 'updateStatus']);
         
         Route::get('attached-policies', \App\Http\Controllers\Api\Insurance\AllAttachedPoliciesController::class);
@@ -271,6 +275,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         
         Route::get('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'index']);
         Route::post('policies', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'store']);
+        Route::put('policies/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'update']);
+        Route::delete('policies/{id}', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'destroy']);
         Route::patch('policies/{id}/status', [\App\Http\Controllers\Api\Insurance\InsurancePolicyController::class, 'updateStatus']);
         
         Route::get('patients/{patient}/policies', [\App\Http\Controllers\Api\Insurance\PatientInsuranceController::class, 'index']);

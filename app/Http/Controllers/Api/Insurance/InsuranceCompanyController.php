@@ -44,4 +44,31 @@ class InsuranceCompanyController extends Controller
         $company->update(['status' => $request->status]);
         return response()->json(['message' => 'Status updated']);
     }
+
+    public function update(Request $request, $id)
+    {
+        $data = $request->validate([
+            'name' => 'required|string',
+            'code' => 'required|string|unique:insurance_companies,code,' . $id,
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+        ]);
+
+        $company = InsuranceCompany::findOrFail($id);
+        $company->update($data);
+        return response()->json(['message' => 'Company updated', 'data' => $company]);
+    }
+
+    public function destroy($id)
+    {
+        $company = InsuranceCompany::findOrFail($id);
+        
+        // Prevent deletion if there are packages
+        if ($company->packages()->count() > 0) {
+            return response()->json(['message' => 'Cannot delete company with associated packages'], 400);
+        }
+        
+        $company->delete();
+        return response()->json(['message' => 'Company deleted']);
+    }
 }

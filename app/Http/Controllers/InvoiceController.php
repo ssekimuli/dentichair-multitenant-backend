@@ -859,6 +859,7 @@ class InvoiceController extends Controller
             $invoice->treatments()->delete();
             $invoice->otherCharges()->delete();
             $invoice->transactions()->delete();
+            $invoice->insuranceClaims()->delete();
 
             $invoice->delete();
 

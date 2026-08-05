@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::dropIfExists('claim_items');
+        Schema::dropIfExists('insurance_claim_documents');
         Schema::dropIfExists('insurance_claims');
         Schema::dropIfExists('patient_insurance_policies');
         Schema::dropIfExists('insurance_policies');

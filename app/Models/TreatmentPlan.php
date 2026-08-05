@@ -108,7 +108,8 @@ class TreatmentPlan extends Model
 
             /*
              * This application assumes that a patient has one invoice
-             * per branch per day.
+             * per branch per day. Prefer a non-Paid invoice so that
+             * already-settled invoices are not accidentally reopened.
              */
             $invoiceQuery = Invoice::query()
                 ->where('patient_id', $patientId)
@@ -119,6 +120,7 @@ class TreatmentPlan extends Model
             }
 
             $invoice = $invoiceQuery
+                ->orderByRaw("CASE WHEN status != 'Paid' THEN 0 ELSE 1 END")
                 ->lockForUpdate()
                 ->first();
 
@@ -335,9 +337,25 @@ class TreatmentPlan extends Model
                 $insuranceResponsibilityTotal - $insurancePaid
             );
 
+            /*
+             * Only mark the invoice as Paid when both balances are
+             * settled AND there has been at least some payment activity
+             * (or there is genuinely nothing owed). This prevents a
+             * freshly-created invoice from being auto-marked as Paid
+             * just because an insurance-covered treatment leaves the
+             * patient owing zero — the insurance portion is still
+             * outstanding until an actual payment is recorded.
+             */
+            $hasPaymentActivity = (
+                $patientPaid > 0 ||
+                $insurancePaid > 0 ||
+                $invoice->transactions()->exists()
+            );
+
             $invoiceStatus = (
                 $patientBalance <= 0 &&
-                $insuranceBalance <= 0
+                $insuranceBalance <= 0 &&
+                ($hasPaymentActivity || ($newTotal <= 0))
             )
                 ? 'Paid'
                 : 'Pending';
@@ -530,6 +548,11 @@ class TreatmentPlan extends Model
             $newTotal - $patientPaid
         );
 
+        /*
+         * When all treatment lines have been removed, the insurance is
+         * no longer responsible for any amount. Only other charges and
+         * medicines remain, which are the patient's responsibility.
+         */
         $insuranceBalance = 0.0;
 
         $hasTransactions = $invoice

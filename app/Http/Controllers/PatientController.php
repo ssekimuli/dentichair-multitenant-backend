@@ -1721,12 +1721,11 @@ class PatientController extends Controller
             'cost' => 'required|numeric',
             'date' => 'required|date',
             'condition' => 'nullable|string',
-            'notes' => 'nullable|string',
             'treatment_id' => 'nullable|integer|exists:treatments,id',
         ]);
 
         try {
-            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'notes']);
+            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id']);
             $patient->treatmentPlans()->create($treatmentData);
 
             if (isset($request->condition) && !empty($validated['tooth'])) {
@@ -1817,7 +1816,6 @@ class PatientController extends Controller
             'cost' => 'sometimes|numeric',
             'date' => 'sometimes|date',
             'treatment_id' => 'nullable|integer|exists:treatments,id',
-            'notes' => 'nullable|string',
         ]);
 
         $treatment->update($validated);

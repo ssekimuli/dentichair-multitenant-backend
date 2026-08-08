@@ -860,15 +860,28 @@ class MigrationController extends Controller
      */
     public function migrateCombined(Request $request)
     {
-        set_time_limit(0);
-        $startTime = microtime(true);
-        $importId = 'imp_' . uniqid();
+        try {
+            set_time_limit(0);
+            $startTime = microtime(true);
+            $importId = 'imp_' . uniqid();
 
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xlsx'
-        ]);
+            Log::info('Combined migration started', ['import_id' => $importId]);
 
-        $file = $request->file('file');
+            // Validate request
+            try {
+                $request->validate([
+                    'file' => 'required|file|mimes:csv,txt,xlsx'
+                ]);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                Log::error('Validation error', ['errors' => $e->errors()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            $file = $request->file('file');
         $originalExtension = strtolower($file->getClientOriginalExtension());
         $filePath = $file->getPathname();
         $isTempCsv = false;
@@ -1027,6 +1040,24 @@ class MigrationController extends Controller
             'import_id' => $importId,
             'import_type' => 'combined'
         ], $success ? 200 : 400);
+        } catch (\Throwable $e) {
+            Log::error('Combined migration error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Migration failed: ' . $e->getMessage(),
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            ], 500);
+        }
     }
 
     private function getRecordValue($record, $synonyms)

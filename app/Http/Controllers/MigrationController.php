@@ -848,6 +848,187 @@ class MigrationController extends Controller
         return ['valid' => true];
     }
 
+    /**
+     * Handle combined CSV with type column for all sections in one file
+     *
+     * Processes types in dependency order to guarantee referential integrity:
+     * 1. Employees (no dependencies)
+     * 2. Patients (no dependencies)
+     * 3. Appointments (references employees & patients)
+     * 4. Clinical (references patients)
+     * 5. Financial (references patients)
+     */
+    public function migrateCombined(Request $request)
+    {
+        set_time_limit(0);
+        $startTime = microtime(true);
+        $importId = 'imp_' . uniqid();
+
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt,xlsx'
+        ]);
+
+        $file = $request->file('file');
+        $originalExtension = strtolower($file->getClientOriginalExtension());
+        $filePath = $file->getPathname();
+        $isTempCsv = false;
+
+        // Convert Excel to CSV if needed
+        if ($originalExtension === 'xlsx') {
+            $tempCsvPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.csv';
+            $pythonScript = base_path('app/Utils/excel_to_csv.py');
+            $command = "python " . escapeshellarg($pythonScript) . " " . escapeshellarg($filePath) . " " . escapeshellarg($tempCsvPath);
+
+            $output = [];
+            $resultCode = 0;
+            exec($command, $output, $resultCode);
+
+            if ($resultCode === 0) {
+                $filePath = $tempCsvPath;
+                $isTempCsv = true;
+            } else {
+                return $this->errorResponse($importId, 0, 0, [
+                    ['row' => 0, 'field' => 'file', 'value' => null, 'reason' => 'Failed to parse Excel file']
+                ], $startTime);
+            }
+        }
+
+        $handle = fopen($filePath, "r");
+        $headers = fgetcsv($handle);
+
+        if (!$headers) {
+            fclose($handle);
+            if ($isTempCsv && file_exists($filePath)) unlink($filePath);
+
+            return $this->errorResponse($importId, 0, 0, [
+                ['row' => 1, 'field' => 'file', 'value' => null, 'reason' => 'File is empty or has no headers']
+            ], $startTime);
+        }
+
+        // Verify 'type' column exists
+        $typeIndex = array_search('type', array_map('strtolower', $headers));
+        if ($typeIndex === false) {
+            fclose($handle);
+            if ($isTempCsv && file_exists($filePath)) unlink($filePath);
+
+            return $this->errorResponse($importId, 0, 0, [
+                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, patient, appointment, clinical, financial)']
+            ], $startTime);
+        }
+
+        $headers = array_map('trim', $headers);
+
+        // Group data by type while reading
+        $groupedData = [
+            'employees' => [],
+            'patients' => [],
+            'appointments' => [],
+            'clinical' => [],
+            'financial' => []
+        ];
+
+        $rowNumber = 2;
+        $totalCount = 0;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            // Skip empty rows
+            if (empty($row) || (count($row) === 1 && empty($row[0]))) {
+                $rowNumber++;
+                continue;
+            }
+
+            // Pad row if needed
+            if (count($row) < count($headers)) {
+                $row = array_pad($row, count($headers), '');
+            }
+
+            $recordData = array_combine($headers, array_slice($row, 0, count($headers)));
+            $type = strtolower(trim($recordData['type'] ?? ''));
+
+            // Validate type
+            if (!in_array($type, array_keys($groupedData))) {
+                // Skip invalid types instead of failing
+                $rowNumber++;
+                continue;
+            }
+
+            $groupedData[$type][] = [
+                'rowNumber' => $rowNumber,
+                'data' => $recordData
+            ];
+            $totalCount++;
+            $rowNumber++;
+        }
+
+        fclose($handle);
+        if ($isTempCsv && file_exists($filePath)) {
+            unlink($filePath);
+        }
+
+        // Process in dependency order
+        $allErrors = [];
+        $allWarnings = [];
+        $importedCount = 0;
+        $failedCount = 0;
+        $skippedCount = 0;
+        $now = now();
+
+        // Order matters: employees first, then patients, then others
+        $processingOrder = ['employees', 'patients', 'appointments', 'clinical', 'financial'];
+
+        foreach ($processingOrder as $section) {
+            if (empty($groupedData[$section])) {
+                continue; // Skip empty sections
+            }
+
+            // Process in chunks
+            $chunk = [];
+            $chunkSize = 1000;
+
+            foreach ($groupedData[$section] as $item) {
+                $chunk[] = $item;
+
+                if (count($chunk) >= $chunkSize) {
+                    $result = $this->processChunk($section, $chunk);
+                    $importedCount += $result['imported'];
+                    $failedCount += $result['failed'];
+                    $skippedCount += $result['skipped'];
+                    $allErrors = array_merge($allErrors, $result['errors']);
+                    $allWarnings = array_merge($allWarnings, $result['warnings']);
+                    $chunk = [];
+                }
+            }
+
+            // Process remaining
+            if (count($chunk) > 0) {
+                $result = $this->processChunk($section, $chunk);
+                $importedCount += $result['imported'];
+                $failedCount += $result['failed'];
+                $skippedCount += $result['skipped'];
+                $allErrors = array_merge($allErrors, $result['errors']);
+                $allWarnings = array_merge($allWarnings, $result['warnings']);
+            }
+        }
+
+        $duration = round(microtime(true) - $startTime, 2);
+        $success = $failedCount === 0;
+
+        return response()->json([
+            'success' => $success,
+            'stats' => [
+                'total' => $totalCount,
+                'imported' => $importedCount,
+                'failed' => $failedCount,
+                'skipped' => $skippedCount,
+                'duration' => $duration
+            ],
+            'errors' => array_slice($allErrors, 0, 100),
+            'warnings' => array_slice($allWarnings, 0, 50),
+            'import_id' => $importId,
+            'import_type' => 'combined'
+        ], $success ? 200 : 400);
+    }
+
     private function getRecordValue($record, $synonyms)
     {
         $lookup = [];
@@ -864,5 +1045,26 @@ class MigrationController extends Controller
         }
 
         return null;
+    }
+
+    public function downloadTemplate()
+    {
+        $templatePath = public_path('templates/combined-migration-template.xlsx');
+
+        if (!file_exists($templatePath)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Template file not found'
+            ], 404);
+        }
+
+        return response()->download(
+            $templatePath,
+            'combined-migration-template.xlsx',
+            [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="combined-migration-template.xlsx"'
+            ]
+        );
     }
 }

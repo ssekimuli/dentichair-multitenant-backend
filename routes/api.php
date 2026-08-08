@@ -59,6 +59,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Imports
     Route::post('/migrate', [MigrationController::class, 'migrate']);
     Route::post('/migrate/combined', [MigrationController::class, 'migrateCombined']);
+    Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);
     Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);

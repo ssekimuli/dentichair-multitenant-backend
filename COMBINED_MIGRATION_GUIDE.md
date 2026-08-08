@@ -1,8 +1,12 @@
-# Combined CSV Migration Guide
+# Combined Migration Guide
 
 ## Overview
 
-The new `POST /migrate/combined` endpoint allows importing all data types (employees, patients, appointments, clinical records, and financial data) from a **single CSV file** with guaranteed referential integrity.
+The new `POST /migrate/combined` endpoint allows importing all data types (employees, patients, appointments, clinical records, and financial data) from a **single Excel file** with guaranteed referential integrity.
+
+**File Format:** Excel 2007+ (.xlsx) - CSV support available
+
+**Template Download:** `GET /api/migrate/template/download`
 
 ---
 
@@ -22,14 +26,29 @@ This ensures that when processing appointments, employees and patients have alre
 
 ---
 
-## CSV Format
+## File Format
 
-### Required Column: `type`
+### Template Download
 
-Each row must have a `type` column indicating the data type:
+**Download the template:** `GET /api/migrate/template/download`
+
+The template includes:
+- Pre-formatted Excel sheet with all required columns
+- Instructions sheet with detailed guidance
+- 17 sample records (3 employees, 4 patients, 3 appointments, 3 clinical, 4 financial)
+- Color-coded rows for each data type
+- Ready-to-use as a starting point for your data
+
+### Column Format
+
+Each row must have a **type** column indicating the data type.
+
+**Supported Columns (in any order):**
 
 ```
-type,first_name,last_name,email,phone,patient_email,doctor_email,procedure,cost,date,amount,status
+type, first_name, last_name, email, phone, patient_email, doctor_email, 
+procedure, cost, date, amount, status, role, salary, hire_date, gender, 
+date_of_birth, time, treatment
 ```
 
 **Valid type values:**
@@ -241,30 +260,61 @@ financial,,,alice@clinic.com,,,,300,2026-08-25,Paid,,
 
 ## Usage Examples
 
-### Via cURL
+### Download Template
+
+```bash
+curl -X GET http://api.clinic.com/api/migrate/template/download \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o combined-migration-template.xlsx
+```
+
+### Upload Excel File via cURL
 
 ```bash
 curl -X POST http://api.clinic.com/api/migrate/combined \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@data.csv"
+  -F "file=@data.xlsx"
 ```
 
-### Via JavaScript/Frontend
+### Upload Excel File via JavaScript/Frontend
 
 ```javascript
-const formData = new FormData();
-formData.append('file', csvFile);
+// Download template first
+async function downloadTemplate() {
+  const response = await fetch('/api/migrate/template/download', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'combined-migration-template.xlsx';
+  a.click();
+}
 
-const response = await fetch('/api/migrate/combined', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${token}`
-  },
-  body: formData
-});
+// Upload filled Excel file
+async function uploadMigration(excelFile) {
+  const formData = new FormData();
+  formData.append('file', excelFile);
 
-const result = await response.json();
-console.log(`Imported: ${result.stats.imported}, Failed: ${result.stats.failed}`);
+  const response = await fetch('/api/migrate/combined', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  const result = await response.json();
+  console.log(`Imported: ${result.stats.imported}, Failed: ${result.stats.failed}`);
+  
+  if (result.errors && result.errors.length > 0) {
+    console.log('Errors:', result.errors.slice(0, 10));
+  }
+}
 ```
 
 ---
@@ -318,15 +368,24 @@ console.log(`Imported: ${result.stats.imported}, Failed: ${result.stats.failed}`
 
 ---
 
-## Sample Files
+## Template & Sample Files
 
-Download sample CSV templates:
-- `/samples/combined-migration-sample.csv` - Complete example with all sections
-- `/samples/employees-sample.csv` - Employees only
-- `/samples/patients-sample.csv` - Patients only
-- `/samples/appointments-sample.csv` - Appointments only
-- `/samples/clinical-sample.csv` - Clinical records only
-- `/samples/financial-sample.csv` - Financial records only
+### Official Template (Excel Format)
+
+**Download:** `GET /api/migrate/template/download`
+
+This is the recommended way to get started:
+- Includes 17 sample records across all 5 types
+- Pre-formatted columns in correct order
+- Instructions sheet with guidance
+- Color-coded by data type for easy visual reference
+- Ready to edit and use
+
+**File:** `combined-migration-template.xlsx`
+- Contains both data rows and instructions sheet
+- All required columns already included
+- Sample data shows proper format
+- Simply edit the data and upload
 
 ---
 

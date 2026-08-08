@@ -123,7 +123,14 @@ class InsuranceClaimController extends Controller
     public function show($id)
     {
         try {
-            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company', 'invoice.treatments'])->findOrFail($id);
+            $claim = \App\Models\InsuranceClaim::with(['patient', 'policy.package.company'])->findOrFail($id);
+
+            if ($claim->invoice) {
+                $claim->invoice->load(['treatments' => function ($query) {
+                    $query->where('insurance_amount', '>', 0);
+                }]);
+            }
+
             $claim->patient_insurance = [
                 'patient' => $claim->patient,
                 'provider_name' => $claim->policy->package->company->name ?? 'Unknown',

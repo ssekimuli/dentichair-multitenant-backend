@@ -173,30 +173,41 @@ class InsuranceClaimController extends Controller
 
             $oldStatus = $claim->status;
             $claim->update($validated);
-            
-            // If status changed to paid
-            if (isset($validated['status']) && strtolower($validated['status']) === 'paid' && strtolower($oldStatus) !== 'paid') {
+
+            // If status changed to paid or partially approved
+            $newStatus = isset($validated['status']) ? strtolower($validated['status']) : strtolower($oldStatus);
+            $statusChanged = $newStatus !== strtolower($oldStatus);
+            $isPaymentStatus = in_array($newStatus, ['paid', 'partially approved']);
+
+            if ($statusChanged && $isPaymentStatus) {
                 $claim->load(['patient', 'policy.package.company']);
-                $providerName = $claim->policy && $claim->policy->package && $claim->policy->package->company 
-                    ? $claim->policy->package->company->name 
+                $providerName = $claim->policy && $claim->policy->package && $claim->policy->package->company
+                    ? $claim->policy->package->company->name
                     : 'Insurance';
-                
-                $amount = $validated['approved_amount'] ?? $claim->submitted_amount;
+
+                // Insurance payment amount
+                $insurancePaymentAmount = $validated['approved_amount'] ?? $claim->submitted_amount;
                 $writeOff = $validated['write_off_amount'] ?? 0;
-                $totalAmount = $claim->invoice_id ? (\App\Models\Invoice::find($claim->invoice_id)->amount ?? $claim->submitted_amount) : $claim->submitted_amount;
-                $patientBalance = $totalAmount - $amount - $writeOff;
+
+                // Total amount to be paid (from invoice or claim)
+                $totalAmount = $claim->invoice_id
+                    ? (\App\Models\Invoice::find($claim->invoice_id)->amount ?? $claim->submitted_amount)
+                    : $claim->submitted_amount;
+
+                // Remaining patient balance after insurance and write-off
+                $patientBalance = $totalAmount - $insurancePaymentAmount - $writeOff;
 
                 if ($claim->invoice_id) {
                     // Claim is linked to an invoice
                     $invoice = \App\Models\Invoice::find($claim->invoice_id);
                     if ($invoice) {
                         $invoice->transactions()->create([
-                            'amount' => $amount,
+                            'amount' => $insurancePaymentAmount,
                             'method' => 'Insurance (' . $providerName . ')',
                             'date' => now()->format('Y-m-d'),
                         ]);
 
-                        $newPaidAmount = $invoice->paid_amount + $amount;
+                        $newPaidAmount = $invoice->paid_amount + $insurancePaymentAmount;
                         $newInvoiceAmount = $invoice->amount;
 
                         if ($writeOff > 0) {
@@ -212,19 +223,26 @@ class InsuranceClaimController extends Controller
                         ]);
                     }
                 } else {
-                    // Claim is NOT linked to an invoice. Bill the patient for any remaining balance.
+                    // Claim is NOT linked to an invoice. Bill the patient for remaining balance.
                     if ($patientBalance > 0 && $claim->patient) {
                         $patient = $claim->patient;
-                        
+
                         $newInvoice = \App\Models\Invoice::create([
                             'patient_id' => $patient->id,
                             'patient_name' => $patient->first_name . ' ' . $patient->last_name,
                             'amount' => $patientBalance,
-                            'paid_amount' => 0,
+                            'paid_amount' => $insurancePaymentAmount,
                             'status' => 'Pending',
                             'issue_date' => now()->format('Y-m-d'),
                             'due_date' => now()->addDays(30)->format('Y-m-d'),
                             'branch_id' => $patient->branch_id ?? \App\Models\Branch::first()->id,
+                            'payment_method' => 'Insurance',
+                        ]);
+
+                        $newInvoice->transactions()->create([
+                            'amount' => $insurancePaymentAmount,
+                            'method' => 'Insurance (' . $providerName . ')',
+                            'date' => now()->format('Y-m-d'),
                         ]);
 
                         $newInvoice->otherCharges()->create([
@@ -239,7 +257,13 @@ class InsuranceClaimController extends Controller
                 }
             }
 
-            $claim->load(['patient', 'policy.package.company', 'invoice.treatments']);
+            $claim->load(['patient', 'policy.package.company']);
+            if ($claim->invoice) {
+                $claim->invoice->load(['treatments' => function ($query) {
+                    $query->where('insurance_amount', '>', 0);
+                }]);
+            }
+
             $claim->patient_insurance = [
                 'patient' => $claim->patient,
                 'provider_name' => $claim->policy->package->company->name ?? 'Unknown',

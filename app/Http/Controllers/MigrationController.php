@@ -14,6 +14,9 @@ class MigrationController extends Controller
         // Prevent PHP from timing out for large files
         set_time_limit(0);
 
+        $startTime = microtime(true);
+        $importId = 'imp_' . uniqid();
+
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
             'section' => 'required|string|in:employees,patients,appointments,clinical,financial'
@@ -21,7 +24,7 @@ class MigrationController extends Controller
 
         $section = $request->input('section');
         $file = $request->file('file');
-        
+
         $originalExtension = strtolower($file->getClientOriginalExtension());
         $filePath = $file->getPathname();
         $isTempCsv = false;
@@ -33,7 +36,7 @@ class MigrationController extends Controller
 
             // Construct command with escaped arguments for safety
             $command = "python " . escapeshellarg($pythonScript) . " " . escapeshellarg($filePath) . " " . escapeshellarg($tempCsvPath);
-            
+
             $output = [];
             $resultCode = 0;
             exec($command, $output, $resultCode);
@@ -43,34 +46,50 @@ class MigrationController extends Controller
                 $isTempCsv = true;
             } else {
                 return response()->json([
-                    'error' => 'Failed to parse Excel file.'
+                    'success' => false,
+                    'stats' => ['total' => 0, 'imported' => 0, 'failed' => 0, 'skipped' => 0, 'duration' => 0],
+                    'errors' => [['row' => 0, 'field' => 'file', 'value' => null, 'reason' => 'Failed to parse Excel file']],
+                    'warnings' => [],
+                    'import_id' => $importId
                 ], 400);
             }
         }
 
         $handle = fopen($filePath, "r");
         $headers = fgetcsv($handle); // Read headers
-        
+
         if (!$headers) {
             fclose($handle);
             if ($isTempCsv && file_exists($filePath)) {
                 unlink($filePath);
             }
             return response()->json([
-                'error' => 'File is empty or invalid.'
+                'success' => false,
+                'stats' => ['total' => 0, 'imported' => 0, 'failed' => 0, 'skipped' => 0, 'duration' => 0],
+                'errors' => [['row' => 1, 'field' => 'file', 'value' => null, 'reason' => 'File is empty or has no headers']],
+                'warnings' => [],
+                'import_id' => $importId
             ], 400);
         }
 
         // Normalize headers
         $headers = array_map('trim', $headers);
-        
+
         $chunk = [];
         $chunkSize = 1000;
-        $count = 0;
+        $totalCount = 0;
+        $errors = [];
+        $warnings = [];
+        $importedCount = 0;
+        $failedCount = 0;
+        $skippedCount = 0;
+
+        $rowNumber = 2; // Start from 2 because row 1 is headers
 
         while (($row = fgetcsv($handle)) !== false) {
             // Skip empty rows
             if (empty($row) || (count($row) === 1 && empty($row[0]))) {
+                $rowNumber++;
                 continue;
             }
 
@@ -78,20 +97,34 @@ class MigrationController extends Controller
             if (count($row) < count($headers)) {
                 $row = array_pad($row, count($headers), '');
             }
-            
-            $chunk[] = array_combine($headers, array_slice($row, 0, count($headers)));
+
+            $chunk[] = [
+                'rowNumber' => $rowNumber,
+                'data' => array_combine($headers, array_slice($row, 0, count($headers)))
+            ];
+            $totalCount++;
 
             if (count($chunk) >= $chunkSize) {
-                $this->processChunk($section, $chunk);
-                $count += count($chunk);
+                $result = $this->processChunk($section, $chunk);
+                $importedCount += $result['imported'];
+                $failedCount += $result['failed'];
+                $skippedCount += $result['skipped'];
+                $errors = array_merge($errors, $result['errors']);
+                $warnings = array_merge($warnings, $result['warnings']);
                 $chunk = [];
             }
+
+            $rowNumber++;
         }
 
         // Process remaining rows
         if (count($chunk) > 0) {
-            $this->processChunk($section, $chunk);
-            $count += count($chunk);
+            $result = $this->processChunk($section, $chunk);
+            $importedCount += $result['imported'];
+            $failedCount += $result['failed'];
+            $skippedCount += $result['skipped'];
+            $errors = array_merge($errors, $result['errors']);
+            $warnings = array_merge($warnings, $result['warnings']);
         }
 
         fclose($handle);
@@ -99,23 +132,49 @@ class MigrationController extends Controller
         if ($isTempCsv && file_exists($filePath)) {
             unlink($filePath);
         }
-        
+
+        $duration = round(microtime(true) - $startTime, 2);
+        $success = $failedCount === 0;
+
         return response()->json([
-            'message' => "Successfully imported data for {$section}",
-            'count' => $count
-        ]);
+            'success' => $success,
+            'stats' => [
+                'total' => $totalCount,
+                'imported' => $importedCount,
+                'failed' => $failedCount,
+                'skipped' => $skippedCount,
+                'duration' => $duration
+            ],
+            'errors' => array_slice($errors, 0, 100), // Return first 100 errors
+            'warnings' => array_slice($warnings, 0, 50), // Return first 50 warnings
+            'import_id' => $importId
+        ], $success ? 200 : 400);
     }
 
     private function processChunk($section, $chunk)
     {
         $now = now();
+        $imported = 0;
+        $failed = 0;
+        $skipped = 0;
+        $errors = [];
+        $warnings = [];
 
         if ($section === 'employees') {
             $upsertData = [];
             $rolesCache = [];
-            foreach ($chunk as $record) {
+            foreach ($chunk as $item) {
+                $rowNumber = $item['rowNumber'];
+                $record = $item['data'];
                 $email = $this->getRecordValue($record, ['email', 'emailaddress', 'email_address']);
                 if (empty($email)) {
+                    $errors[] = [
+                        'row' => $rowNumber,
+                        'field' => 'email',
+                        'value' => null,
+                        'reason' => 'Email is required'
+                    ];
+                    $failed++;
                     continue;
                 }
 
@@ -168,18 +227,40 @@ class MigrationController extends Controller
                 ];
             }
             if (!empty($upsertData)) {
-                DB::table('employees')->upsert(
-                    $upsertData,
-                    ['email'],
-                    ['name', 'role', 'role_id', 'salary', 'hire_date', 'status', 'branch_id', 'updated_at']
-                );
+                try {
+                    DB::table('employees')->upsert(
+                        $upsertData,
+                        ['email'],
+                        ['name', 'role', 'role_id', 'salary', 'hire_date', 'status', 'branch_id', 'updated_at']
+                    );
+                    $imported += count($upsertData);
+                } catch (\Exception $e) {
+                    foreach ($upsertData as $item) {
+                        $errors[] = [
+                            'row' => 'unknown',
+                            'field' => 'database',
+                            'value' => $item['email'],
+                            'reason' => 'Database error: ' . $e->getMessage()
+                        ];
+                    }
+                    $failed += count($upsertData);
+                }
             }
-            
+
         } elseif ($section === 'patients') {
             $upsertData = [];
-            foreach ($chunk as $record) {
+            foreach ($chunk as $item) {
+                $rowNumber = $item['rowNumber'];
+                $record = $item['data'];
                 $email = $this->getRecordValue($record, ['email', 'emailaddress', 'email_address']);
                 if (empty($email)) {
+                    $errors[] = [
+                        'row' => $rowNumber,
+                        'field' => 'email',
+                        'value' => null,
+                        'reason' => 'Email is required'
+                    ];
+                    $failed++;
                     continue;
                 }
 

@@ -1049,22 +1049,61 @@ class MigrationController extends Controller
 
     public function downloadTemplate()
     {
-        $templatePath = public_path('templates/combined-migration-template.xlsx');
+        try {
+            $templatePath = public_path('templates/combined-migration-template.xlsx');
 
-        if (!file_exists($templatePath)) {
+            if (!file_exists($templatePath)) {
+                Log::error('Template file not found', ['path' => $templatePath]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template file not found',
+                    'error' => 'File does not exist at ' . $templatePath
+                ], 404);
+            }
+
+            if (!is_readable($templatePath)) {
+                Log::error('Template file not readable', ['path' => $templatePath]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template file not accessible',
+                    'error' => 'File is not readable'
+                ], 403);
+            }
+
+            $fileSize = filesize($templatePath);
+            if ($fileSize === false || $fileSize === 0) {
+                Log::error('Template file is empty or unreadable', ['path' => $templatePath]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template file is corrupted or empty'
+                ], 400);
+            }
+
+            Log::info('Template download initiated', [
+                'file' => 'combined-migration-template.xlsx',
+                'size' => $fileSize
+            ]);
+
+            return response()->download(
+                $templatePath,
+                'combined-migration-template.xlsx',
+                [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'Content-Disposition' => 'attachment; filename="combined-migration-template.xlsx"',
+                    'Content-Length' => $fileSize
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Template download error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Template file not found'
-            ], 404);
+                'message' => 'Failed to download template',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->download(
-            $templatePath,
-            'combined-migration-template.xlsx',
-            [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition' => 'attachment; filename="combined-migration-template.xlsx"'
-            ]
-        );
     }
 }

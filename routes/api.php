@@ -39,8 +39,9 @@ Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function ()
     
 });
 
-// Public template download (browser direct access)
+// Public template downloads (browser direct access)
 Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
+Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
@@ -59,7 +60,6 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Imports
     Route::post('/migrate', [MigrationController::class, 'migrate']);
     Route::post('/migrate/combined', [MigrationController::class, 'migrateCombined']);
-    Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);
     Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);

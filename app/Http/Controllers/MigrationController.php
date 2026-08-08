@@ -1050,59 +1050,54 @@ class MigrationController extends Controller
     public function downloadTemplate()
     {
         try {
-            $templatePath = public_path('templates/combined-migration-template.xlsx');
+            $templatePath = base_path('public/templates/combined-migration-template.xlsx');
+
+            Log::info('Template download attempt', ['path' => $templatePath]);
 
             if (!file_exists($templatePath)) {
-                Log::error('Template file not found', ['path' => $templatePath]);
+                Log::error('Template file not found', ['path' => $templatePath, 'exists' => false]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Template file not found',
-                    'error' => 'File does not exist at ' . $templatePath
+                    'path_checked' => $templatePath
                 ], 404);
+            }
+
+            if (!is_file($templatePath)) {
+                Log::error('Template path is not a file', ['path' => $templatePath, 'is_file' => false]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template path is not a file'
+                ], 400);
             }
 
             if (!is_readable($templatePath)) {
                 Log::error('Template file not readable', ['path' => $templatePath]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Template file not accessible',
-                    'error' => 'File is not readable'
+                    'message' => 'Template file not accessible'
                 ], 403);
             }
 
-            $fileSize = filesize($templatePath);
-            if ($fileSize === false || $fileSize === 0) {
-                Log::error('Template file is empty or unreadable', ['path' => $templatePath]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Template file is corrupted or empty'
-                ], 400);
-            }
-
-            Log::info('Template download initiated', [
+            Log::info('Template download successful', [
                 'file' => 'combined-migration-template.xlsx',
-                'size' => $fileSize
+                'size' => filesize($templatePath)
             ]);
 
             return response()->download(
                 $templatePath,
-                'combined-migration-template.xlsx',
-                [
-                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'Content-Disposition' => 'attachment; filename="combined-migration-template.xlsx"',
-                    'Content-Length' => $fileSize
-                ]
+                'combined-migration-template.xlsx'
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Template download error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to download template',
-                'error' => $e->getMessage()
+                'message' => 'Failed to download template: ' . $e->getMessage()
             ], 500);
         }
     }

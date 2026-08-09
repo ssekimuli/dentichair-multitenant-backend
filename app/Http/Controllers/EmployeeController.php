@@ -335,6 +335,12 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
+        if (!$request->has('role') && $request->has('role_id')) {
+            $request->merge(['role' => $request->role_id]);
+        } elseif ($request->has('role') && !$request->has('role_id')) {
+            $request->merge(['role_id' => $request->role]);
+        }
+
         $hasRoleChange = false;
         if ($request->has('role_id') && $request->input('role_id') != $employee->role_id && $request->input('role_id') != $employee->role) {
             $hasRoleChange = true;

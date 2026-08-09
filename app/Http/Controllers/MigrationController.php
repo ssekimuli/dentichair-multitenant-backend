@@ -22,16 +22,24 @@ class MigrationController extends Controller
      */
     private array $clinicalRefMap = [];
 
+    /**
+     * Maps financial (invoice) row 'ref' values to the inserted invoice, so a
+     * later payment row in the same import can attach a payment_transactions
+     * row to it via an 'invoice_ref' column.
+     */
+    private array $financialRefMap = [];
+
     public function migrate(Request $request)
     {
         set_time_limit(0);
         $startTime = microtime(true);
         $importId = 'imp_' . uniqid();
         $this->clinicalRefMap = [];
+        $this->financialRefMap = [];
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
-            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,lab_order,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy'
+            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,lab_order,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment'
         ]);
 
         $section = $request->input('section');
@@ -221,6 +229,16 @@ class MigrationController extends Controller
             $this->processInsuranceCoverageChunk($chunk, $result, $now);
         } elseif ($section === 'insurance_policy') {
             $this->processInsurancePolicyChunk($chunk, $result, $now);
+        } elseif ($section === 'odontogram') {
+            $this->processOdontogramChunk($chunk, $result, $now);
+        } elseif ($section === 'periodontal') {
+            $this->processPeriodontalChunk($chunk, $result, $now);
+        } elseif ($section === 'orthodontic') {
+            $this->processOrthodonticChunk($chunk, $result, $now);
+        } elseif ($section === 'endodontic') {
+            $this->processEndodonticChunk($chunk, $result, $now);
+        } elseif ($section === 'payment') {
+            $this->processPaymentChunk($chunk, $result, $now);
         }
 
         return $result;
@@ -280,6 +298,25 @@ class MigrationController extends Controller
         }
 
         return in_array(strtolower(trim($value)), ['1', 'true', 'yes'], true);
+    }
+
+    /**
+     * Parse a CSV cell expected to hold a JSON object/array (e.g. periodontal
+     * pocket depths, canal lists). Returns ['valid' => bool, 'value' => mixed,
+     * 'reason' => string|null]; an empty cell resolves to $default without error.
+     */
+    private function parseJsonField($value, $default = null)
+    {
+        if ($value === null || $value === '') {
+            return ['valid' => true, 'value' => $default, 'reason' => null];
+        }
+
+        $decoded = json_decode($value, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return ['valid' => false, 'value' => null, 'reason' => 'Invalid JSON: ' . json_last_error_msg()];
+        }
+
+        return ['valid' => true, 'value' => $decoded, 'reason' => null];
     }
 
     /**
@@ -611,7 +648,9 @@ class MigrationController extends Controller
             $row = [
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => $email,
+                // 'email' has a unique DB index; an empty string (as opposed to
+                // NULL) would collide with every other patient missing an email.
+                'email' => empty($email) ? null : $email,
                 'phone' => $phone,
                 'address' => $address,
                 'gender' => $gender,
@@ -626,7 +665,7 @@ class MigrationController extends Controller
             if (!empty($email)) {
                 $upsertData[] = $row;
             } else {
-                $phoneOnlyData[] = $row;
+                $phoneOnlyData[] = ['rowNumber' => $rowNumber, 'row' => $row];
             }
             $result['imported']++;
         }
@@ -648,8 +687,8 @@ class MigrationController extends Controller
         // Phone-only rows have no unique DB column to upsert on, so match
         // existing patients by normalized phone in PHP instead.
         if (!empty($phoneOnlyData)) {
-            $normalizedPhones = array_map(function ($row) {
-                return $this->normalizePhone($row['phone']);
+            $normalizedPhones = array_map(function ($entry) {
+                return $this->normalizePhone($entry['row']['phone']);
             }, $phoneOnlyData);
 
             $existingByPhone = DB::table('patients')
@@ -663,7 +702,8 @@ class MigrationController extends Controller
                     return $this->normalizePhone($item->phone);
                 });
 
-            foreach ($phoneOnlyData as $row) {
+            foreach ($phoneOnlyData as $entry) {
+                $row = $entry['row'];
                 try {
                     $existing = $existingByPhone->get($this->normalizePhone($row['phone']));
                     if ($existing) {
@@ -675,9 +715,548 @@ class MigrationController extends Controller
                     }
                 } catch (\Exception $e) {
                     Log::error('Patient import error (phone-only): ' . $e->getMessage());
+                    $result['errors'][] = [
+                        'row' => $entry['rowNumber'],
+                        'field' => 'phone',
+                        'value' => $row['phone'],
+                        'reason' => 'Failed to save patient record'
+                    ];
                     $result['failed']++;
                     $result['imported']--;
                 }
+            }
+        }
+    }
+
+    /**
+     * Upsert a single tooth's odontogram entry, mirroring the side-effect
+     * PatientController@addTreatment already performs when a treatment is
+     * logged against a tooth with a condition: update the existing
+     * dental_records row for that tooth (preserving its notes if none is
+     * given here), or create one. Used by the clinical import's optional
+     * 'condition' column.
+     */
+    private function upsertDentalRecordForTooth($patientId, $toothId, $condition, $notes, $now)
+    {
+        $existing = DB::table('dental_records')
+            ->where('patient_id', $patientId)
+            ->where('tooth_id', $toothId)
+            ->first();
+
+        if ($existing) {
+            DB::table('dental_records')->where('id', $existing->id)->update([
+                'condition' => $condition,
+                'notes' => ($notes !== null && $notes !== '') ? $notes : $existing->notes,
+                'updated_at' => $now,
+            ]);
+        } else {
+            DB::table('dental_records')->insert([
+                'patient_id' => $patientId,
+                'tooth_id' => $toothId,
+                'condition' => $condition,
+                'notes' => $notes,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+    }
+
+    /**
+     * Odontogram: one dental_records row per tooth per patient. Mirrors
+     * PatientController@saveDentalRecord's upsert-by-(patient,tooth) behavior.
+     */
+    private function processOdontogramChunk($chunk, &$result, $now)
+    {
+        [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
+
+        $patientIds = [];
+        foreach ($chunk as $item) {
+            $found = $this->findPatientForRow($item['data'], $patientsByEmail, $patientsByPhone);
+            if ($found['patient']) $patientIds[] = $found['patient']->id;
+        }
+
+        $existing = empty($patientIds)
+            ? collect()
+            : DB::table('dental_records')->whereIn('patient_id', array_unique($patientIds))->get()->keyBy(function ($r) {
+                return $r->patient_id . ':' . $r->tooth_id;
+            });
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $found = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+            if (!$found['identifier']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => null,
+                    'reason' => 'Patient email or patient phone is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $p = $found['patient'];
+            if (!$p) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => $found['identifier'],
+                    'reason' => "No existing patient found for {$found['identifier']}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $rawTooth = $this->getRecordValue($record, ['tooth', 'tooth_id', 'tooth_number']);
+            $toothValidation = $this->validateTooth($rawTooth);
+            if (empty($rawTooth) || !$toothValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'tooth',
+                    'value' => $rawTooth,
+                    'reason' => empty($rawTooth) ? 'Tooth number is required' : $toothValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $tooth = $toothValidation['value'];
+
+            $condition = $this->getRecordValue($record, ['condition']);
+            if (empty($condition)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'condition',
+                    'value' => null,
+                    'reason' => 'Condition is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $row = [
+                'patient_id' => $p->id,
+                'tooth_id' => $tooth,
+                'condition' => trim($condition),
+                'root_condition' => $this->getRecordValue($record, ['root_condition']),
+                'notes' => $this->getRecordValue($record, ['notes']),
+                'updated_at' => $now,
+            ];
+
+            $key = $p->id . ':' . $tooth;
+            try {
+                $match = $existing->get($key);
+                if ($match) {
+                    DB::table('dental_records')->where('id', $match->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    $newId = DB::table('dental_records')->insertGetId($row);
+                    $existing->put($key, (object) array_merge($row, ['id' => $newId]));
+                }
+                $result['imported']++;
+            } catch (\Exception $e) {
+                Log::error('Odontogram import error: ' . $e->getMessage());
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'tooth',
+                    'value' => $tooth,
+                    'reason' => 'Failed to save dental record'
+                ];
+                $result['failed']++;
+            }
+        }
+    }
+
+    /**
+     * Periodontal chart: one periodontal_records row per tooth per patient,
+     * upserted by (patient, tooth). Deliberately NOT a destructive
+     * replace-all like the live savePeriodontalRecords endpoint, since a
+     * migration import may run incrementally across multiple files.
+     */
+    private function processPeriodontalChunk($chunk, &$result, $now)
+    {
+        [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
+
+        $patientIds = [];
+        foreach ($chunk as $item) {
+            $found = $this->findPatientForRow($item['data'], $patientsByEmail, $patientsByPhone);
+            if ($found['patient']) $patientIds[] = $found['patient']->id;
+        }
+
+        $existing = empty($patientIds)
+            ? collect()
+            : DB::table('periodontal_records')->whereIn('patient_id', array_unique($patientIds))->get()->keyBy(function ($r) {
+                return $r->patient_id . ':' . $r->tooth_id;
+            });
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $found = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+            if (!$found['identifier']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => null,
+                    'reason' => 'Patient email or patient phone is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $p = $found['patient'];
+            if (!$p) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => $found['identifier'],
+                    'reason' => "No existing patient found for {$found['identifier']}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $rawTooth = $this->getRecordValue($record, ['tooth', 'tooth_id', 'tooth_number']);
+            $toothValidation = $this->validateTooth($rawTooth);
+            if (empty($rawTooth) || !$toothValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'tooth',
+                    'value' => $rawTooth,
+                    'reason' => empty($rawTooth) ? 'Tooth number is required' : $toothValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $tooth = $toothValidation['value'];
+
+            $pocketsRaw = $this->getRecordValue($record, ['pockets']);
+            $pockets = $this->parseJsonField($pocketsRaw);
+            if (!$pockets['valid'] || empty($pocketsRaw)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'pockets',
+                    'value' => $pocketsRaw,
+                    'reason' => empty($pocketsRaw) ? 'Pockets is required, e.g. {"MB":3,"B":2,"DB":3,"ML":2,"L":2,"DL":3}' : $pockets['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $recession = $this->getRecordValue($record, ['recession']);
+            if (!is_numeric($recession)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'recession',
+                    'value' => $recession,
+                    'reason' => 'Recession is required and must be a number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $mobility = $this->getRecordValue($record, ['mobility']);
+            if (empty($mobility)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'mobility',
+                    'value' => null,
+                    'reason' => 'Mobility is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $conditionsRaw = $this->getRecordValue($record, ['periodontal_conditions', 'conditions']);
+            $conditions = $this->parseJsonField($conditionsRaw);
+            if (!$conditions['valid'] || empty($conditionsRaw)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'periodontal_conditions',
+                    'value' => $conditionsRaw,
+                    'reason' => empty($conditionsRaw) ? 'Periodontal conditions is required, e.g. ["Gingivitis","Bleeding on probing"]' : $conditions['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $mgj = $this->getRecordValue($record, ['mgj']);
+
+            $row = [
+                'patient_id' => $p->id,
+                'tooth_id' => $tooth,
+                'pockets' => json_encode($pockets['value']),
+                'recession' => (int) $recession,
+                'mgj' => is_numeric($mgj) ? (int) $mgj : null,
+                'mobility' => trim($mobility),
+                'furcation' => $this->getRecordValue($record, ['furcation']),
+                'conditions' => json_encode($conditions['value']),
+                'updated_at' => $now,
+            ];
+
+            $key = $p->id . ':' . $tooth;
+            try {
+                $match = $existing->get($key);
+                if ($match) {
+                    DB::table('periodontal_records')->where('id', $match->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    $newId = DB::table('periodontal_records')->insertGetId($row);
+                    $existing->put($key, (object) array_merge($row, ['id' => $newId]));
+                }
+                $result['imported']++;
+            } catch (\Exception $e) {
+                Log::error('Periodontal import error: ' . $e->getMessage());
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'tooth',
+                    'value' => $tooth,
+                    'reason' => 'Failed to save periodontal record'
+                ];
+                $result['failed']++;
+            }
+        }
+    }
+
+    /**
+     * Orthodontic chart: append-only history, matching addOrthodonticRecord's
+     * live behavior (multiple records per patient/date are valid).
+     */
+    private function processOrthodonticChunk($chunk, &$result, $now)
+    {
+        [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
+
+        $insertData = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $found = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+            if (!$found['identifier']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => null,
+                    'reason' => 'Patient email or patient phone is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $p = $found['patient'];
+            if (!$p) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => $found['identifier'],
+                    'reason' => "No existing patient found for {$found['identifier']}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $appliance = $this->getRecordValue($record, ['appliance']);
+            if (empty($appliance)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'appliance',
+                    'value' => null,
+                    'reason' => 'Appliance is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $bracketChangesRaw = $this->getRecordValue($record, ['bracket_changes']);
+            $bracketChanges = $this->parseJsonField($bracketChangesRaw, []);
+            if (!$bracketChanges['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'bracket_changes',
+                    'value' => $bracketChangesRaw,
+                    'reason' => $bracketChanges['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $brokenBracketsRaw = $this->getRecordValue($record, ['broken_brackets']);
+            $brokenBrackets = $this->parseJsonField($brokenBracketsRaw, []);
+            if (!$brokenBrackets['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'broken_brackets',
+                    'value' => $brokenBracketsRaw,
+                    'reason' => $brokenBrackets['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $rawDate = $this->getRecordValue($record, ['date']);
+            $date = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
+
+            $insertData[] = [
+                'patient_id' => $p->id,
+                'date' => $date,
+                'appliance' => trim($appliance),
+                'appliance_location' => $this->getRecordValue($record, ['appliance_location']),
+                'treatment_phase' => $this->getRecordValue($record, ['treatment_phase']),
+                'wire_size' => $this->getRecordValue($record, ['wire_size']),
+                'wire_size_upper' => $this->getRecordValue($record, ['wire_size_upper']),
+                'wire_size_lower' => $this->getRecordValue($record, ['wire_size_lower']),
+                'archwire_material' => $this->getRecordValue($record, ['archwire_material']),
+                'elastics' => $this->getRecordValue($record, ['elastics']),
+                'compliance' => $this->getRecordValue($record, ['compliance']),
+                'oral_hygiene' => $this->getRecordValue($record, ['oral_hygiene']),
+                'bracket_changes' => json_encode($bracketChanges['value']),
+                'broken_brackets' => json_encode($brokenBrackets['value']),
+                'notes' => $this->getRecordValue($record, ['notes']),
+                'next_visit_goals' => $this->getRecordValue($record, ['next_visit_goals']),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($insertData)) {
+            try {
+                DB::table('orthodontic_records')->insert($insertData);
+            } catch (\Exception $e) {
+                Log::error('Orthodontic import error: ' . $e->getMessage());
+                $result['failed'] += count($insertData);
+                $result['imported'] -= count($insertData);
+            }
+        }
+    }
+
+    /**
+     * Endodontic chart: append-only history, matching EndodonticRecordController
+     * ::store's live behavior (always creates, no upsert).
+     */
+    private function processEndodonticChunk($chunk, &$result, $now)
+    {
+        [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
+
+        $insertData = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $found = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+            if (!$found['identifier']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => null,
+                    'reason' => 'Patient email or patient phone is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $p = $found['patient'];
+            if (!$p) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => $found['identifier'],
+                    'reason' => "No existing patient found for {$found['identifier']}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $rawTooth = $this->getRecordValue($record, ['tooth', 'tooth_id', 'tooth_number']);
+            $toothValidation = $this->validateTooth($rawTooth);
+            if (empty($rawTooth) || !$toothValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'tooth',
+                    'value' => $rawTooth,
+                    'reason' => empty($rawTooth) ? 'Tooth number is required' : $toothValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $tooth = $toothValidation['value'];
+
+            $pulpalDiagnosis = $this->getRecordValue($record, ['pulpal_diagnosis']);
+            $periapicalDiagnosis = $this->getRecordValue($record, ['periapical_diagnosis']);
+            if (empty($pulpalDiagnosis) || empty($periapicalDiagnosis)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'pulpal_diagnosis/periapical_diagnosis',
+                    'value' => null,
+                    'reason' => 'Pulpal diagnosis and periapical diagnosis are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $canalsRaw = $this->getRecordValue($record, ['canals']);
+            $canals = $this->parseJsonField($canalsRaw);
+            if (!$canals['valid'] || empty($canalsRaw)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'canals',
+                    'value' => $canalsRaw,
+                    'reason' => empty($canalsRaw) ? 'Canals is required, e.g. ["MB","DB","P"]' : $canals['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $rawDate = $this->getRecordValue($record, ['date']);
+            if (empty($rawDate)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'date',
+                    'value' => null,
+                    'reason' => 'Date is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $dateValidation = $this->validateDate($rawDate, true);
+            if (!$dateValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'date',
+                    'value' => $rawDate,
+                    'reason' => $dateValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $insertData[] = [
+                'patient_id' => $p->id,
+                'date' => date('Y-m-d', strtotime($rawDate)),
+                'tooth_id' => $tooth,
+                'pulpal_diagnosis' => trim($pulpalDiagnosis),
+                'periapical_diagnosis' => trim($periapicalDiagnosis),
+                'canals' => json_encode($canals['value']),
+                'obturation_material' => $this->getRecordValue($record, ['obturation_material']),
+                'post_type' => $this->getRecordValue($record, ['post_type']),
+                'notes' => $this->getRecordValue($record, ['notes']),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($insertData)) {
+            try {
+                DB::table('endodontic_records')->insert($insertData);
+            } catch (\Exception $e) {
+                Log::error('Endodontic import error: ' . $e->getMessage());
+                $result['failed'] += count($insertData);
+                $result['imported'] -= count($insertData);
             }
         }
     }
@@ -852,6 +1431,19 @@ class MigrationController extends Controller
             }
             $tooth = $toothValidation['value'];
 
+            // Optional: logging a condition against a tooth also updates that
+            // tooth's odontogram entry, mirroring PatientController@addTreatment.
+            $condition = $this->getRecordValue($record, ['condition']);
+            if ($tooth !== null && !empty($condition)) {
+                $this->upsertDentalRecordForTooth(
+                    $p->id,
+                    $tooth,
+                    trim($condition),
+                    $this->getRecordValue($record, ['notes']),
+                    $now
+                );
+            }
+
             $row = [
                 'patient_id' => $p->id,
                 'procedure' => $procedure,
@@ -1001,6 +1593,17 @@ class MigrationController extends Controller
             try {
                 $invoiceId = DB::table('invoices')->insertGetId($invoiceRow);
 
+                // Optional tag a later 'payment' row can reference via invoice_ref
+                // to attach a payment_transactions row to this specific invoice.
+                $invoiceRef = $this->getRecordValue($record, ['ref', 'reference', 'row_ref', 'external_id']);
+                if (!empty($invoiceRef)) {
+                    $this->financialRefMap[trim($invoiceRef)] = [
+                        'id' => $invoiceId,
+                        'patient_id' => $p->id,
+                        'amount' => (float) $amount,
+                    ];
+                }
+
                 $matchedRefs = [];
                 if (!empty($refsRaw)) {
                     foreach (preg_split('/[,;]/', $refsRaw) as $refToken) {
@@ -1060,6 +1663,159 @@ class MigrationController extends Controller
                 ];
                 $result['failed']++;
             }
+        }
+    }
+
+    /**
+     * Payment transaction: attaches a payment_transactions row to an invoice
+     * created earlier in the same import (via 'invoice_ref' matching a
+     * financial row's 'ref'), and recomputes that invoice's paid_amount /
+     * patient_paid_amount / insurance_paid_amount / status / payment_method
+     * from ALL of its transactions (not just this chunk's) so multiple
+     * payments - and the financial row's own initial paid-amount guess -
+     * never double-count.
+     */
+    private function processPaymentChunk($chunk, &$result, $now)
+    {
+        $claimNumbers = [];
+        foreach ($chunk as $item) {
+            $claimNumber = $this->getRecordValue($item['data'], ['claim_number', 'claimnumber']);
+            if ($claimNumber) $claimNumbers[] = trim($claimNumber);
+        }
+        $claims = empty($claimNumbers)
+            ? collect()
+            : DB::table('insurance_claims')->whereIn('claim_number', $claimNumbers)->get()->keyBy('claim_number');
+
+        $affectedInvoiceIds = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $invoiceRef = $this->getRecordValue($record, ['invoice_ref', 'invoiceref']);
+            if (empty($invoiceRef) || !isset($this->financialRefMap[trim($invoiceRef)])) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'invoice_ref',
+                    'value' => $invoiceRef,
+                    'reason' => empty($invoiceRef)
+                        ? 'invoice_ref is required'
+                        : "No existing invoice found with ref \"{$invoiceRef}\". Add a 'ref' column to the financial row for this invoice, in this same import."
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $invoice = $this->financialRefMap[trim($invoiceRef)];
+
+            $amount = $this->getRecordValue($record, ['amount']);
+            if (!is_numeric($amount)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'amount',
+                    'value' => $amount,
+                    'reason' => 'Amount is required and must be a number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $method = $this->getRecordValue($record, ['method', 'payment_method']);
+            if (empty($method)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'method',
+                    'value' => null,
+                    'reason' => 'Method is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $payerType = strtolower(trim($this->getRecordValue($record, ['payer_type', 'payertype']) ?? 'patient'));
+            if (!in_array($payerType, ['patient', 'insurance'])) {
+                $payerType = 'patient';
+            }
+
+            $insuranceClaimId = null;
+            $claimNumber = $this->getRecordValue($record, ['claim_number', 'claimnumber']);
+            if (!empty($claimNumber)) {
+                $claim = $claims->get(trim($claimNumber));
+                if (!$claim) {
+                    $result['errors'][] = [
+                        'row' => $rowNumber,
+                        'field' => 'claim_number',
+                        'value' => $claimNumber,
+                        'reason' => "No existing claim found with claim_number {$claimNumber}."
+                    ];
+                    $result['failed']++;
+                    continue;
+                }
+                $insuranceClaimId = $claim->id;
+            }
+
+            $rawDate = $this->getRecordValue($record, ['date']);
+            $date = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
+
+            try {
+                DB::table('payment_transactions')->insert([
+                    'invoice_id' => $invoice['id'],
+                    'insurance_claim_id' => $insuranceClaimId,
+                    'payer_type' => $payerType,
+                    'date' => $date,
+                    'amount' => (float) $amount,
+                    'method' => trim($method),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+                $affectedInvoiceIds[$invoice['id']] = true;
+                $result['imported']++;
+            } catch (\Exception $e) {
+                Log::error('Payment import error: ' . $e->getMessage());
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'invoice_ref',
+                    'value' => $invoiceRef,
+                    'reason' => 'Failed to save payment transaction'
+                ];
+                $result['failed']++;
+            }
+        }
+
+        foreach (array_keys($affectedInvoiceIds) as $invoiceId) {
+            $invoice = DB::table('invoices')->find($invoiceId);
+            if (!$invoice) {
+                continue;
+            }
+
+            $transactions = DB::table('payment_transactions')->where('invoice_id', $invoiceId)->orderBy('id')->get();
+
+            $patientPaid = 0.0;
+            $insurancePaid = 0.0;
+            $lastMethod = $invoice->payment_method;
+
+            foreach ($transactions as $t) {
+                if ($t->payer_type === 'insurance') {
+                    $insurancePaid += (float) $t->amount;
+                } else {
+                    $patientPaid += (float) $t->amount;
+                }
+                $lastMethod = $t->method;
+            }
+
+            $totalPaid = round($patientPaid + $insurancePaid, 2);
+            $patientBalance = max(0, (float) $invoice->patient_responsibility - $patientPaid);
+            $insuranceBalance = max(0, (float) $invoice->insurance_responsibility - $insurancePaid);
+
+            DB::table('invoices')->where('id', $invoiceId)->update([
+                'paid_amount' => $totalPaid,
+                'patient_paid_amount' => round($patientPaid, 2),
+                'insurance_paid_amount' => round($insurancePaid, 2),
+                'patient_balance' => round($patientBalance, 2),
+                'insurance_balance' => round($insuranceBalance, 2),
+                'status' => $totalPaid >= (float) $invoice->amount ? 'Paid' : 'Pending',
+                'payment_method' => $lastMethod,
+                'updated_at' => $now,
+            ]);
         }
     }
 
@@ -1902,6 +2658,8 @@ class MigrationController extends Controller
      */
     private function processLabOrderChunk($chunk, &$result, $now)
     {
+        [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
+
         $doctorEmails = [];
         $clientNames = [];
         foreach ($chunk as $item) {
@@ -1925,16 +2683,42 @@ class MigrationController extends Controller
             $rowNumber = $item['rowNumber'];
             $record = $item['data'];
 
+            // A lab order is linked to a client (the lab/company), not a
+            // patient - patient info is optional metadata. If patient_email/
+            // patient_phone is given it must resolve to an existing patient
+            // (and fills patient_name unless patient_name overrides it);
+            // otherwise patient_name is used as free text, or left blank.
+            // laboratory_orders.patient_name is NOT NULL, so a blank patient
+            // is stored as an empty string rather than true SQL NULL.
             $patientName = $this->getRecordValue($record, ['patientname', 'patient_name']);
+            $patientFound = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+
+            if ($patientFound['identifier']) {
+                if (!$patientFound['patient']) {
+                    $result['errors'][] = [
+                        'row' => $rowNumber,
+                        'field' => 'patient_email/patient_phone',
+                        'value' => $patientFound['identifier'],
+                        'reason' => "No existing patient found for {$patientFound['identifier']}. Import the patient first."
+                    ];
+                    $result['failed']++;
+                    continue;
+                }
+                if (empty($patientName)) {
+                    $patientName = trim(($patientFound['patient']->first_name ?? '') . ' ' . ($patientFound['patient']->last_name ?? ''));
+                }
+            }
+            $patientName = $patientName ?? '';
+
             $lab = $this->getRecordValue($record, ['lab']);
             $itemName = $this->getRecordValue($record, ['item']);
 
-            if (empty($patientName) || empty($lab) || empty($itemName)) {
+            if (empty($lab) || empty($itemName)) {
                 $result['errors'][] = [
                     'row' => $rowNumber,
-                    'field' => 'patient_name/lab/item',
+                    'field' => 'lab/item',
                     'value' => null,
-                    'reason' => 'Patient name, lab, and item are required'
+                    'reason' => 'Lab and item are required'
                 ];
                 $result['failed']++;
                 continue;
@@ -2395,18 +3179,22 @@ class MigrationController extends Controller
      * 1. Employees (no dependencies)
      * 2. Clients (no dependencies)
      * 3. Patients (no dependencies)
-     * 4. Appointments (references employees & patients)
-     * 5. Clinical (references patients; optional 'ref' column for invoice linking)
-     * 6. Financial (references patients; optional 'procedure_refs' linking to clinical rows)
-     * 7. Lab orders (reference clients & employees)
-     * 8. Payroll / Leave requests / Staff advances (reference employees)
-     * 9. Insurance company (no dependencies)
-     * 10. Insurance package (references insurance company)
-     * 11. Insurance coverage (references insurance package & the treatment catalog)
-     * 12. Insurance policy (references insurance package)
-     * 13. Insurance enrollment (references patients & an insurance policy - either
-     *     pre-existing or created by steps 9-12 above)
-     * 14. Claims (reference the insurance enrollment created above)
+     * 4. Odontogram / Periodontal charts (references patients; upserted per tooth)
+     * 5. Orthodontic / Endodontic charts (references patients; append-only history)
+     * 6. Appointments (references employees & patients)
+     * 7. Clinical (references patients; optional 'ref' column for invoice linking)
+     * 8. Financial (references patients; optional 'procedure_refs' linking to clinical rows)
+     * 9. Lab orders (reference clients & employees)
+     * 10. Payroll / Leave requests / Staff advances (reference employees)
+     * 11. Insurance company (no dependencies)
+     * 12. Insurance package (references insurance company)
+     * 13. Insurance coverage (references insurance package & the treatment catalog)
+     * 14. Insurance policy (references insurance package)
+     * 15. Insurance enrollment (references patients & an insurance policy - either
+     *     pre-existing or created by steps 11-14 above)
+     * 16. Claims (reference the insurance enrollment created above)
+     * 17. Payments (reference an invoice via 'invoice_ref' matching a financial
+     *     row's 'ref', and optionally a claim via 'claim_number' from step 16)
      */
     public function migrateCombined(Request $request)
     {
@@ -2415,6 +3203,7 @@ class MigrationController extends Controller
             $startTime = microtime(true);
             $importId = 'imp_' . uniqid();
             $this->clinicalRefMap = [];
+            $this->financialRefMap = [];
 
             Log::info('Combined migration started', ['import_id' => $importId]);
 
@@ -2490,7 +3279,7 @@ class MigrationController extends Controller
             if ($isTempCsv && file_exists($filePath)) unlink($filePath);
 
             return $this->errorResponse($importId, 0, 0, [
-                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, client, patient, appointment, clinical, financial, lab_order, payroll, leave_request, staff_advance, insurance_company, insurance_package, insurance_coverage, insurance_policy, insurance, claim)']
+                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, client, patient, appointment, clinical, financial, lab_order, payroll, leave_request, staff_advance, odontogram, periodontal, orthodontic, endodontic, insurance_company, insurance_package, insurance_coverage, insurance_policy, insurance, claim, payment)']
             ], $startTime);
         }
 
@@ -2508,12 +3297,17 @@ class MigrationController extends Controller
             'payroll' => [],
             'leave_request' => [],
             'staff_advance' => [],
+            'odontogram' => [],
+            'periodontal' => [],
+            'orthodontic' => [],
+            'endodontic' => [],
             'insurance_company' => [],
             'insurance_package' => [],
             'insurance_coverage' => [],
             'insurance_policy' => [],
             'insurance' => [],
-            'claim' => []
+            'claim' => [],
+            'payment' => []
         ];
 
         $rowNumber = 2;
@@ -2550,12 +3344,17 @@ class MigrationController extends Controller
                 'payroll' => 'payroll',
                 'leave_request' => 'leave_request',
                 'staff_advance' => 'staff_advance',
+                'odontogram' => 'odontogram',
+                'periodontal' => 'periodontal',
+                'orthodontic' => 'orthodontic',
+                'endodontic' => 'endodontic',
                 'insurance_company' => 'insurance_company',
                 'insurance_package' => 'insurance_package',
                 'insurance_coverage' => 'insurance_coverage',
                 'insurance_policy' => 'insurance_policy',
                 'insurance' => 'insurance',
                 'claim' => 'claim',
+                'payment' => 'payment',
             ];
             $type = $typeMap[$rawType] ?? null;
 
@@ -2588,10 +3387,13 @@ class MigrationController extends Controller
         // then the insurance setup chain (company -> package -> coverage -> policy),
         // then insurance enrollment, then claims (which need the enrollment to exist)
         $processingOrder = [
-            'employees', 'clients', 'patients', 'appointments', 'clinical', 'financial',
+            'employees', 'clients', 'patients',
+            'odontogram', 'periodontal', 'orthodontic', 'endodontic',
+            'appointments', 'clinical', 'financial',
             'lab_order', 'payroll', 'leave_request', 'staff_advance',
             'insurance_company', 'insurance_package', 'insurance_coverage', 'insurance_policy',
             'insurance', 'claim',
+            'payment',
         ];
 
         foreach ($processingOrder as $section) {

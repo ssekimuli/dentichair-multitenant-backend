@@ -335,17 +335,8 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
-        if (!$request->has('role') && $request->has('role_id')) {
-            $request->merge(['role' => $request->role_id]);
-        } elseif ($request->has('role') && !$request->has('role_id')) {
-            $request->merge(['role_id' => $request->role]);
-        }
-
         $hasRoleChange = false;
-        if ($request->has('role_id') && $request->input('role_id') != $employee->role_id && $request->input('role_id') != $employee->role) {
-            $hasRoleChange = true;
-        }
-        if ($request->has('role') && $request->input('role') != $employee->role_id && $request->input('role') != $employee->role) {
+        if ($request->has('role_id') && $request->input('role_id') != $employee->role_id) {
             $hasRoleChange = true;
         }
 
@@ -355,7 +346,7 @@ class EmployeeController extends Controller
                 return response()->json([
                     'message' => 'Role modifications are restricted',
                     'errors' => [
-                        'role' => ['Role modifications are restricted']
+                        'role_id' => ['Role modifications are restricted']
                     ]
                 ], 422);
             }
@@ -365,7 +356,7 @@ class EmployeeController extends Controller
             'name' => 'sometimes|string',
             'avatar' => 'nullable|string',
             'email' => 'sometimes|email|unique:employees,email,' . $id,
-            'role' => 'nullable|exists:role_permissions,id',
+            'role_id' => 'nullable|exists:role_permissions,id',
             'salary' => 'sometimes|numeric',
             'hire_date' => 'sometimes|date',
             'branch_id' => 'sometimes|exists:branches,id',
@@ -373,9 +364,8 @@ class EmployeeController extends Controller
         ]);
 
         // Auto-fetch role name if provided
-        if (isset($validated['role'])) {
-            $role = RolePermission::find($validated['role']);
-            $validated['role_id'] = $validated['role'];
+        if (isset($validated['role_id'])) {
+            $role = RolePermission::find($validated['role_id']);
             $validated['role'] = $role->name ?? $employee->role;
         }
 

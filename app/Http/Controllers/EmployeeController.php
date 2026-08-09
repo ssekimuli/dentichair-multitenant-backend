@@ -344,12 +344,15 @@ class EmployeeController extends Controller
         }
 
         if ($hasRoleChange) {
-            return response()->json([
-                'message' => 'Role modifications are restricted',
-                'errors' => [
-                    'role' => ['Role modifications are restricted']
-                ]
-            ], 422);
+            $user = $request->user();
+            if (!$user || $user->role !== 'Super Admin') {
+                return response()->json([
+                    'message' => 'Role modifications are restricted',
+                    'errors' => [
+                        'role' => ['Role modifications are restricted']
+                    ]
+                ], 422);
+            }
         }
 
         $validated = $request->validate([

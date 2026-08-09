@@ -31,7 +31,7 @@ class MigrationController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
-            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,lab_order,payroll,leave_request,staff_advance'
+            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,lab_order,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy'
         ]);
 
         $section = $request->input('section');
@@ -213,6 +213,14 @@ class MigrationController extends Controller
             $this->processLeaveRequestChunk($chunk, $result, $now);
         } elseif ($section === 'staff_advance') {
             $this->processStaffAdvanceChunk($chunk, $result, $now);
+        } elseif ($section === 'insurance_company') {
+            $this->processInsuranceCompanyChunk($chunk, $result, $now);
+        } elseif ($section === 'insurance_package') {
+            $this->processInsurancePackageChunk($chunk, $result, $now);
+        } elseif ($section === 'insurance_coverage') {
+            $this->processInsuranceCoverageChunk($chunk, $result, $now);
+        } elseif ($section === 'insurance_policy') {
+            $this->processInsurancePolicyChunk($chunk, $result, $now);
         }
 
         return $result;
@@ -263,6 +271,15 @@ class MigrationController extends Controller
     private function normalizePhone($phone)
     {
         return preg_replace('/\D/', '', (string) $phone);
+    }
+
+    private function parseBool($value, $default = false)
+    {
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return in_array(strtolower(trim($value)), ['1', 'true', 'yes'], true);
     }
 
     /**
@@ -1047,9 +1064,506 @@ class MigrationController extends Controller
     }
 
     /**
+     * Insurance Setup chain (processed in this order, each optional -
+     * mix and match with pre-existing records identified by code/policy_number):
+     * insurance_company -> insurance_package -> insurance_coverage (package's
+     * per-procedure coverage rules) -> insurance_policy -> insurance (patient
+     * enrollment, below) -> claim.
+     */
+    private function processInsuranceCompanyChunk($chunk, &$result, $now)
+    {
+        $upsertData = [];
+        $duplicateCodes = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $code = $this->getRecordValue($record, ['code', 'companycode', 'company_code']);
+            $name = $this->getRecordValue($record, ['name', 'companyname', 'company_name']);
+
+            if (empty($code) || empty($name)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'code/name',
+                    'value' => null,
+                    'reason' => 'Company code and name are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $codeTrim = trim($code);
+            if (in_array($codeTrim, $duplicateCodes)) {
+                $result['warnings'][] = "Row {$rowNumber}: Duplicate company code (skipped)";
+                $result['skipped']++;
+                continue;
+            }
+            $duplicateCodes[] = $codeTrim;
+
+            $email = $this->getRecordValue($record, ['email', 'emailaddress', 'email_address']);
+            if (!empty($email)) {
+                $emailValidation = $this->validateEmail($email);
+                if (!$emailValidation['valid']) {
+                    $result['errors'][] = [
+                        'row' => $rowNumber,
+                        'field' => 'email',
+                        'value' => $email,
+                        'reason' => $emailValidation['reason']
+                    ];
+                    $result['failed']++;
+                    continue;
+                }
+            }
+
+            $status = $this->getRecordValue($record, ['status']) ?? 'active';
+            if (!in_array(strtolower($status), ['active', 'inactive'])) {
+                $status = 'active';
+            } else {
+                $status = strtolower($status);
+            }
+
+            $upsertData[] = [
+                'code' => $codeTrim,
+                'name' => trim($name),
+                'email' => $email,
+                'phone' => $this->getRecordValue($record, ['phone', 'phonenumber', 'phone_number']),
+                'address' => $this->getRecordValue($record, ['address']),
+                'contact_person' => $this->getRecordValue($record, ['contact_person', 'contactperson']),
+                'status' => $status,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($upsertData)) {
+            try {
+                DB::table('insurance_companies')->upsert(
+                    $upsertData,
+                    ['code'],
+                    ['name', 'email', 'phone', 'address', 'contact_person', 'status', 'updated_at']
+                );
+            } catch (\Exception $e) {
+                Log::error('Insurance company import error: ' . $e->getMessage());
+                $result['failed'] += count($upsertData);
+                $result['imported'] -= count($upsertData);
+            }
+        }
+    }
+
+    private function processInsurancePackageChunk($chunk, &$result, $now)
+    {
+        $companyCodes = [];
+        foreach ($chunk as $item) {
+            $companyCode = $this->getRecordValue($item['data'], ['company_code', 'companycode']);
+            if ($companyCode) $companyCodes[] = trim($companyCode);
+        }
+
+        $companies = DB::table('insurance_companies')->whereIn('code', $companyCodes)->get()->keyBy('code');
+
+        $upsertData = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $companyCode = $this->getRecordValue($record, ['company_code', 'companycode']);
+            $code = $this->getRecordValue($record, ['code', 'packagecode', 'package_code']);
+            $name = $this->getRecordValue($record, ['name', 'packagename', 'package_name']);
+
+            if (empty($companyCode) || empty($code) || empty($name)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'company_code/code/name',
+                    'value' => null,
+                    'reason' => 'Company code, package code, and name are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $company = $companies->get(trim($companyCode));
+            if (!$company) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'company_code',
+                    'value' => $companyCode,
+                    'reason' => "No existing insurance company found with code {$companyCode}. Import the insurance_company row first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $coveragePct = $this->getRecordValue($record, ['default_coverage_percentage', 'defaultcoveragepercentage']);
+            if ($coveragePct !== null && (!is_numeric($coveragePct) || $coveragePct < 0 || $coveragePct > 100)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'default_coverage_percentage',
+                    'value' => $coveragePct,
+                    'reason' => 'Default coverage percentage must be between 0 and 100'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $annualLimit = $this->getRecordValue($record, ['default_annual_limit', 'defaultannuallimit']);
+            if ($annualLimit !== null && (!is_numeric($annualLimit) || $annualLimit < 0)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'default_annual_limit',
+                    'value' => $annualLimit,
+                    'reason' => 'Default annual limit must be a non-negative number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $status = $this->getRecordValue($record, ['status']) ?? 'active';
+            if (!in_array(strtolower($status), ['active', 'inactive'])) {
+                $status = 'active';
+            } else {
+                $status = strtolower($status);
+            }
+
+            $upsertData[] = [
+                'insurance_company_id' => $company->id,
+                'code' => trim($code),
+                'name' => trim($name),
+                'description' => $this->getRecordValue($record, ['description']),
+                'default_coverage_percentage' => $coveragePct !== null ? (float)$coveragePct : 100.00,
+                'default_annual_limit' => $annualLimit !== null ? (float)$annualLimit : null,
+                'requires_pre_authorization' => $this->parseBool($this->getRecordValue($record, ['requires_pre_authorization', 'requirespreauthorization'])),
+                'status' => $status,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($upsertData)) {
+            try {
+                DB::table('insurance_packages')->upsert(
+                    $upsertData,
+                    ['insurance_company_id', 'code'],
+                    ['name', 'description', 'default_coverage_percentage', 'default_annual_limit', 'requires_pre_authorization', 'status', 'updated_at']
+                );
+            } catch (\Exception $e) {
+                Log::error('Insurance package import error: ' . $e->getMessage());
+                $result['failed'] += count($upsertData);
+                $result['imported'] -= count($upsertData);
+            }
+        }
+    }
+
+    private function processInsuranceCoverageChunk($chunk, &$result, $now)
+    {
+        $companyCodes = [];
+        $packageCodes = [];
+        $procedureNames = [];
+        foreach ($chunk as $item) {
+            $companyCode = $this->getRecordValue($item['data'], ['company_code', 'companycode']);
+            if ($companyCode) $companyCodes[] = trim($companyCode);
+            $packageCode = $this->getRecordValue($item['data'], ['package_code', 'packagecode']);
+            if ($packageCode) $packageCodes[] = trim($packageCode);
+            $procedure = $this->getRecordValue($item['data'], ['procedure', 'procedurename', 'procedure_name']);
+            if ($procedure) $procedureNames[] = trim($procedure);
+        }
+
+        $companies = DB::table('insurance_companies')->whereIn('code', $companyCodes)->get()->keyBy('code');
+        $packages = empty($packageCodes)
+            ? collect()
+            : DB::table('insurance_packages')->whereIn('code', $packageCodes)->get()->groupBy('code');
+        $treatments = empty($procedureNames)
+            ? collect()
+            : DB::table('treatments')->get()->filter(function ($t) use ($procedureNames) {
+                foreach ($procedureNames as $p) {
+                    if (strcasecmp(trim($t->procedure), $p) === 0) return true;
+                }
+                return false;
+            })->keyBy(function ($t) {
+                return strtolower(trim($t->procedure));
+            });
+
+        $upsertData = [];
+        $validCoverageTypes = ['percentage', 'fixed_amount'];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $companyCode = $this->getRecordValue($record, ['company_code', 'companycode']);
+            $packageCode = $this->getRecordValue($record, ['package_code', 'packagecode']);
+            $procedureName = $this->getRecordValue($record, ['procedure', 'procedurename', 'procedure_name']);
+
+            if (empty($companyCode) || empty($packageCode) || empty($procedureName)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'company_code/package_code/procedure',
+                    'value' => null,
+                    'reason' => 'Company code, package code, and procedure are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $company = $companies->get(trim($companyCode));
+            if (!$company) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'company_code',
+                    'value' => $companyCode,
+                    'reason' => "No existing insurance company found with code {$companyCode}. Import the insurance_company row first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $package = ($packages->get(trim($packageCode)) ?? collect())
+                ->firstWhere('insurance_company_id', $company->id);
+            if (!$package) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'package_code',
+                    'value' => $packageCode,
+                    'reason' => "No existing insurance package found with code {$packageCode} for company {$companyCode}. Import the insurance_package row first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $treatment = $treatments->get(strtolower(trim($procedureName)));
+            if (!$treatment) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'procedure',
+                    'value' => $procedureName,
+                    'reason' => "No existing treatment found named \"{$procedureName}\" in the treatment catalog."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $coverageType = strtolower(trim($this->getRecordValue($record, ['coverage_type', 'coveragetype']) ?? 'percentage'));
+            if (!in_array($coverageType, $validCoverageTypes)) {
+                $coverageType = 'percentage';
+            }
+
+            $coverageValue = $this->getRecordValue($record, ['coverage_value', 'coveragevalue']) ?? 100;
+            if (!is_numeric($coverageValue) || $coverageValue < 0) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'coverage_value',
+                    'value' => $coverageValue,
+                    'reason' => 'Coverage value must be a non-negative number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $maxCovered = $this->getRecordValue($record, ['maximum_covered_amount', 'maximumcoveredamount']);
+            $frequencyLimit = $this->getRecordValue($record, ['frequency_limit', 'frequencylimit']);
+            $waitingPeriod = $this->getRecordValue($record, ['waiting_period_days', 'waitingperioddays']) ?? 0;
+
+            $status = $this->getRecordValue($record, ['status']) ?? 'active';
+            if (!in_array(strtolower($status), ['active', 'inactive'])) {
+                $status = 'active';
+            } else {
+                $status = strtolower($status);
+            }
+
+            $upsertData[] = [
+                'insurance_package_id' => $package->id,
+                'procedure_id' => $treatment->id,
+                'coverage_type' => $coverageType,
+                'coverage_value' => (float)$coverageValue,
+                'maximum_covered_amount' => is_numeric($maxCovered) ? (float)$maxCovered : null,
+                'frequency_limit' => is_numeric($frequencyLimit) ? (int)$frequencyLimit : null,
+                'waiting_period_days' => is_numeric($waitingPeriod) ? (int)$waitingPeriod : 0,
+                'requires_pre_authorization' => $this->parseBool($this->getRecordValue($record, ['requires_pre_authorization', 'requirespreauthorization'])),
+                'exclusion_notes' => $this->getRecordValue($record, ['exclusion_notes', 'notes']),
+                'status' => $status,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($upsertData)) {
+            try {
+                DB::table('insurance_package_treatments')->upsert(
+                    $upsertData,
+                    ['insurance_package_id', 'procedure_id'],
+                    ['coverage_type', 'coverage_value', 'maximum_covered_amount', 'frequency_limit', 'waiting_period_days', 'requires_pre_authorization', 'exclusion_notes', 'status', 'updated_at']
+                );
+            } catch (\Exception $e) {
+                Log::error('Insurance coverage import error: ' . $e->getMessage());
+                $result['failed'] += count($upsertData);
+                $result['imported'] -= count($upsertData);
+            }
+        }
+    }
+
+    private function processInsurancePolicyChunk($chunk, &$result, $now)
+    {
+        $companyCodes = [];
+        $packageCodes = [];
+        foreach ($chunk as $item) {
+            $companyCode = $this->getRecordValue($item['data'], ['company_code', 'companycode']);
+            if ($companyCode) $companyCodes[] = trim($companyCode);
+            $packageCode = $this->getRecordValue($item['data'], ['package_code', 'packagecode']);
+            if ($packageCode) $packageCodes[] = trim($packageCode);
+        }
+
+        $companies = DB::table('insurance_companies')->whereIn('code', $companyCodes)->get()->keyBy('code');
+        $packages = empty($packageCodes)
+            ? collect()
+            : DB::table('insurance_packages')->whereIn('code', $packageCodes)->get()->groupBy('code');
+
+        $validPolicyTypes = ['individual', 'family', 'corporate'];
+        $validStatuses = ['pending', 'active', 'suspended', 'expired', 'cancelled'];
+
+        $upsertData = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $companyCode = $this->getRecordValue($record, ['company_code', 'companycode']);
+            $packageCode = $this->getRecordValue($record, ['package_code', 'packagecode']);
+            $policyNumber = $this->getRecordValue($record, ['policynumber', 'policy_number']);
+
+            if (empty($companyCode) || empty($packageCode) || empty($policyNumber)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'company_code/package_code/policy_number',
+                    'value' => null,
+                    'reason' => 'Company code, package code, and policy number are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $company = $companies->get(trim($companyCode));
+            if (!$company) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'company_code',
+                    'value' => $companyCode,
+                    'reason' => "No existing insurance company found with code {$companyCode}. Import the insurance_company row first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $package = ($packages->get(trim($packageCode)) ?? collect())
+                ->firstWhere('insurance_company_id', $company->id);
+            if (!$package) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'package_code',
+                    'value' => $packageCode,
+                    'reason' => "No existing insurance package found with code {$packageCode} for company {$companyCode}. Import the insurance_package row first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $startDate = $this->getRecordValue($record, ['coverage_start_date', 'coveragestartdate']);
+            $startValidation = $this->validateDate($startDate, true);
+            if (!$startValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'coverage_start_date',
+                    'value' => $startDate,
+                    'reason' => $startValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $endDate = $this->getRecordValue($record, ['coverage_end_date', 'coverageenddate']);
+            $endValidation = $this->validateDate($endDate, true);
+            if (!$endValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'coverage_end_date',
+                    'value' => $endDate,
+                    'reason' => $endValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            if (strtotime($endDate) <= strtotime($startDate)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'coverage_end_date',
+                    'value' => $endDate,
+                    'reason' => 'Coverage end date must be after the coverage start date'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $policyType = strtolower(trim($this->getRecordValue($record, ['policy_type', 'policytype']) ?? 'individual'));
+            if (!in_array($policyType, $validPolicyTypes)) {
+                $policyType = 'individual';
+            }
+
+            $totalLimit = $this->getRecordValue($record, ['total_coverage_limit', 'totalcoveragelimit']);
+            if ($totalLimit !== null && (!is_numeric($totalLimit) || $totalLimit < 0)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'total_coverage_limit',
+                    'value' => $totalLimit,
+                    'reason' => 'Total coverage limit must be a non-negative number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $status = strtolower(trim($this->getRecordValue($record, ['status']) ?? 'pending'));
+            if (!in_array($status, $validStatuses)) {
+                $status = 'pending';
+            }
+
+            $upsertData[] = [
+                'insurance_package_id' => $package->id,
+                'policy_number' => trim($policyNumber),
+                'policy_type' => $policyType,
+                'employer_or_group_name' => $this->getRecordValue($record, ['employer_or_group_name', 'employerorgroupname']),
+                'coverage_start_date' => date('Y-m-d', strtotime($startDate)),
+                'coverage_end_date' => date('Y-m-d', strtotime($endDate)),
+                'total_coverage_limit' => $totalLimit !== null ? (float)$totalLimit : null,
+                'used_amount' => 0,
+                'remaining_balance' => $totalLimit !== null ? (float)$totalLimit : null,
+                'status' => $status,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($upsertData)) {
+            try {
+                DB::table('insurance_policies')->upsert(
+                    $upsertData,
+                    ['policy_number'],
+                    ['insurance_package_id', 'policy_type', 'employer_or_group_name', 'coverage_start_date', 'coverage_end_date', 'total_coverage_limit', 'remaining_balance', 'status', 'updated_at']
+                );
+            } catch (\Exception $e) {
+                Log::error('Insurance policy import error: ' . $e->getMessage());
+                $result['failed'] += count($upsertData);
+                $result['imported'] -= count($upsertData);
+            }
+        }
+    }
+
+    /**
      * Attach a patient to an existing insurance policy (patient_insurance_policies).
-     * The insurance company/package/policy must already exist in the system -
-     * this only enrolls a patient into a policy identified by policy_number.
+     * The policy can come from a pre-existing setup, or from insurance_company /
+     * insurance_package / insurance_policy rows earlier in the same import.
      */
     private function processInsuranceChunk($chunk, &$result, $now)
     {
@@ -1886,8 +2400,13 @@ class MigrationController extends Controller
      * 6. Financial (references patients; optional 'procedure_refs' linking to clinical rows)
      * 7. Lab orders (reference clients & employees)
      * 8. Payroll / Leave requests / Staff advances (reference employees)
-     * 9. Insurance (references patients & insurance policies)
-     * 10. Claims (reference the insurance enrollment created above)
+     * 9. Insurance company (no dependencies)
+     * 10. Insurance package (references insurance company)
+     * 11. Insurance coverage (references insurance package & the treatment catalog)
+     * 12. Insurance policy (references insurance package)
+     * 13. Insurance enrollment (references patients & an insurance policy - either
+     *     pre-existing or created by steps 9-12 above)
+     * 14. Claims (reference the insurance enrollment created above)
      */
     public function migrateCombined(Request $request)
     {
@@ -1968,7 +2487,7 @@ class MigrationController extends Controller
             if ($isTempCsv && file_exists($filePath)) unlink($filePath);
 
             return $this->errorResponse($importId, 0, 0, [
-                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, client, patient, appointment, clinical, financial, lab_order, payroll, leave_request, staff_advance, insurance, claim)']
+                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, client, patient, appointment, clinical, financial, lab_order, payroll, leave_request, staff_advance, insurance_company, insurance_package, insurance_coverage, insurance_policy, insurance, claim)']
             ], $startTime);
         }
 
@@ -1986,6 +2505,10 @@ class MigrationController extends Controller
             'payroll' => [],
             'leave_request' => [],
             'staff_advance' => [],
+            'insurance_company' => [],
+            'insurance_package' => [],
+            'insurance_coverage' => [],
+            'insurance_policy' => [],
             'insurance' => [],
             'claim' => []
         ];
@@ -2024,6 +2547,10 @@ class MigrationController extends Controller
                 'payroll' => 'payroll',
                 'leave_request' => 'leave_request',
                 'staff_advance' => 'staff_advance',
+                'insurance_company' => 'insurance_company',
+                'insurance_package' => 'insurance_package',
+                'insurance_coverage' => 'insurance_coverage',
+                'insurance_policy' => 'insurance_policy',
                 'insurance' => 'insurance',
                 'claim' => 'claim',
             ];
@@ -2055,10 +2582,13 @@ class MigrationController extends Controller
         $now = now();
 
         // Order matters: employees/patients first, then things that reference them,
+        // then the insurance setup chain (company -> package -> coverage -> policy),
         // then insurance enrollment, then claims (which need the enrollment to exist)
         $processingOrder = [
             'employees', 'clients', 'patients', 'appointments', 'clinical', 'financial',
-            'lab_order', 'payroll', 'leave_request', 'staff_advance', 'insurance', 'claim',
+            'lab_order', 'payroll', 'leave_request', 'staff_advance',
+            'insurance_company', 'insurance_package', 'insurance_coverage', 'insurance_policy',
+            'insurance', 'claim',
         ];
 
         foreach ($processingOrder as $section) {

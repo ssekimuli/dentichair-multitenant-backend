@@ -1028,8 +1028,6 @@ class MigrationController extends Controller
     {
         [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
 
-        $insertData = [];
-
         foreach ($chunk as $item) {
             $rowNumber = $item['rowNumber'];
             $record = $item['data'];
@@ -1099,7 +1097,7 @@ class MigrationController extends Controller
             $rawDate = $this->getRecordValue($record, ['date']);
             $date = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
 
-            $insertData[] = [
+            $row = [
                 'patient_id' => $p->id,
                 'date' => $date,
                 'appliance' => trim($appliance),
@@ -1116,19 +1114,34 @@ class MigrationController extends Controller
                 'broken_brackets' => json_encode($brokenBrackets['value']),
                 'notes' => $this->getRecordValue($record, ['notes']),
                 'next_visit_goals' => $this->getRecordValue($record, ['next_visit_goals']),
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same patient + date + appliance is treated as the
+            // same visit record (updated in place).
             try {
-                DB::table('orthodontic_records')->insert($insertData);
+                $existing = DB::table('orthodontic_records')
+                    ->where('patient_id', $p->id)
+                    ->whereDate('date', $date)
+                    ->where('appliance', trim($appliance))
+                    ->first();
+
+                if ($existing) {
+                    DB::table('orthodontic_records')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('orthodontic_records')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Orthodontic import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'appliance',
+                    'value' => $appliance,
+                    'reason' => 'Failed to save orthodontic record'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -1140,8 +1153,6 @@ class MigrationController extends Controller
     private function processEndodonticChunk($chunk, &$result, $now)
     {
         [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
-
-        $insertData = [];
 
         foreach ($chunk as $item) {
             $rowNumber = $item['rowNumber'];
@@ -1234,9 +1245,10 @@ class MigrationController extends Controller
                 continue;
             }
 
-            $insertData[] = [
+            $date = date('Y-m-d', strtotime($rawDate));
+            $row = [
                 'patient_id' => $p->id,
-                'date' => date('Y-m-d', strtotime($rawDate)),
+                'date' => $date,
                 'tooth_id' => $tooth,
                 'pulpal_diagnosis' => trim($pulpalDiagnosis),
                 'periapical_diagnosis' => trim($periapicalDiagnosis),
@@ -1244,19 +1256,34 @@ class MigrationController extends Controller
                 'obturation_material' => $this->getRecordValue($record, ['obturation_material']),
                 'post_type' => $this->getRecordValue($record, ['post_type']),
                 'notes' => $this->getRecordValue($record, ['notes']),
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same patient + tooth + date is treated as the same
+            // treatment session (updated in place).
             try {
-                DB::table('endodontic_records')->insert($insertData);
+                $existing = DB::table('endodontic_records')
+                    ->where('patient_id', $p->id)
+                    ->where('tooth_id', $tooth)
+                    ->whereDate('date', $date)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('endodontic_records')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('endodontic_records')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Endodontic import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'tooth',
+                    'value' => $tooth,
+                    'reason' => 'Failed to save endodontic record'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -1274,8 +1301,6 @@ class MigrationController extends Controller
         $doctors = DB::table('employees')->whereIn('email', $doctorEmails)->get()->keyBy(function ($item) {
             return strtolower(trim($item->email));
         });
-
-        $insertData = [];
 
         foreach ($chunk as $item) {
             $rowNumber = $item['rowNumber'];
@@ -1337,7 +1362,7 @@ class MigrationController extends Controller
 
             $treatment = $this->getRecordValue($record, ['treatment', 'reason', 'procedure']) ?? 'General Checkup';
 
-            $insertData[] = [
+            $row = [
                 'patient_id' => $p->id,
                 'patient_name' => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')),
                 'doctor_id' => $d->id,
@@ -1347,20 +1372,36 @@ class MigrationController extends Controller
                 'treatment' => $treatment,
                 'status' => $status,
                 'branch_id' => $branchId,
-                'token_number' => 'TKN-' . rand(1000, 9999),
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same patient + doctor + date + time is treated as the
+            // same appointment (updated in place); anything else is a new row.
             try {
-                DB::table('appointments')->insert($insertData);
+                $existing = DB::table('appointments')
+                    ->where('patient_id', $p->id)
+                    ->where('doctor_id', $d->id)
+                    ->whereDate('date', $date)
+                    ->where('time', $time)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('appointments')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['token_number'] = 'TKN-' . rand(1000, 9999);
+                    $row['created_at'] = $now;
+                    DB::table('appointments')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Appointment import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'date/time',
+                    'value' => "{$date} {$time}",
+                    'reason' => 'Failed to save appointment'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -1368,8 +1409,6 @@ class MigrationController extends Controller
     private function processClinicalChunk($chunk, &$result, $now)
     {
         [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
-
-        $insertData = [];
 
         foreach ($chunk as $item) {
             $rowNumber = $item['rowNumber'];
@@ -1451,47 +1490,47 @@ class MigrationController extends Controller
                 'status' => $status,
                 'cost' => (float)$cost,
                 'date' => $date,
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
 
-            // Rows with a 'ref' are inserted individually so the new id can be
-            // captured and matched by a later 'financial' row's procedure_refs.
             $ref = $this->getRecordValue($record, ['ref', 'reference', 'row_ref', 'external_id']);
 
-            if (!empty($ref)) {
-                try {
+            // Match key: same patient + procedure + tooth (or no tooth) + date
+            // is treated as the same procedure (updated in place).
+            try {
+                $existingQuery = DB::table('treatment_plans')
+                    ->where('patient_id', $p->id)
+                    ->where('procedure', $procedure)
+                    ->whereDate('date', $date);
+                $existingQuery = $tooth === null ? $existingQuery->whereNull('tooth') : $existingQuery->where('tooth', $tooth);
+                $existing = $existingQuery->first();
+
+                if ($existing) {
+                    DB::table('treatment_plans')->where('id', $existing->id)->update($row);
+                    $id = $existing->id;
+                } else {
+                    $row['created_at'] = $now;
                     $id = DB::table('treatment_plans')->insertGetId($row);
+                }
+
+                if (!empty($ref)) {
                     $this->clinicalRefMap[trim($ref)] = [
                         'id' => $id,
                         'procedure' => $procedure,
                         'cost' => (float)$cost,
                         'patient_id' => $p->id,
                     ];
-                    $result['imported']++;
-                } catch (\Exception $e) {
-                    Log::error('Clinical import error (ref row): ' . $e->getMessage());
-                    $result['errors'][] = [
-                        'row' => $rowNumber,
-                        'field' => 'ref',
-                        'value' => $ref,
-                        'reason' => 'Failed to insert treatment plan row'
-                    ];
-                    $result['failed']++;
                 }
-            } else {
-                $insertData[] = $row;
                 $result['imported']++;
-            }
-        }
-
-        if (!empty($insertData)) {
-            try {
-                DB::table('treatment_plans')->insert($insertData);
             } catch (\Exception $e) {
                 Log::error('Clinical import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'procedure',
+                    'value' => $procedure,
+                    'reason' => 'Failed to save treatment plan'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -1574,24 +1613,57 @@ class MigrationController extends Controller
                 'patient_id' => $p->id,
                 'patient_name' => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')),
                 'amount' => (float)$amount,
-                'paid_amount' => $paidAmount,
-                'patient_paid_amount' => $paidAmount,
-                'insurance_paid_amount' => 0,
-                'status' => $status,
                 'issue_date' => $issueDate,
                 'due_date' => $dueDate,
                 'branch_id' => $branchId,
-                'payment_method' => $paymentMethod,
                 'patient_responsibility' => (float)$amount,
                 'insurance_responsibility' => 0,
-                'patient_balance' => $patientBalance,
-                'insurance_balance' => 0,
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
 
             try {
-                $invoiceId = DB::table('invoices')->insertGetId($invoiceRow);
+                // Match key: the app's own convention is one invoice per patient
+                // per branch per day (see TreatmentPlan::syncInvoiceForPatientAndDate),
+                // so re-importing the same patient+branch+date updates that invoice.
+                $existing = DB::table('invoices')
+                    ->where('patient_id', $p->id)
+                    ->where('branch_id', $branchId)
+                    ->whereDate('issue_date', $issueDate)
+                    ->first();
+
+                // If real payments have already been recorded against this invoice
+                // (via the 'payment' type, this run or a prior one), they are the
+                // authoritative source for paid amounts/status - don't clobber them
+                // with the financial row's own status-based guess.
+                $hasPayments = $existing && DB::table('payment_transactions')->where('invoice_id', $existing->id)->exists();
+
+                if (!$hasPayments) {
+                    $invoiceRow['paid_amount'] = $paidAmount;
+                    $invoiceRow['patient_paid_amount'] = $paidAmount;
+                    $invoiceRow['insurance_paid_amount'] = 0;
+                    $invoiceRow['status'] = $status;
+                    $invoiceRow['payment_method'] = $paymentMethod;
+                    $invoiceRow['patient_balance'] = $patientBalance;
+                    $invoiceRow['insurance_balance'] = 0;
+                }
+
+                if ($existing) {
+                    DB::table('invoices')->where('id', $existing->id)->update($invoiceRow);
+                    $invoiceId = $existing->id;
+                    // Recreate treatment lines from scratch so re-importing the
+                    // same invoice doesn't accumulate duplicate line items.
+                    DB::table('invoice_treatments')->where('invoice_id', $invoiceId)->delete();
+                } else {
+                    $invoiceRow['paid_amount'] = $invoiceRow['paid_amount'] ?? $paidAmount;
+                    $invoiceRow['patient_paid_amount'] = $invoiceRow['patient_paid_amount'] ?? $paidAmount;
+                    $invoiceRow['insurance_paid_amount'] = $invoiceRow['insurance_paid_amount'] ?? 0;
+                    $invoiceRow['status'] = $invoiceRow['status'] ?? $status;
+                    $invoiceRow['payment_method'] = $invoiceRow['payment_method'] ?? $paymentMethod;
+                    $invoiceRow['patient_balance'] = $invoiceRow['patient_balance'] ?? $patientBalance;
+                    $invoiceRow['insurance_balance'] = $invoiceRow['insurance_balance'] ?? 0;
+                    $invoiceRow['created_at'] = $now;
+                    $invoiceId = DB::table('invoices')->insertGetId($invoiceRow);
+                }
 
                 // Optional tag a later 'payment' row can reference via invoice_ref
                 // to attach a payment_transactions row to this specific invoice.
@@ -1757,16 +1829,32 @@ class MigrationController extends Controller
             $date = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
 
             try {
-                DB::table('payment_transactions')->insert([
-                    'invoice_id' => $invoice['id'],
-                    'insurance_claim_id' => $insuranceClaimId,
-                    'payer_type' => $payerType,
-                    'date' => $date,
-                    'amount' => (float) $amount,
-                    'method' => trim($method),
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
+                // Payments are ledger entries, not freely mergeable records - two
+                // real payments on the same invoice/date for different amounts or
+                // methods must both be kept. Only skip when EVERY field matches
+                // exactly, treating that as the same row re-imported verbatim
+                // rather than update-or-create by a loose key.
+                $exists = DB::table('payment_transactions')
+                    ->where('invoice_id', $invoice['id'])
+                    ->where('insurance_claim_id', $insuranceClaimId)
+                    ->where('payer_type', $payerType)
+                    ->whereDate('date', $date)
+                    ->where('amount', (float) $amount)
+                    ->where('method', trim($method))
+                    ->exists();
+
+                if (!$exists) {
+                    DB::table('payment_transactions')->insert([
+                        'invoice_id' => $invoice['id'],
+                        'insurance_claim_id' => $insuranceClaimId,
+                        'payer_type' => $payerType,
+                        'date' => $date,
+                        'amount' => (float) $amount,
+                        'method' => trim($method),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
                 $affectedInvoiceIds[$invoice['id']] = true;
                 $result['imported']++;
             } catch (\Exception $e) {
@@ -2676,7 +2764,6 @@ class MigrationController extends Controller
             return strtolower(trim($item->name));
         });
 
-        $insertData = [];
         $validStatuses = ['Sent', 'Received', 'Completed', 'Cancelled'];
 
         foreach ($chunk as $item) {
@@ -2786,7 +2873,7 @@ class MigrationController extends Controller
             $cost = $this->getRecordValue($record, ['cost']);
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
-            $insertData[] = [
+            $row = [
                 'patient_name' => $patientName,
                 'lab' => $lab,
                 'item' => $itemName,
@@ -2803,19 +2890,35 @@ class MigrationController extends Controller
                 'instructions' => $this->getRecordValue($record, ['instructions']),
                 'cost' => is_numeric($cost) ? (float)$cost : null,
                 'invoice_number' => $this->getRecordValue($record, ['invoicenumber', 'invoice_number']),
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same patient_name + lab + item + sent_date is treated
+            // as the same lab order (updated in place).
             try {
-                DB::table('laboratory_orders')->insert($insertData);
+                $existing = DB::table('laboratory_orders')
+                    ->where('patient_name', $patientName)
+                    ->where('lab', $lab)
+                    ->where('item', $itemName)
+                    ->whereDate('sent_date', $sentDate)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('laboratory_orders')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('laboratory_orders')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Lab order import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'item',
+                    'value' => $itemName,
+                    'reason' => 'Failed to save lab order'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -2832,7 +2935,6 @@ class MigrationController extends Controller
             return strtolower(trim($item->email));
         });
 
-        $insertData = [];
         $validStatuses = ['Paid', 'Pending'];
         $validApproval = ['Pending', 'Approved', 'Rejected'];
 
@@ -2910,7 +3012,7 @@ class MigrationController extends Controller
 
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? $e->branch_id ?? 1;
 
-            $insertData[] = [
+            $row = [
                 'employee_id' => $e->id,
                 'employee_name' => $e->name,
                 'pay_period' => $payPeriod,
@@ -2921,19 +3023,33 @@ class MigrationController extends Controller
                 'status' => $status,
                 'branch_id' => $branchId,
                 'approval_status' => $approvalStatus,
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same employee + pay_period is treated as the same
+            // payroll run (updated in place).
             try {
-                DB::table('payrolls')->insert($insertData);
+                $existing = DB::table('payrolls')
+                    ->where('employee_id', $e->id)
+                    ->where('pay_period', $payPeriod)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('payrolls')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('payrolls')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Payroll import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'pay_period',
+                    'value' => $payPeriod,
+                    'reason' => 'Failed to save payroll record'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -2950,7 +3066,6 @@ class MigrationController extends Controller
             return strtolower(trim($item->email));
         });
 
-        $insertData = [];
         $validStatuses = ['Pending', 'Approved', 'Rejected'];
 
         foreach ($chunk as $item) {
@@ -3002,7 +3117,7 @@ class MigrationController extends Controller
 
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? $e->branch_id ?? 1;
 
-            $insertData[] = [
+            $row = [
                 'employee_id' => $e->id,
                 'employee_name' => $e->name,
                 'leave_type' => $leaveType,
@@ -3011,19 +3126,35 @@ class MigrationController extends Controller
                 'reason' => $this->getRecordValue($record, ['reason']),
                 'status' => $status,
                 'branch_id' => $branchId,
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same employee + leave_type + start_date + end_date is
+            // treated as the same leave request (updated in place).
             try {
-                DB::table('leave_requests')->insert($insertData);
+                $existing = DB::table('leave_requests')
+                    ->where('employee_id', $e->id)
+                    ->where('leave_type', $leaveType)
+                    ->whereDate('start_date', $startDate)
+                    ->whereDate('end_date', $endDate)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('leave_requests')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('leave_requests')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Leave request import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'leave_type',
+                    'value' => $leaveType,
+                    'reason' => 'Failed to save leave request'
+                ];
+                $result['failed']++;
             }
         }
     }
@@ -3040,7 +3171,6 @@ class MigrationController extends Controller
             return strtolower(trim($item->email));
         });
 
-        $insertData = [];
         $validStatuses = ['Pending', 'Approved', 'Rejected'];
 
         foreach ($chunk as $item) {
@@ -3099,7 +3229,7 @@ class MigrationController extends Controller
 
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? $e->branch_id ?? 1;
 
-            $insertData[] = [
+            $row = [
                 'employee_id' => $e->id,
                 'employee_name' => $e->name,
                 'amount' => (float)$amount,
@@ -3107,19 +3237,34 @@ class MigrationController extends Controller
                 'reason' => $this->getRecordValue($record, ['reason']),
                 'status' => $status,
                 'branch_id' => $branchId,
-                'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $result['imported']++;
-        }
 
-        if (!empty($insertData)) {
+            // Match key: same employee + date is treated as the same advance
+            // (updated in place) - an employee is not expected to take two
+            // separate advances on the same day.
             try {
-                DB::table('staff_advances')->insert($insertData);
+                $existing = DB::table('staff_advances')
+                    ->where('employee_id', $e->id)
+                    ->whereDate('date', $date)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('staff_advances')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('staff_advances')->insert($row);
+                }
+                $result['imported']++;
             } catch (\Exception $e) {
                 Log::error('Staff advance import error: ' . $e->getMessage());
-                $result['failed'] += count($insertData);
-                $result['imported'] -= count($insertData);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'date',
+                    'value' => $date,
+                    'reason' => 'Failed to save staff advance'
+                ];
+                $result['failed']++;
             }
         }
     }

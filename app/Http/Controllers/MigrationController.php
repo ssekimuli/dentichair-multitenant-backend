@@ -2446,7 +2446,10 @@ class MigrationController extends Controller
 
             $tempCsvPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.csv';
             $pythonScript = base_path('app/Utils/excel_to_csv.py');
-            $command = "python3 " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " 2>&1";
+            // --merge-sheets: the combined template can split its rows across one
+            // sheet per type (Employees, Patients, ...) instead of one wide sheet;
+            // every sheet except "Instructions" is merged by column name.
+            $command = "python3 " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " --merge-sheets 2>&1";
 
             $output = [];
             $resultCode = 0;

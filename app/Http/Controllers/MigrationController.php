@@ -35,18 +35,29 @@ class MigrationController extends Controller
 
         // Convert Excel to CSV if needed
         if ($originalExtension === 'xlsx') {
+            // openpyxl validates the file by its extension, and Laravel's upload
+            // tmp path (e.g. /tmp/phpXXXXXX) has none, so give it a proper .xlsx name.
+            $tempXlsxPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.xlsx';
+            copy($filePath, $tempXlsxPath);
+
             $tempCsvPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.csv';
             $pythonScript = base_path('app/Utils/excel_to_csv.py');
-            $command = "python " . escapeshellarg($pythonScript) . " " . escapeshellarg($filePath) . " " . escapeshellarg($tempCsvPath);
+            $command = "python3 " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " 2>&1";
 
             $output = [];
             $resultCode = 0;
             exec($command, $output, $resultCode);
+            unlink($tempXlsxPath);
 
             if ($resultCode === 0) {
                 $filePath = $tempCsvPath;
                 $isTempCsv = true;
             } else {
+                Log::error('Excel to CSV conversion failed', [
+                    'import_id' => $importId,
+                    'result_code' => $resultCode,
+                    'output' => implode("\n", $output)
+                ]);
                 return $this->errorResponse($importId, 0, 0, [
                     ['row' => 0, 'field' => 'file', 'value' => null, 'reason' => 'Failed to parse Excel file']
                 ], $startTime);
@@ -180,6 +191,10 @@ class MigrationController extends Controller
             $this->processClinicalChunk($chunk, $result, $now);
         } elseif ($section === 'financial') {
             $this->processFinancialChunk($chunk, $result, $now);
+        } elseif ($section === 'insurance') {
+            $this->processInsuranceChunk($chunk, $result, $now);
+        } elseif ($section === 'claim') {
+            $this->processClaimChunk($chunk, $result, $now);
         }
 
         return $result;
@@ -513,50 +528,37 @@ class MigrationController extends Controller
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
             if (!$p) {
-                $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone']);
-                $pId = DB::table('patients')->insertGetId([
-                    'first_name' => 'Imported',
-                    'last_name' => 'Patient',
-                    'email' => $pEmailNorm,
-                    'phone' => $pPhone,
-                    'date_of_birth' => '1990-01-01',
-                    'gender' => 'Other',
-                    'status' => 'Active',
-                    'branch_id' => $branchId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                $p = (object)['id' => $pId, 'first_name' => 'Imported', 'last_name' => 'Patient', 'email' => $pEmailNorm];
-                $patients->put($pEmailNorm, $p);
-                $result['warnings'][] = "Row {$rowNumber}: Created patient for email {$pEmailNorm}";
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email',
+                    'value' => $pEmailNorm,
+                    'reason' => "No existing patient found for email {$pEmailNorm}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
             }
 
             if (!$d) {
-                $dId = DB::table('employees')->insertGetId([
-                    'name' => 'Imported Doctor',
-                    'email' => $dEmailNorm,
-                    'role' => 'Dentist',
-                    'role_id' => 4,
-                    'salary' => 0,
-                    'hire_date' => $now->format('Y-m-d'),
-                    'status' => 'Active',
-                    'branch_id' => $branchId,
-                    'password' => Hash::make('password'),
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                $d = (object)['id' => $dId, 'name' => 'Imported Doctor', 'email' => $dEmailNorm];
-                $doctors->put($dEmailNorm, $d);
-                $result['warnings'][] = "Row {$rowNumber}: Created doctor for email {$dEmailNorm}";
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'doctor_email',
+                    'value' => $dEmailNorm,
+                    'reason' => "No existing employee found for email {$dEmailNorm}. Import the employee first."
+                ];
+                $result['failed']++;
+                continue;
             }
 
             $rawDate = $this->getRecordValue($record, ['appointmentdate', 'appointment_date', 'date']);
             $dateTime = $rawDate ? strtotime($rawDate) : false;
             $date = $dateTime ? date('Y-m-d', $dateTime) : $now->format('Y-m-d');
-            $time = $dateTime ? date('H:i', $dateTime) : '10:00';
+
+            $rawTime = $this->getRecordValue($record, ['appointmenttime', 'appointment_time', 'time']);
+            $timestamp = $rawTime ? strtotime($rawTime) : false;
+            $time = $timestamp ? date('H:i', $timestamp) : '10:00';
 
             $status = $this->getRecordValue($record, ['status']) ?? 'Scheduled';
-            if (!in_array($status, ['Scheduled', 'Completed', 'Cancelled', 'Waiting'])) {
+            if (!in_array($status, ['Scheduled', 'Completed', 'Cancelled', 'Waiting', 'In Session', 'On Hold'])) {
                 $status = 'Scheduled';
             }
 
@@ -625,21 +627,14 @@ class MigrationController extends Controller
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
             if (!$p) {
-                $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone']);
-                $pId = DB::table('patients')->insertGetId([
-                    'first_name' => 'Imported',
-                    'last_name' => 'Patient',
-                    'email' => $pEmailNorm,
-                    'phone' => $pPhone,
-                    'date_of_birth' => '1990-01-01',
-                    'gender' => 'Other',
-                    'status' => 'Active',
-                    'branch_id' => $branchId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                $p = (object)['id' => $pId, 'first_name' => 'Imported', 'last_name' => 'Patient', 'email' => $pEmailNorm];
-                $patients->put($pEmailNorm, $p);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email',
+                    'value' => $pEmailNorm,
+                    'reason' => "No existing patient found for email {$pEmailNorm}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
             }
 
             $procedure = $this->getRecordValue($record, ['procedure', 'procedurename', 'procedure_name', 'treatmentname', 'treatment_name', 'treatment']) ?? 'General Checkup';
@@ -725,21 +720,14 @@ class MigrationController extends Controller
             $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
 
             if (!$p) {
-                $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone']);
-                $pId = DB::table('patients')->insertGetId([
-                    'first_name' => 'Imported',
-                    'last_name' => 'Patient',
-                    'email' => $pEmailNorm,
-                    'phone' => $pPhone,
-                    'date_of_birth' => '1990-01-01',
-                    'gender' => 'Other',
-                    'status' => 'Active',
-                    'branch_id' => $branchId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                $p = (object)['id' => $pId, 'first_name' => 'Imported', 'last_name' => 'Patient', 'email' => $pEmailNorm];
-                $patients->put($pEmailNorm, $p);
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email',
+                    'value' => $pEmailNorm,
+                    'reason' => "No existing patient found for email {$pEmailNorm}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
             }
 
             $amount = $this->getRecordValue($record, ['amount']) ?? 0;
@@ -794,6 +782,289 @@ class MigrationController extends Controller
                 DB::table('invoices')->insert($insertData);
             } catch (\Exception $e) {
                 Log::error('Financial import error: ' . $e->getMessage());
+                $result['failed'] += count($insertData);
+                $result['imported'] -= count($insertData);
+            }
+        }
+    }
+
+    /**
+     * Attach a patient to an existing insurance policy (patient_insurance_policies).
+     * The insurance company/package/policy must already exist in the system -
+     * this only enrolls a patient into a policy identified by policy_number.
+     */
+    private function processInsuranceChunk($chunk, &$result, $now)
+    {
+        $patientEmails = [];
+        $policyNumbers = [];
+        foreach ($chunk as $item) {
+            $pEmail = $this->getRecordValue($item['data'], ['patientemail', 'patient_email']);
+            if ($pEmail) $patientEmails[] = strtolower(trim($pEmail));
+            $policyNo = $this->getRecordValue($item['data'], ['policynumber', 'policy_number']);
+            if ($policyNo) $policyNumbers[] = trim($policyNo);
+        }
+
+        $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy(function ($item) {
+            return strtolower(trim($item->email));
+        });
+        $policies = DB::table('insurance_policies')->whereIn('policy_number', $policyNumbers)->get()->keyBy('policy_number');
+
+        $insertData = [];
+        $validRelationships = ['self', 'spouse', 'child', 'other'];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
+            $policyNo = $this->getRecordValue($record, ['policynumber', 'policy_number']);
+
+            if (!$pEmail || !$policyNo) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/policy_number',
+                    'value' => null,
+                    'reason' => 'Both patient email and policy number are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $pEmailNorm = strtolower(trim($pEmail));
+            $policyNoTrim = trim($policyNo);
+            $p = $patients->get($pEmailNorm);
+            $policy = $policies->get($policyNoTrim);
+
+            if (!$p) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email',
+                    'value' => $pEmailNorm,
+                    'reason' => "No existing patient found for email {$pEmailNorm}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            if (!$policy) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'policy_number',
+                    'value' => $policyNoTrim,
+                    'reason' => "No insurance policy found with policy_number {$policyNoTrim}. Set up the insurance policy first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $subscriberId = $this->getRecordValue($record, ['subscriberid', 'subscriber_id']);
+            if (empty($subscriberId)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'subscriber_id',
+                    'value' => null,
+                    'reason' => 'Subscriber ID is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $relationship = strtolower(trim($this->getRecordValue($record, ['relationshiptosubscriber', 'relationship_to_subscriber']) ?? 'self'));
+            if (!in_array($relationship, $validRelationships)) {
+                $relationship = 'self';
+            }
+
+            $groupNumber = $this->getRecordValue($record, ['groupnumber', 'group_number']);
+            $subscriberName = $this->getRecordValue($record, ['subscribername', 'subscriber_name']);
+            $isPrimaryRaw = strtolower(trim($this->getRecordValue($record, ['isprimary', 'is_primary']) ?? ''));
+            $isPrimary = in_array($isPrimaryRaw, ['1', 'true', 'yes']);
+
+            $insertData[] = [
+                'patient_id' => $p->id,
+                'insurance_policy_id' => $policy->id,
+                'subscriber_id' => $subscriberId,
+                'group_number' => $groupNumber,
+                'relationship_to_subscriber' => $relationship,
+                'subscriber_name' => $subscriberName,
+                'is_primary' => $isPrimary,
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($insertData)) {
+            try {
+                foreach ($insertData as $row) {
+                    if ($row['is_primary']) {
+                        DB::table('patient_insurance_policies')->where('patient_id', $row['patient_id'])->update(['is_primary' => false]);
+                    }
+                    DB::table('patient_insurance_policies')->updateOrInsert(
+                        ['patient_id' => $row['patient_id'], 'insurance_policy_id' => $row['insurance_policy_id']],
+                        $row
+                    );
+                }
+            } catch (\Exception $e) {
+                Log::error('Insurance import error: ' . $e->getMessage());
+                $result['failed'] += count($insertData);
+                $result['imported'] -= count($insertData);
+            }
+        }
+    }
+
+    /**
+     * Create an insurance claim against a patient's existing policy enrollment
+     * (patient_insurance_policies). The patient must already be enrolled in the
+     * policy - via an 'insurance' row earlier in the same file, or beforehand.
+     */
+    private function processClaimChunk($chunk, &$result, $now)
+    {
+        $patientEmails = [];
+        $policyNumbers = [];
+        foreach ($chunk as $item) {
+            $pEmail = $this->getRecordValue($item['data'], ['patientemail', 'patient_email']);
+            if ($pEmail) $patientEmails[] = strtolower(trim($pEmail));
+            $policyNo = $this->getRecordValue($item['data'], ['policynumber', 'policy_number']);
+            if ($policyNo) $policyNumbers[] = trim($policyNo);
+        }
+
+        $patients = DB::table('patients')->whereIn('email', $patientEmails)->get()->keyBy(function ($item) {
+            return strtolower(trim($item->email));
+        });
+        $policies = DB::table('insurance_policies')->whereIn('policy_number', $policyNumbers)
+            ->get()->keyBy('policy_number');
+
+        $validStatuses = ['Draft', 'Submitted', 'Under Review', 'Approved', 'Partially Approved', 'Rejected', 'Paid', 'Cancelled'];
+        $insertData = [];
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
+            $policyNo = $this->getRecordValue($record, ['policynumber', 'policy_number']);
+            $claimNumber = $this->getRecordValue($record, ['claimnumber', 'claim_number']);
+
+            if (!$pEmail || !$policyNo || empty($claimNumber)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/policy_number/claim_number',
+                    'value' => null,
+                    'reason' => 'Patient email, policy number, and claim number are required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $pEmailNorm = strtolower(trim($pEmail));
+            $policyNoTrim = trim($policyNo);
+            $p = $patients->get($pEmailNorm);
+            $policy = $policies->get($policyNoTrim);
+
+            if (!$p) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email',
+                    'value' => $pEmailNorm,
+                    'reason' => "No existing patient found for email {$pEmailNorm}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            if (!$policy) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'policy_number',
+                    'value' => $policyNoTrim,
+                    'reason' => "No insurance policy found with policy_number {$policyNoTrim}. Set up the insurance policy first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $enrollment = DB::table('patient_insurance_policies')
+                ->where('patient_id', $p->id)
+                ->where('insurance_policy_id', $policy->id)
+                ->first();
+
+            if (!$enrollment) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'policy_number',
+                    'value' => $policyNoTrim,
+                    'reason' => "Patient {$pEmailNorm} is not enrolled in policy {$policyNoTrim}. Add an 'insurance' row to enroll them first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            if (DB::table('insurance_claims')->where('claim_number', trim($claimNumber))->exists()) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'claim_number',
+                    'value' => $claimNumber,
+                    'reason' => "Claim number {$claimNumber} already exists"
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $claimedAmount = $this->getRecordValue($record, ['claimedamount', 'claimed_amount', 'amount']);
+            if (!is_numeric($claimedAmount)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'claimed_amount',
+                    'value' => $claimedAmount,
+                    'reason' => 'Claimed amount must be a number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $approvedAmount = $this->getRecordValue($record, ['approvedamount', 'approved_amount']);
+
+            $status = $this->getRecordValue($record, ['status']) ?? 'Submitted';
+            $matchedStatus = null;
+            foreach ($validStatuses as $validStatus) {
+                if (strcasecmp($status, $validStatus) === 0) {
+                    $matchedStatus = $validStatus;
+                    break;
+                }
+            }
+            $status = $matchedStatus ?? 'Submitted';
+
+            $rawSubmitted = $this->getRecordValue($record, ['datesubmitted', 'date_submitted']);
+            $submissionDate = $rawSubmitted ? date('Y-m-d', strtotime($rawSubmitted)) : $now->format('Y-m-d');
+
+            $rawProcessed = $this->getRecordValue($record, ['dateprocessed', 'date_processed']);
+            $approvalDate = $rawProcessed ? date('Y-m-d', strtotime($rawProcessed)) : null;
+
+            $notes = $this->getRecordValue($record, ['notes']);
+
+            $insertData[] = [
+                'claim_number' => trim($claimNumber),
+                'patient_id' => $p->id,
+                'insurance_policy_id' => $policy->id,
+                'insurance_company_id' => DB::table('insurance_packages')->where('id', $policy->insurance_package_id)->value('insurance_company_id'),
+                'submitted_amount' => (float)$claimedAmount,
+                'approved_amount' => is_numeric($approvedAmount) ? (float)$approvedAmount : 0,
+                'submission_date' => $submissionDate,
+                'approval_date' => $approvalDate,
+                'status' => $status,
+                'notes' => $notes,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $result['imported']++;
+        }
+
+        if (!empty($insertData)) {
+            try {
+                DB::table('insurance_claims')->insert($insertData);
+            } catch (\Exception $e) {
+                Log::error('Claim import error: ' . $e->getMessage());
                 $result['failed'] += count($insertData);
                 $result['imported'] -= count($insertData);
             }
@@ -888,18 +1159,29 @@ class MigrationController extends Controller
 
         // Convert Excel to CSV if needed
         if ($originalExtension === 'xlsx') {
+            // openpyxl validates the file by its extension, and Laravel's upload
+            // tmp path (e.g. /tmp/phpXXXXXX) has none, so give it a proper .xlsx name.
+            $tempXlsxPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.xlsx';
+            copy($filePath, $tempXlsxPath);
+
             $tempCsvPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.csv';
             $pythonScript = base_path('app/Utils/excel_to_csv.py');
-            $command = "python " . escapeshellarg($pythonScript) . " " . escapeshellarg($filePath) . " " . escapeshellarg($tempCsvPath);
+            $command = "python3 " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " 2>&1";
 
             $output = [];
             $resultCode = 0;
             exec($command, $output, $resultCode);
+            unlink($tempXlsxPath);
 
             if ($resultCode === 0) {
                 $filePath = $tempCsvPath;
                 $isTempCsv = true;
             } else {
+                Log::error('Excel to CSV conversion failed', [
+                    'import_id' => $importId,
+                    'result_code' => $resultCode,
+                    'output' => implode("\n", $output)
+                ]);
                 return $this->errorResponse($importId, 0, 0, [
                     ['row' => 0, 'field' => 'file', 'value' => null, 'reason' => 'Failed to parse Excel file']
                 ], $startTime);
@@ -925,7 +1207,7 @@ class MigrationController extends Controller
             if ($isTempCsv && file_exists($filePath)) unlink($filePath);
 
             return $this->errorResponse($importId, 0, 0, [
-                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, patient, appointment, clinical, financial)']
+                ['row' => 1, 'field' => 'type', 'value' => null, 'reason' => 'CSV must have a "type" column (employee, patient, appointment, clinical, financial, insurance, claim)']
             ], $startTime);
         }
 
@@ -937,11 +1219,15 @@ class MigrationController extends Controller
             'patients' => [],
             'appointments' => [],
             'clinical' => [],
-            'financial' => []
+            'financial' => [],
+            'insurance' => [],
+            'claim' => []
         ];
 
         $rowNumber = 2;
         $totalCount = 0;
+        $allErrors = [];
+        $allWarnings = [];
 
         while (($row = fgetcsv($handle)) !== false) {
             // Skip empty rows
@@ -956,11 +1242,24 @@ class MigrationController extends Controller
             }
 
             $recordData = array_combine($headers, array_slice($row, 0, count($headers)));
-            $type = strtolower(trim($recordData['type'] ?? ''));
+            $rawType = strtolower(trim($recordData['type'] ?? ''));
 
-            // Validate type
-            if (!in_array($type, array_keys($groupedData))) {
-                // Skip invalid types instead of failing
+            // The 'type' column uses singular values (employee, patient, appointment,
+            // clinical, financial); $groupedData is keyed by table name (plural for
+            // employees/patients/appointments, singular for clinical/financial).
+            $typeMap = [
+                'employee' => 'employees',
+                'patient' => 'patients',
+                'appointment' => 'appointments',
+                'clinical' => 'clinical',
+                'financial' => 'financial',
+                'insurance' => 'insurance',
+                'claim' => 'claim',
+            ];
+            $type = $typeMap[$rawType] ?? null;
+
+            if ($type === null) {
+                $allWarnings[] = "Row {$rowNumber}: Unrecognized type \"{$rawType}\" (skipped)";
                 $rowNumber++;
                 continue;
             }
@@ -979,15 +1278,14 @@ class MigrationController extends Controller
         }
 
         // Process in dependency order
-        $allErrors = [];
-        $allWarnings = [];
         $importedCount = 0;
         $failedCount = 0;
         $skippedCount = 0;
         $now = now();
 
-        // Order matters: employees first, then patients, then others
-        $processingOrder = ['employees', 'patients', 'appointments', 'clinical', 'financial'];
+        // Order matters: employees/patients first, then things that reference them,
+        // then insurance enrollment, then claims (which need the enrollment to exist)
+        $processingOrder = ['employees', 'patients', 'appointments', 'clinical', 'financial', 'insurance', 'claim'];
 
         foreach ($processingOrder as $section) {
             if (empty($groupedData[$section])) {

@@ -15,6 +15,7 @@ class DentalRecord extends Model
         'condition',
         'root_condition',
         'notes',
+        'bridge_group_id',
     ];
 
     protected $hidden = [

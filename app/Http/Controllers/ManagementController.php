@@ -1293,9 +1293,15 @@ class ManagementController extends Controller
                 'doctorId' => 'nullable|exists:employees,id',
             ]);
 
+            $patientName = $validated['patientName'];
+            if (!$patientName) {
+                $client = Client::find($validated['clientId']);
+                $patientName = $client?->name;
+            }
+
             $labOrder = LaboratoryOrder::create([
                 'client_id' => $validated['clientId'],
-                'patient_name' => $validated['patientName'] ?? null,
+                'patient_name' => $patientName,
                 'lab' => $validated['lab'],
                 'item' => $validated['item'],
                 'tooth' => $validated['tooth'] ?? null,

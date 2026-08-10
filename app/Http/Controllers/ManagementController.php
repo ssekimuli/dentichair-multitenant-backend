@@ -1277,7 +1277,7 @@ class ManagementController extends Controller
         try {
             $validated = $request->validate([
                 'clientId' => 'required|exists:clients,id',
-                'patientName' => 'required|string',
+                'patientName' => 'nullable|string',
                 'lab' => 'required|string',
                 'item' => 'required|string',
                 'tooth' => 'nullable|integer',

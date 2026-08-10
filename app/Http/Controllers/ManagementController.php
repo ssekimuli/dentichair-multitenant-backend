@@ -335,37 +335,46 @@ class ManagementController extends Controller
     /**
      * Update Lab Order Status
      *
-     * @bodyParam status string required Must be Received, In Production, Ready for Delivery, Delivered, or Cancelled. Example: "In Production"
+     * @bodyParam status string required Must be Draft, Received, In Production, Ready for Delivery, Delivered, or Cancelled. Example: "In Production"
      */
     public function updateLabOrderStatus(Request $request, $id)
     {
-        $order = LaboratoryOrder::find($id);
-        if (!$order) return response()->json(['error' => 'Lab order not found'], 404);
+        try {
+            $order = LaboratoryOrder::find($id);
+            if (!$order) return response()->json(['error' => 'Lab order not found'], 404);
 
-        $validated = $request->validate([
-            'status' => 'required|in:Received,In Production,Ready for Delivery,Delivered,Cancelled',
-        ]);
+            $validated = $request->validate([
+                'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+            ]);
 
-        $oldStatus = $order->status;
-        $order->update($validated);
+            $oldStatus = $order->status;
+            $order->update($validated);
 
-        // Generate invoice when status changes to "In Production"
-        if ($validated['status'] === 'In Production' && $oldStatus !== 'In Production') {
-            $this->generateLabOrderInvoice($order);
+            // Generate invoice when status changes to "In Production"
+            if ($validated['status'] === 'In Production' && $oldStatus !== 'In Production') {
+                $this->generateLabOrderInvoice($order);
+            }
+
+            // Cancel/void invoice when lab order is cancelled
+            if ($validated['status'] === 'Cancelled' && $oldStatus !== 'Cancelled') {
+                $this->cancelLabOrderInvoice($order);
+            }
+
+            \App\Models\ActivityLog::log(
+                'Lab Order Status Updated',
+                "Lab order #{$order->id} status updated to {$validated['status']}.",
+                ['lab_order_id' => $order->id, 'status' => $validated['status']]
+            );
+
+            return response()->json($order->load(['client', 'branch']));
+        } catch (\Exception $e) {
+            Log::error('Error updating lab order status', [
+                'lab_order_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Server Error'], 500);
         }
-
-        // Cancel/void invoice when lab order is cancelled
-        if ($validated['status'] === 'Cancelled' && $oldStatus !== 'Cancelled') {
-            $this->cancelLabOrderInvoice($order);
-        }
-
-        \App\Models\ActivityLog::log(
-            'Lab Order Status Updated',
-            "Lab order #{$order->id} status updated to {$validated['status']}.",
-            ['lab_order_id' => $order->id, 'status' => $validated['status']]
-        );
-
-        return response()->json($order->load(['client', 'branch']));
     }
 
     /**
@@ -1265,54 +1274,62 @@ class ManagementController extends Controller
 
     public function createLabOrder(Request $request)
     {
-        $validated = $request->validate([
-            'clientId' => 'required|exists:clients,id',
-            'patientName' => 'required|string',
-            'lab' => 'required|string',
-            'item' => 'required|string',
-            'tooth' => 'nullable|integer',
-            'status' => 'required|in:Received,In Production,Ready for Delivery,Delivered,Cancelled',
-            'sentDate' => 'required|date',
-            'dueDate' => 'required|date',
-            'branchId' => 'required|exists:branches,id',
-            'receivedDate' => 'nullable|date',
-            'shade' => 'nullable|string',
-            'material' => 'nullable|string',
-            'instructions' => 'nullable|string',
-            'cost' => 'nullable|numeric',
-            'doctorId' => 'nullable|exists:employees,id',
-        ]);
+        try {
+            $validated = $request->validate([
+                'clientId' => 'required|exists:clients,id',
+                'patientName' => 'required|string',
+                'lab' => 'required|string',
+                'item' => 'required|string',
+                'tooth' => 'nullable|integer',
+                'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+                'sentDate' => 'required|date',
+                'dueDate' => 'required|date',
+                'branchId' => 'required|exists:branches,id',
+                'receivedDate' => 'nullable|date',
+                'shade' => 'nullable|string',
+                'material' => 'nullable|string',
+                'instructions' => 'nullable|string',
+                'cost' => 'nullable|numeric',
+                'doctorId' => 'nullable|exists:employees,id',
+            ]);
 
-        $labOrder = LaboratoryOrder::create([
-            'client_id' => $validated['clientId'],
-            'patient_name' => $validated['patientName'],
-            'lab' => $validated['lab'],
-            'item' => $validated['item'],
-            'tooth' => $validated['tooth'] ?? null,
-            'status' => $validated['status'],
-            'sent_date' => $validated['sentDate'],
-            'due_date' => $validated['dueDate'],
-            'branch_id' => $validated['branchId'],
-            'received_date' => $validated['receivedDate'] ?? null,
-            'shade' => $validated['shade'] ?? null,
-            'material' => $validated['material'] ?? null,
-            'instructions' => $validated['instructions'] ?? null,
-            'cost' => $validated['cost'] ?? null,
-            'doctor_id' => $validated['doctorId'] ?? null,
-        ]);
+            $labOrder = LaboratoryOrder::create([
+                'client_id' => $validated['clientId'],
+                'patient_name' => $validated['patientName'],
+                'lab' => $validated['lab'],
+                'item' => $validated['item'],
+                'tooth' => $validated['tooth'] ?? null,
+                'status' => $validated['status'],
+                'sent_date' => $validated['sentDate'],
+                'due_date' => $validated['dueDate'],
+                'branch_id' => $validated['branchId'],
+                'received_date' => $validated['receivedDate'] ?? null,
+                'shade' => $validated['shade'] ?? null,
+                'material' => $validated['material'] ?? null,
+                'instructions' => $validated['instructions'] ?? null,
+                'cost' => $validated['cost'] ?? null,
+                'doctor_id' => $validated['doctorId'] ?? null,
+            ]);
 
-        // Generate invoice if status is "In Production"
-        if ($validated['status'] === 'In Production') {
-            $this->generateLabOrderInvoice($labOrder);
+            // Generate invoice if status is "In Production"
+            if ($validated['status'] === 'In Production') {
+                $this->generateLabOrderInvoice($labOrder);
+            }
+
+            \App\Models\ActivityLog::log(
+                'Lab Order Created',
+                "Lab order for patient {$validated['patientName']} was created.",
+                ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
+            );
+
+            return response()->json($labOrder->load(['client', 'branch']), 201);
+        } catch (\Exception $e) {
+            Log::error('Error creating lab order', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Server Error'], 500);
         }
-
-        \App\Models\ActivityLog::log(
-            'Lab Order Created',
-            "Lab order for patient {$validated['patientName']} was created.",
-            ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
-        );
-
-        return response()->json($labOrder->load(['client', 'branch']), 201);
     }
 
     public function createInventoryItem(Request $request)

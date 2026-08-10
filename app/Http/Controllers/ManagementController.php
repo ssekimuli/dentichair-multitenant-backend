@@ -1295,7 +1295,7 @@ class ManagementController extends Controller
 
             $labOrder = LaboratoryOrder::create([
                 'client_id' => $validated['clientId'],
-                'patient_name' => $validated['patientName'],
+                'patient_name' => $validated['patientName'] ?? null,
                 'lab' => $validated['lab'],
                 'item' => $validated['item'],
                 'tooth' => $validated['tooth'] ?? null,

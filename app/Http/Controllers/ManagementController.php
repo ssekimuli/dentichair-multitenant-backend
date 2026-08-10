@@ -1290,7 +1290,7 @@ class ManagementController extends Controller
                 'shade' => 'nullable|string',
                 'material' => 'nullable|string',
                 'instructions' => 'nullable|string',
-                'cost' => 'nullable|numeric',
+                'cost' => $request->input('status') === 'In Production' ? 'required|numeric|min:0' : 'nullable|numeric',
                 'doctorId' => 'nullable|exists:employees,id',
             ]);
 

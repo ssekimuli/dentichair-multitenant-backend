@@ -1325,7 +1325,7 @@ class ManagementController extends Controller
 
             \App\Models\ActivityLog::log(
                 'Lab Order Created',
-                "Lab order for patient {$validated['patientName']} was created.",
+                "Lab order for {$patientName} was created.",
                 ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
             );
 

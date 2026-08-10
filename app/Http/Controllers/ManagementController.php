@@ -1293,7 +1293,7 @@ class ManagementController extends Controller
                 'doctorId' => 'nullable|exists:employees,id',
             ]);
 
-            $patientName = $validated['patientName'];
+            $patientName = $validated['patientName'] ?? null;
             if (!$patientName) {
                 $client = Client::find($validated['clientId']);
                 $patientName = $client?->name;

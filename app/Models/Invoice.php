@@ -65,7 +65,12 @@ class Invoice extends Model
 
     public function labOrder()
     {
-        $medicines = $this->medicines;
+        $rawMedicines = $this->getAttributes()['medicines'] ?? null;
+        if (!$rawMedicines) {
+            return null;
+        }
+
+        $medicines = is_string($rawMedicines) ? json_decode($rawMedicines, true) : $rawMedicines;
         if (!$medicines || !is_array($medicines)) {
             return null;
         }

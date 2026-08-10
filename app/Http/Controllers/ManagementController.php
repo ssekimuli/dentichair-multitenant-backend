@@ -9,6 +9,7 @@ use App\Models\LaboratoryOrder;
 use App\Models\LeaveRequest;
 use App\Models\StaffAdvance;
 use App\Models\Branch;
+use App\Models\Client;
 use App\Models\Expense;
 use App\Models\ChartData;
 use App\Models\Employee;

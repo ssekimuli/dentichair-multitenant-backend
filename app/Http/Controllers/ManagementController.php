@@ -1271,7 +1271,6 @@ class ManagementController extends Controller
             'material' => 'nullable|string',
             'instructions' => 'nullable|string',
             'cost' => 'nullable|numeric',
-            'invoiceNumber' => 'nullable|string',
             'doctorId' => 'nullable|exists:employees,id',
         ]);
 
@@ -1290,7 +1289,6 @@ class ManagementController extends Controller
             'material' => $validated['material'] ?? null,
             'instructions' => $validated['instructions'] ?? null,
             'cost' => $validated['cost'] ?? null,
-            'invoice_number' => $validated['invoiceNumber'] ?? null,
             'doctor_id' => $validated['doctorId'] ?? null,
         ]);
 

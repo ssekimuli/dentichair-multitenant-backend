@@ -354,6 +354,11 @@ class ManagementController extends Controller
             $this->generateLabOrderInvoice($order);
         }
 
+        // Cancel/void invoice when lab order is cancelled
+        if ($validated['status'] === 'Cancelled' && $oldStatus !== 'Cancelled') {
+            $this->cancelLabOrderInvoice($order);
+        }
+
         \App\Models\ActivityLog::log(
             'Lab Order Status Updated',
             "Lab order #{$order->id} status updated to {$validated['status']}.",
@@ -386,6 +391,7 @@ class ManagementController extends Controller
             'due_date' => $order->due_date,
             'branch_id' => $order->branch_id,
             'status' => 'Pending',
+            'medicines' => json_encode(['lab_order_id' => $order->id]),
         ]);
 
         // Send invoice to client via email if email exists
@@ -415,6 +421,59 @@ class ManagementController extends Controller
             "Invoice #{$invoice->id} generated and sent for lab order #{$order->id}.",
             ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
         );
+    }
+
+    /**
+     * Cancel Invoice for Lab Order
+     * When lab order is cancelled, void the associated invoice
+     */
+    private function cancelLabOrderInvoice(LaboratoryOrder $order)
+    {
+        try {
+            // Find invoice by lab_order_id stored in medicines field
+            $invoices = Invoice::where('branch_id', $order->branch_id)
+                ->where('status', '!=', 'Cancelled')
+                ->whereNotNull('medicines')
+                ->get();
+
+            foreach ($invoices as $invoice) {
+                $medicines = is_string($invoice->medicines) ? json_decode($invoice->medicines, true) : $invoice->medicines;
+                if (is_array($medicines) && isset($medicines['lab_order_id']) && $medicines['lab_order_id'] == $order->id) {
+                    $invoice->update(['status' => 'Cancelled']);
+
+                    \App\Models\ActivityLog::log(
+                        'Invoice Cancelled from Lab Order',
+                        "Invoice #{$invoice->id} cancelled due to lab order #{$order->id} cancellation.",
+                        ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
+                    );
+
+                    // Send cancellation notification to client if email exists
+                    if ($order->client && $order->client->email) {
+                        try {
+                            Mail::send('emails.lab-order-cancelled', [
+                                'clientName' => $order->patient_name ?? $order->client->name,
+                                'labOrder' => $order,
+                                'invoice' => $invoice,
+                            ], function ($message) use ($order) {
+                                $message->to($order->client->email)
+                                        ->subject("Lab Order Cancelled: Order #{$order->id}");
+                            });
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send lab order cancellation email', [
+                                'lab_order_id' => $order->id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error cancelling lab order invoice', [
+                'lab_order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

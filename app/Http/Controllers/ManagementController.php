@@ -1453,7 +1453,7 @@ class ManagementController extends Controller
         }
 
         $settings = \App\Models\GlobalSetting::getSettings();
-        $defaultMsg = "Hello {$client->name},\n\nA new lab order has been assigned to your laboratory.\n*Patient Name:* {$order->patient_name}\n*Item:* {$order->item}\n" . ($order->tooth ? "*Tooth:* {$order->tooth}\n" : "") . "*Status:* {$order->status}\n*Due Date:* {$order->due_date}\n\nThank you.";
+        $defaultMsg = "Hello {$client->name},\n\nA new lab order has been assigned to your laboratory.\nPatient Name: {$order->patient_name}\nItem: {$order->item}\n" . ($order->tooth ? "Tooth: {$order->tooth}\n" : "") . "Status: {$order->status}\nDue Date: {$order->due_date}\n\nThank you.";
         $msg = $validated['customMessage'] ?? $defaultMsg;
 
         if ($channel === 'whatsapp') {

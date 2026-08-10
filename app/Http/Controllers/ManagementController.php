@@ -18,6 +18,7 @@ use App\Models\Patient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @group Management Module
@@ -364,6 +365,7 @@ class ManagementController extends Controller
 
     /**
      * Generate Invoice for Lab Order
+     * When status is "In Production", generate and send invoice to client
      */
     private function generateLabOrderInvoice(LaboratoryOrder $order)
     {
@@ -386,9 +388,31 @@ class ManagementController extends Controller
             'status' => 'Pending',
         ]);
 
+        // Send invoice to client via email if email exists
+        if ($order->client && $order->client->email) {
+            try {
+                Mail::send('emails.lab-order', [
+                    'clientName' => $clientName,
+                    'labOrder' => $order,
+                    'invoice' => $invoice,
+                    'invoiceAmount' => $invoiceAmount,
+                    'dueDate' => $order->due_date,
+                ], function ($message) use ($order, $invoice) {
+                    $message->to($order->client->email)
+                            ->subject("Invoice Generated: Lab Order #{$order->id} is in Production");
+                });
+            } catch (\Exception $e) {
+                Log::error('Failed to send lab order invoice email', [
+                    'invoice_id' => $invoice->id,
+                    'lab_order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
         \App\Models\ActivityLog::log(
             'Invoice Generated from Lab Order',
-            "Invoice #{$invoice->id} generated for lab order #{$order->id}.",
+            "Invoice #{$invoice->id} generated and sent for lab order #{$order->id}.",
             ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
         );
     }

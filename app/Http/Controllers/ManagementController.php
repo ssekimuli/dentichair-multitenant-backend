@@ -374,53 +374,62 @@ class ManagementController extends Controller
      */
     private function generateLabOrderInvoice(LaboratoryOrder $order)
     {
-        $invoiceAmount = $order->cost ?? 0;
+        try {
+            $invoiceAmount = $order->cost ?? 0;
 
-        if ($invoiceAmount <= 0) {
-            return;
-        }
+            $clientName = $order->patient_name ?? $order->client->name ?? 'Lab Order';
 
-        $clientName = $order->patient_name ?? $order->client->name ?? 'Lab Order';
+            $invoice = Invoice::create([
+                'patient_name' => $clientName,
+                'patient_id' => null,
+                'amount' => $invoiceAmount,
+                'paid_amount' => 0,
+                'issue_date' => now()->format('Y-m-d'),
+                'due_date' => $order->due_date,
+                'branch_id' => $order->branch_id,
+                'status' => 'Pending',
+                'medicines' => json_encode(['lab_order_id' => $order->id]),
+            ]);
 
-        $invoice = Invoice::create([
-            'patient_name' => $clientName,
-            'patient_id' => null,
-            'amount' => $invoiceAmount,
-            'paid_amount' => 0,
-            'issue_date' => now()->format('Y-m-d'),
-            'due_date' => $order->due_date,
-            'branch_id' => $order->branch_id,
-            'status' => 'Pending',
-            'medicines' => json_encode(['lab_order_id' => $order->id]),
-        ]);
+            Log::info('Invoice created for lab order', [
+                'invoice_id' => $invoice->id,
+                'lab_order_id' => $order->id,
+                'amount' => $invoiceAmount
+            ]);
 
-        // Send invoice to client via email if email exists
-        if ($order->client && $order->client->email) {
-            try {
-                Mail::send('emails.lab-order', [
-                    'clientName' => $clientName,
-                    'labOrder' => $order,
-                    'invoice' => $invoice,
-                    'invoiceAmount' => $invoiceAmount,
-                    'dueDate' => $order->due_date,
-                ], function ($message) use ($order, $invoice) {
-                    $message->to($order->client->email)
-                            ->subject("Invoice Generated: Lab Order #{$order->id} is in Production");
-                });
-            } catch (\Exception $e) {
-                Log::error('Failed to send lab order invoice email', [
-                    'invoice_id' => $invoice->id,
-                    'lab_order_id' => $order->id,
-                    'error' => $e->getMessage()
-                ]);
+            // Send invoice to client via email if email exists
+            if ($order->client && $order->client->email) {
+                try {
+                    Mail::send('emails.lab-order', [
+                        'clientName' => $clientName,
+                        'labOrder' => $order,
+                        'invoice' => $invoice,
+                        'invoiceAmount' => $invoiceAmount,
+                        'dueDate' => $order->due_date,
+                    ], function ($message) use ($order, $invoice) {
+                        $message->to($order->client->email)
+                                ->subject("Invoice Generated: Lab Order #{$order->id} is in Production");
+                    });
+                } catch (\Exception $e) {
+                    Log::error('Failed to send lab order invoice email', [
+                        'invoice_id' => $invoice->id,
+                        'lab_order_id' => $order->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
-        }
 
-        \App\Models\ActivityLog::log(
-            'Invoice Generated from Lab Order',
-            "Invoice #{$invoice->id} generated and sent for lab order #{$order->id}.",
-            ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
-        );
+            \App\Models\ActivityLog::log(
+                'Invoice Generated from Lab Order',
+                "Invoice #{$invoice->id} generated and sent for lab order #{$order->id}.",
+                ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error generating lab order invoice', [
+                'lab_order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

@@ -1179,7 +1179,7 @@ class ManagementController extends Controller
             'lab' => 'required|string',
             'item' => 'required|string',
             'tooth' => 'nullable|integer',
-            'status' => 'required|in:Sent,Received,Completed,Cancelled',
+            'status' => 'required|in:Received,In Production,Ready for Delivery,Delivered,Cancelled',
             'sentDate' => 'required|date',
             'dueDate' => 'required|date',
             'branchId' => 'required|exists:branches,id',
@@ -1211,9 +1211,14 @@ class ManagementController extends Controller
             'doctor_id' => $validated['doctorId'] ?? null,
         ]);
 
+        // Generate invoice if status is "In Production"
+        if ($validated['status'] === 'In Production') {
+            $this->generateLabOrderInvoice($labOrder);
+        }
+
         \App\Models\ActivityLog::log(
-            'Lab Order Created', 
-            "Lab order for patient {$validated['patientName']} was created.", 
+            'Lab Order Created',
+            "Lab order for patient {$validated['patientName']} was created.",
             ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
         );
 

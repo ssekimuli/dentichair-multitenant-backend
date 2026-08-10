@@ -99,23 +99,41 @@ class Invoice extends Model
             return [];
         }
 
-        $medicineIds = collect($items)->pluck('medicine_id')->unique();
-        $unitIds = collect($items)->pluck('medicine_unit_id')->unique();
+        // Check if this is a lab order reference (not actual medicines)
+        if (is_array($items) && isset($items['lab_order_id']) && !isset($items[0])) {
+            return [];
+        }
+
+        // Ensure items is an array
+        if (!is_array($items)) {
+            return [];
+        }
+
+        $medicineIds = collect($items)->pluck('medicine_id')->filter()->unique();
+        $unitIds = collect($items)->pluck('medicine_unit_id')->filter()->unique();
+
+        if ($medicineIds->isEmpty() && $unitIds->isEmpty()) {
+            return [];
+        }
 
         $medicines = Medicine::whereIn('id', $medicineIds)->get()->keyBy('id');
         $units = MedicineUnit::whereIn('id', $unitIds)->get()->keyBy('id');
 
         return array_map(function ($item) use ($medicines, $units) {
-            $med = $medicines->get($item['medicine_id']);
-            $unit = $units->get($item['medicine_unit_id']);
-            
+            if (!is_array($item)) {
+                return $item;
+            }
+
+            $med = isset($item['medicine_id']) ? $medicines->get($item['medicine_id']) : null;
+            $unit = isset($item['medicine_unit_id']) ? $units->get($item['medicine_unit_id']) : null;
+
             $item['medicine'] = $med ? [
                 'id' => $med->id,
                 'name' => $med->name,
                 'description' => $med->description,
                 'category' => $med->category,
             ] : null;
-            
+
             $item['unit'] = $unit ? [
                 'id' => $unit->id,
                 'unit_name' => $unit->unit_name,

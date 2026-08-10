@@ -334,7 +334,7 @@ class ManagementController extends Controller
     /**
      * Update Lab Order Status
      *
-     * @bodyParam status string required Must be Sent, Received, Completed, or Cancelled. Example: "Completed"
+     * @bodyParam status string required Must be Received, In Production, Ready for Delivery, Delivered, or Cancelled. Example: "In Production"
      */
     public function updateLabOrderStatus(Request $request, $id)
     {
@@ -342,18 +342,55 @@ class ManagementController extends Controller
         if (!$order) return response()->json(['error' => 'Lab order not found'], 404);
 
         $validated = $request->validate([
-            'status' => 'required|in:Sent,Received,Completed,Cancelled',
+            'status' => 'required|in:Received,In Production,Ready for Delivery,Delivered,Cancelled',
         ]);
 
+        $oldStatus = $order->status;
         $order->update($validated);
-        
+
+        // Generate invoice when status changes to "In Production"
+        if ($validated['status'] === 'In Production' && $oldStatus !== 'In Production') {
+            $this->generateLabOrderInvoice($order);
+        }
+
         \App\Models\ActivityLog::log(
-            'Lab Order Status Updated', 
-            "Lab order #{$order->id} status updated to {$validated['status']}.", 
+            'Lab Order Status Updated',
+            "Lab order #{$order->id} status updated to {$validated['status']}.",
             ['lab_order_id' => $order->id, 'status' => $validated['status']]
         );
 
         return response()->json($order->load(['client', 'branch']));
+    }
+
+    /**
+     * Generate Invoice for Lab Order
+     */
+    private function generateLabOrderInvoice(LaboratoryOrder $order)
+    {
+        $invoiceAmount = $order->cost ?? 0;
+
+        if ($invoiceAmount <= 0) {
+            return;
+        }
+
+        $clientName = $order->patient_name ?? $order->client->name ?? 'Lab Order';
+
+        $invoice = Invoice::create([
+            'patient_name' => $clientName,
+            'patient_id' => null,
+            'amount' => $invoiceAmount,
+            'paid_amount' => 0,
+            'issue_date' => now()->format('Y-m-d'),
+            'due_date' => $order->due_date,
+            'branch_id' => $order->branch_id,
+            'status' => 'Pending',
+        ]);
+
+        \App\Models\ActivityLog::log(
+            'Invoice Generated from Lab Order',
+            "Invoice #{$invoice->id} generated for lab order #{$order->id}.",
+            ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
+        );
     }
 
     /**

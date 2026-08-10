@@ -42,6 +42,8 @@ class Invoice extends Model
         'medicines' => 'array',
     ];
 
+    protected $appends = ['lab_order_details'];
+
     protected static function booted()
     {
         static::creating(function ($invoice) {
@@ -59,6 +61,49 @@ class Invoice extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function labOrder()
+    {
+        $medicines = $this->medicines;
+        if (!$medicines || !is_array($medicines)) {
+            return null;
+        }
+
+        $labOrderId = $medicines['lab_order_id'] ?? null;
+        if (!$labOrderId) {
+            return null;
+        }
+
+        return LaboratoryOrder::find($labOrderId);
+    }
+
+    public function getLabOrderDetailsAttribute()
+    {
+        $order = $this->labOrder();
+        if (!$order) {
+            return null;
+        }
+
+        return [
+            'id' => $order->id,
+            'client_id' => $order->client_id,
+            'client_name' => $order->client->name ?? null,
+            'patient_name' => $order->patient_name,
+            'lab' => $order->lab,
+            'item' => $order->item,
+            'tooth' => $order->tooth,
+            'status' => $order->status,
+            'sent_date' => $order->sent_date?->format('Y-m-d'),
+            'due_date' => $order->due_date?->format('Y-m-d'),
+            'received_date' => $order->received_date?->format('Y-m-d'),
+            'shade' => $order->shade,
+            'material' => $order->material,
+            'instructions' => $order->instructions,
+            'cost' => $order->cost,
+            'doctor_id' => $order->doctor_id,
+            'doctor_name' => $order->doctor->name ?? null,
+        ];
     }
 
     public function scopePaid($query)

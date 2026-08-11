@@ -320,8 +320,66 @@ class ManagementController extends Controller
     public function getLabOrders(Request $request)
     {
         $query = LaboratoryOrder::with(['client', 'branch', 'doctor']);
-        if ($request->filled('branch_id')) $query->where('branch_id', $request->branch_id);
-        $orders = $query->latest()->paginate($request->input('per_page', 10));
+
+        // Branch filter
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        // Search filter (searches across multiple fields)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('patient_name', 'like', "%{$search}%")
+                  ->orWhere('lab', 'like', "%{$search}%")
+                  ->orWhere('item', 'like', "%{$search}%")
+                  ->orWhere('tooth', 'like', "%{$search}%");
+            });
+        }
+
+        // Status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        // Doctor filter
+        if ($request->filled('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        // Date range filters
+        if ($request->filled('sent_date_from')) {
+            $query->whereDate('sent_date', '>=', $request->sent_date_from);
+        }
+        if ($request->filled('sent_date_to')) {
+            $query->whereDate('sent_date', '<=', $request->sent_date_to);
+        }
+
+        if ($request->filled('due_date_from')) {
+            $query->whereDate('due_date', '>=', $request->due_date_from);
+        }
+        if ($request->filled('due_date_to')) {
+            $query->whereDate('due_date', '<=', $request->due_date_to);
+        }
+
+        // Sort options
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        $allowedSortFields = ['id', 'patient_name', 'lab', 'item', 'status', 'sent_date', 'due_date', 'cost', 'created_at'];
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->latest();
+        }
+
+        $orders = $query->paginate($request->input('per_page', 10));
+
         return response()->json([
             'data' => $orders->items(),
             'meta' => [

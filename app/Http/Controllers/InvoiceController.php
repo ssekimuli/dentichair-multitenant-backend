@@ -235,7 +235,10 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'Invoice not found'], 404);
         }
 
-        return response()->json($invoice);
+        $response = $invoice->toArray();
+        $response['lab_order_details'] = $invoice->lab_order_details;
+
+        return response()->json($response);
     }
 
     /**

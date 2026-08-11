@@ -21,12 +21,14 @@ class BusinessController extends Controller
             'details' => 'nullable|string|max:1000',
         ]);
 
-        $business = Business::create([
-            'name' => $request->name,
-            'details' => $request->details,
-        ]);
+        // Create or update the single business record (singleton pattern)
+        $business = Business::firstOrNew();
+        $business->name = $request->name;
+        $business->details = $request->details;
+        $isCreating = !$business->exists;
+        $business->save();
 
-        return response()->json($business, 201);
+        return response()->json($business, $isCreating ? 201 : 200);
     }
 
     public function changeEmail(Request $request)

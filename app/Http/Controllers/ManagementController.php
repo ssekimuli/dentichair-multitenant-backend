@@ -459,6 +459,8 @@ class ManagementController extends Controller
                 'medicines' => json_encode(['lab_order_id' => $order->id]),
             ]);
 
+            $order->update(['invoice_id' => $invoice->id]);
+
             Log::info('Invoice created for lab order', [
                 'invoice_id' => $invoice->id,
                 'lab_order_id' => $order->id,

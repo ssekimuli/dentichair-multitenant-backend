@@ -69,45 +69,54 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
-
-        $employee = Employee::with('branch')->where('email', $request->email)->first();
-
-        if (!$employee || !Hash::check($request->password, $employee->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string',
             ]);
-        }
 
-        if ($employee->status === 'Blocked') {
-            throw ValidationException::withMessages([
-                'email' => ['Your account has been blocked.'],
+            $employee = Employee::with('branch')->where('email', $request->email)->first();
+
+            if (!$employee || !Hash::check($request->password, $employee->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+
+            if ($employee->status === 'Blocked') {
+                throw ValidationException::withMessages([
+                    'email' => ['Your account has been blocked.'],
+                ]);
+            }
+
+            $token = $employee->createToken('api-token')->plainTextToken;
+
+            // Get permissions based on role
+            $permissions = $this->getPermissionsByRole($employee->role_id);
+
+            return response()->json([
+                'token' => $token,
+                'user' => [
+                    'role' => $employee->role,
+                    'permissions' => $permissions,
+                    'branchId' => $employee->branch_id,
+                    'email' => $employee->email,
+                    'name' => $employee->name,
+                    'avatar' => $employee->avatar,
+                    'status' => $employee->status,
+                    'hire_date' => $employee->hire_date,
+                    'branch_id' => $employee->branch_id,
+                    'branchName' => $employee->branch->name ?? null, // Include branch name
+                ]
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error("Login error: " . $e->getMessage());
+            return response()->json([
+                'message' => 'An error occurred during login. Please try again.'
+            ], 500);
         }
-
-        $token = $employee->createToken('api-token')->plainTextToken;
-
-        // Get permissions based on role
-        $permissions = $this->getPermissionsByRole($employee->role_id);
-
-        return response()->json([
-            'token' => $token,
-            'user' => [
-                'role' => $employee->role,
-                'permissions' => $permissions,
-                'branchId' => $employee->branch_id,
-                'email' => $employee->email,
-                'name' => $employee->name,
-                'avatar' => $employee->avatar,
-                'status' => $employee->status,
-                'hire_date' => $employee->hire_date,
-                'branch_id' => $employee->branch_id,
-                'branchName' => $employee->branch->name ?? null, // Include branch name
-            ]
-        ]);
     }
 
     /**

@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
 
 

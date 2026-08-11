@@ -75,7 +75,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['patient.insurancePolicies.package.company', 'branch', 'treatments', 'otherCharges', 'transactions']);
+        $query = Invoice::with(['patient.insurancePolicies.package.company', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client', 'laboratoryOrder.doctor']);
 
         if ($request->has('branch_id')) {
             $query->where('branch_id', $request->branch_id);
@@ -141,7 +141,7 @@ class InvoiceController extends Controller
      */
     public function getIncomeRecords(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions'])
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client', 'laboratoryOrder.doctor'])
             ->where('status', 'Paid');
 
         $branch = null;
@@ -229,7 +229,15 @@ class InvoiceController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['patient.insurancePolicies.package.company', 'branch', 'treatments', 'otherCharges', 'transactions'])->find($id);
+        $invoice = Invoice::with([
+            'patient.insurancePolicies.package.company',
+            'branch',
+            'treatments',
+            'otherCharges',
+            'transactions',
+            'laboratoryOrder.client',
+            'laboratoryOrder.doctor'
+        ])->find($id);
 
         if (!$invoice) {
             return response()->json(['error' => 'Invoice not found'], 404);
@@ -438,7 +446,7 @@ class InvoiceController extends Controller
             $invoice->refresh();
         }
 
-        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions']);
+        $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions', 'laboratoryOrder.client', 'laboratoryOrder.doctor']);
 
         $settings = \App\Models\GlobalSetting::getSettings();
 
@@ -683,7 +691,7 @@ class InvoiceController extends Controller
             $invoice->refresh();
         }
 
-        return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch']));
+        return response()->json($invoice->load(['treatments', 'otherCharges', 'transactions', 'branch', 'laboratoryOrder.client', 'laboratoryOrder.doctor']));
     }
 
     /**
@@ -767,7 +775,7 @@ class InvoiceController extends Controller
 
         \App\Models\ActivityLog::log('pay_invoice', "Payment of {$validated['amount']} added to Invoice #{$invoice->id}", ['invoice_id' => $invoice->id, 'amount' => $validated['amount'], 'method' => $validated['method']]);
 
-        $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient']);
+        $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient', 'laboratoryOrder.client', 'laboratoryOrder.doctor']);
 
         $settings = \App\Models\GlobalSetting::getSettings();
         $sendEmail = $settings->notifications['payment_success']['email'] ?? true;

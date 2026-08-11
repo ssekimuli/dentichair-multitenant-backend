@@ -69,45 +69,54 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
-
-        $employee = Employee::with('branch')->where('email', $request->email)->first();
-
-        if (!$employee || !Hash::check($request->password, $employee->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string',
             ]);
-        }
 
-        if ($employee->status === 'Blocked') {
-            throw ValidationException::withMessages([
-                'email' => ['Your account has been blocked.'],
+            $employee = Employee::with('branch')->where('email', $request->email)->first();
+
+            if (!$employee || !Hash::check($request->password, $employee->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+
+            if ($employee->status === 'Blocked') {
+                throw ValidationException::withMessages([
+                    'email' => ['Your account has been blocked.'],
+                ]);
+            }
+
+            $token = $employee->createToken('api-token')->plainTextToken;
+
+            // Get permissions based on role
+            $permissions = $this->getPermissionsByRole($employee->role_id);
+
+            return response()->json([
+                'token' => $token,
+                'user' => [
+                    'role' => $employee->role,
+                    'permissions' => $permissions,
+                    'branchId' => $employee->branch_id,
+                    'email' => $employee->email,
+                    'name' => $employee->name,
+                    'avatar' => $employee->avatar,
+                    'status' => $employee->status,
+                    'hire_date' => $employee->hire_date,
+                    'branch_id' => $employee->branch_id,
+                    'branchName' => $employee->branch->name ?? null, // Include branch name
+                ]
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error("Login error: " . $e->getMessage());
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        $token = $employee->createToken('api-token')->plainTextToken;
-
-        // Get permissions based on role
-        $permissions = $this->getPermissionsByRole($employee->role_id);
-
-        return response()->json([
-            'token' => $token,
-            'user' => [
-                'role' => $employee->role,
-                'permissions' => $permissions,
-                'branchId' => $employee->branch_id,
-                'email' => $employee->email,
-                'name' => $employee->name,
-                'avatar' => $employee->avatar,
-                'status' => $employee->status,
-                'hire_date' => $employee->hire_date,
-                'branch_id' => $employee->branch_id,
-                'branchName' => $employee->branch->name ?? null, // Include branch name
-            ]
-        ]);
     }
 
     /**
@@ -474,62 +483,80 @@ class AuthController extends Controller
 
     public function verifyOTP(Request $request)
     {
-        $request->validate([
-            'identifier' => 'required|string',
-            'otp' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'identifier' => 'required|string',
+                'otp' => 'required|string',
+            ]);
 
-        $identifier = $request->identifier;
-        $otp = $request->otp;
+            $identifier = $request->identifier;
+            $otp = $request->otp;
 
-        $cachedOtp = Cache::get('otp_' . $identifier);
+            $cachedOtp = Cache::get('otp_' . $identifier);
 
-        if (!$cachedOtp || $cachedOtp !== $otp) {
+            if (!$cachedOtp || $cachedOtp !== $otp) {
+                return response()->json([
+                    'message' => 'Invalid or expired OTP.'
+                ], 422);
+            }
+
+            // Mark as verified for password reset
+            Cache::put('verified_otp_' . $identifier, true, now()->addMinutes(15));
+
             return response()->json([
-                'message' => 'Invalid or expired OTP.'
-            ], 422);
+                'message' => 'OTP verified successfully.'
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error("OTP verification error: " . $e->getMessage());
+            return response()->json([
+                'message' => 'An error occurred during OTP verification. Please try again.'
+            ], 500);
         }
-
-        // Mark as verified for password reset
-        Cache::put('verified_otp_' . $identifier, true, now()->addMinutes(15));
-
-        return response()->json([
-            'message' => 'OTP verified successfully.'
-        ]);
     }
 
     public function resetPassword(Request $request)
     {
-        $request->validate([
-            'identifier' => 'required|string',
-            'password' => 'required|string|min:6',
-        ]);
+        try {
+            $request->validate([
+                'identifier' => 'required|string',
+                'password' => 'required|string|min:6',
+            ]);
 
-        $identifier = $request->identifier;
-        $password = $request->password;
+            $identifier = $request->identifier;
+            $password = $request->password;
 
-        if (!Cache::has('verified_otp_' . $identifier)) {
+            if (!Cache::has('verified_otp_' . $identifier)) {
+                return response()->json([
+                    'message' => 'Please verify OTP first.'
+                ], 403);
+            }
+
+            $employee = Employee::where('email', $identifier)->first();
+
+            if (!$employee) {
+                return response()->json([
+                    'message' => 'Employee not found.'
+                ], 404);
+            }
+
+            $employee->password = Hash::make($password);
+            $employee->save();
+
+            Cache::forget('verified_otp_' . $identifier);
+            Cache::forget('otp_' . $identifier);
+
             return response()->json([
-                'message' => 'Please verify OTP first.'
-            ], 403);
-        }
-
-        $employee = Employee::where('email', $identifier)->first();
-
-        if (!$employee) {
+                'message' => 'Password reset successfully.'
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error("Password reset error: " . $e->getMessage());
             return response()->json([
-                'message' => 'Employee not found.'
-            ], 404);
+                'message' => 'An error occurred during password reset. Please try again.'
+            ], 500);
         }
-
-        $employee->password = Hash::make($password);
-        $employee->save();
-
-        Cache::forget('verified_otp_' . $identifier);
-        Cache::forget('otp_' . $identifier);
-
-        return response()->json([
-            'message' => 'Password reset successfully.'
-        ]);
     }
 }

@@ -16,7 +16,7 @@ use HasFactory;
     protected $fillable = [
         'id', 'client_id', 'patient_name', 'lab', 'item', 'tooth', 'doctor_id',
         'status', 'sent_date', 'due_date', 'branch_id',
-        'received_date', 'shade', 'material', 'instructions', 'cost'
+        'received_date', 'shade', 'material', 'instructions', 'cost', 'invoice_id'
     ];
 
     protected $casts = [

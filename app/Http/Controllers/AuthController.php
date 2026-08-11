@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\RolePermission;
 use App\Models\GlobalSetting;
+use App\Models\Business;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -385,7 +386,7 @@ class AuthController extends Controller
     public function getBusinessInfo(Request $request)
     {
         $employee = $request->user();
-        $globalSettings = GlobalSetting::getSettings();
+        $business = Business::first();
 
         $branch = null;
         if ($employee && $employee->branch_id) {
@@ -393,8 +394,8 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'clinic_name' => $globalSettings->clinic_name,
-            'clinic_address' => $globalSettings->address ?? null,
+            'clinic_name' => $business?->name,
+            'clinic_address' => $business?->details ?? null,
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,

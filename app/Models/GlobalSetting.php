@@ -9,7 +9,7 @@ class GlobalSetting extends Model
 {
 use HasFactory;
 
-    protected $fillable = ['clinic_name', 'sms_balance', 'whatsapp_balance', 'notifications', 'whatsapp_expires_at', 'activity_log_enabled'];
+    protected $fillable = ['clinic_name', 'address', 'sms_balance', 'whatsapp_balance', 'notifications', 'whatsapp_expires_at', 'activity_log_enabled'];
 
     protected $casts = [
         'notifications' => 'array',

@@ -10,7 +10,28 @@ class BranchSettingController extends Controller
     public function getSettings(Request $request)
     {
         $globalSetting = GlobalSetting::getSettings();
-        return response()->json($globalSetting);
+        $user = $request->user();
+
+        $branch = null;
+        if ($user && $user->branch_id) {
+            $branch = $user->branch;
+        }
+
+        return response()->json([
+            'clinic_name' => $globalSetting->clinic_name,
+            'address' => $globalSetting->address,
+            'branch' => $branch ? [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'address' => $branch->address,
+                'currency' => $branch->currency,
+            ] : null,
+            'sms_balance' => $globalSetting->sms_balance,
+            'whatsapp_balance' => $globalSetting->whatsapp_balance,
+            'whatsapp_expires_at' => $globalSetting->whatsapp_expires_at,
+            'activity_log_enabled' => $globalSetting->activity_log_enabled,
+            'notifications' => $globalSetting->notifications,
+        ]);
     }
 
     public function updateSettings(Request $request)

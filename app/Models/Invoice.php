@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
@@ -63,29 +64,9 @@ class Invoice extends Model
         return $this->belongsTo(Branch::class);
     }
 
-    public function labOrder()
-    {
-        $rawMedicines = $this->getAttributes()['medicines'] ?? null;
-        if (!$rawMedicines) {
-            return null;
-        }
-
-        $medicines = is_string($rawMedicines) ? json_decode($rawMedicines, true) : $rawMedicines;
-        if (!$medicines || !is_array($medicines)) {
-            return null;
-        }
-
-        $labOrderId = $medicines['lab_order_id'] ?? null;
-        if (!$labOrderId) {
-            return null;
-        }
-
-        return LaboratoryOrder::find($labOrderId);
-    }
-
     public function getLabOrderDetailsAttribute()
     {
-        $order = $this->labOrder();
+        $order = $this->laboratoryOrder;
         if (!$order) {
             return null;
         }
@@ -140,6 +121,11 @@ class Invoice extends Model
     public function insuranceClaims(): HasMany
     {
         return $this->hasMany(InsuranceClaim::class);
+    }
+
+    public function laboratoryOrder(): HasOne
+    {
+        return $this->hasOne(LaboratoryOrder::class);
     }
 
     public function getMedicinesAttribute($value)

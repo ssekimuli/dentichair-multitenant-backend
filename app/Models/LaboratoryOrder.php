@@ -39,4 +39,9 @@ use HasFactory;
     {
         return $this->belongsTo(Employee::class, 'doctor_id');
     }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 }

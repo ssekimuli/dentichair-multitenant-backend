@@ -55,6 +55,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/profile', [AuthController::class, 'getProfileData']);
+    Route::get('/business', [AuthController::class, 'getBusinessInfo']);
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
 
     // Imports

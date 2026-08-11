@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\RolePermission;
+use App\Models\GlobalSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -354,7 +355,54 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Get Business Info
+     *
+     * Retrieve business/clinic information and the login user's branch details.
+     * Returns clinic name, address, and the branch the user belongs to.
+     *
+     * Requires Bearer token authentication.
+     *
+     * @authenticated
+     *
+     * @response 200 {
+     *   "clinic_name": "Downtown Clinic",
+     *   "clinic_address": "123 Main St, Cityville",
+     *   "branch": {
+     *     "id": 1,
+     *     "name": "Downtown Clinic",
+     *     "address": "123 Main St, Cityville",
+     *     "currency": "UGX"
+     *   }
+     * }
+     * @response 401 {
+     *   "message": "Unauthenticated."
+     * }
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getBusinessInfo(Request $request)
+    {
+        $employee = $request->user();
+        $globalSettings = GlobalSetting::getSettings();
 
+        $branch = null;
+        if ($employee && $employee->branch_id) {
+            $branch = $employee->branch;
+        }
+
+        return response()->json([
+            'clinic_name' => $globalSettings->clinic_name,
+            'clinic_address' => $globalSettings->address ?? null,
+            'branch' => $branch ? [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'address' => $branch->address ?? null,
+                'currency' => $branch->currency ?? null,
+            ] : null,
+        ]);
+    }
 
     /**
      * Send OTP via Email

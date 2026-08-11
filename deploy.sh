@@ -16,13 +16,13 @@ fi
 # ==========================================
 # CONFIGURATION VARIABLES
 # ==========================================
-DOMAIN="shalomdentalcareapi.poslycloud.com"
-SITE_USER="poslycloud-shalomdentalcare"
-DB_NAME="shalomdentalcaredb"
-DB_USER="shalomdentalcarebsuser"
-DB_PASS="shalomdentalcare3KYkz"
+DOMAIN="dentichairapi.poslycloud.com"
+SITE_USER="poslycloud-dentichairapi"
+DB_NAME="dentichairapidb"
+DB_USER="dentichairapibsuser"
+DB_PASS="dentichairapi3KYkz"
 GIT_REPO="git@github.com:ssekimuli/chart-backend.git"
-GIT_BRANCH="production"  # Specify the production branch
+GIT_BRANCH="saas-mob"  # Specify the saas-mob branch
 
 # Check if the site user exists, and if not, create the site in CloudPanel first
 if ! id "$SITE_USER" &>/dev/null; then

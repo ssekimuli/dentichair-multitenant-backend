@@ -7,7 +7,9 @@ use App\Models\Patient;
 use App\Models\Appointment;
 use App\Models\Employee;
 use App\Models\Branch;
+use App\Mail\AppointmentBookedNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class BookAppointmentController extends Controller
 {
@@ -82,6 +84,12 @@ class BookAppointmentController extends Controller
             'status' => 'Scheduled',
             'token_number' => $this->generateTokenNumber(),
         ]);
+
+        // Send email to doctor
+        if ($doctor->email) {
+            Mail::to($doctor->email)
+                ->send(new AppointmentBookedNotification($appointment));
+        }
 
         return redirect()->route('appointment.confirmation', $appointment->id)
             ->with('success', 'Appointment booked successfully!');

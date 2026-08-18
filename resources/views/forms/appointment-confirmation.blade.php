@@ -6,11 +6,12 @@
 @section('og_title', 'Your Appointment is Confirmed!')
 @section('og_description', 'Your appointment with ' . $appointment->doctor_name . ' has been confirmed for ' . \Carbon\Carbon::parse($appointment->date)->format('F d, Y'))
 @section('og_url', url("/appointment/{$appointment->id}/confirmation"))
-@section('og_image', asset('images/og-confirmation.jpg'))
+@section('og_image', asset('ic_launcher.png'))
 
 @section('twitter_card', 'summary')
 @section('twitter_title', 'Appointment Confirmed')
 @section('twitter_description', 'Your appointment has been successfully booked')
+@section('twitter_image', asset('ic_launcher.png'))
 
 @section('meta_description', 'Your appointment with ' . $appointment->doctor_name . ' is confirmed. Token: ' . $appointment->token_number)
 

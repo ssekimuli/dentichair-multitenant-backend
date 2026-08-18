@@ -6,11 +6,12 @@
 @section('og_title', 'Book Your Appointment - ' . config('app.name'))
 @section('og_description', 'Schedule your appointment with our professional healthcare team. Quick and easy booking process.')
 @section('og_url', url('/book-appointment'))
-@section('og_image', asset('images/og-appointment.jpg'))
+@section('og_image', asset('ic_launcher.png'))
 
 @section('twitter_card', 'summary_large_image')
 @section('twitter_title', 'Book Your Appointment')
 @section('twitter_description', 'Schedule your appointment with us today')
+@section('twitter_image', asset('ic_launcher.png'))
 
 @section('meta_description', 'Book an appointment with ' . config('app.name') . '. Schedule your visit with our healthcare professionals.')
 

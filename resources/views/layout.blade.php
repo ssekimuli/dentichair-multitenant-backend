@@ -10,14 +10,14 @@
     <meta property="og:title" content="@yield('og_title', config('app.name'))" />
     <meta property="og:description" content="@yield('og_description', 'Book your appointment with our clinic')" />
     <meta property="og:url" content="@yield('og_url', request()->url())" />
-    <meta property="og:image" content="@yield('og_image', asset('images/og-default.jpg'))" />
+    <meta property="og:image" content="@yield('og_image', asset('ic_launcher.png'))" />
     <meta property="og:site_name" content="{{ config('app.name') }}" />
 
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="@yield('twitter_card', 'summary_large_image')" />
     <meta name="twitter:title" content="@yield('twitter_title', config('app.name'))" />
     <meta name="twitter:description" content="@yield('twitter_description', 'Book your appointment with our clinic')" />
-    <meta name="twitter:image" content="@yield('twitter_image', asset('images/og-default.jpg'))" />
+    <meta name="twitter:image" content="@yield('twitter_image', asset('ic_launcher.png'))" />
 
     <!-- Basic Meta Tags -->
     <meta name="description" content="@yield('meta_description', 'Book your appointment with our clinic')" />

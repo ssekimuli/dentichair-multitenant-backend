@@ -16,11 +16,11 @@ fi
 # ==========================================
 # CONFIGURATION VARIABLES
 # ==========================================
-DOMAIN="dentichairapi.poslycloud.com"
-SITE_USER="poslycloud-dentichairapi"
-DB_NAME="dentichairapidb"
-DB_USER="dentichairapibsuser"
-DB_PASS="dentichairapi3KYkz"
+DOMAIN="arisedentalapi.poslycloud.com"
+SITE_USER="poslycloud-arisedentalapi"
+DB_NAME="arisedentaldb"
+DB_USER="arisedentalbsuser"
+DB_PASS="arisedental3KYkz"
 GIT_REPO="git@github.com:ssekimuli/chart-backend.git"
 GIT_BRANCH="saas-mob"  # Specify the saas-mob branch
 

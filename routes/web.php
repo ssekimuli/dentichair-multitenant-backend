@@ -1,17 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Web\PatientFormController;
-use App\Http\Controllers\Web\AppointmentFormController;
+use App\Http\Controllers\Web\BookAppointmentController;
 
 Route::get('/', function () {
     return null;
 });
 
-// Patient Form Routes
-Route::get('/patients/create', [PatientFormController::class, 'create'])->name('patient.create');
-Route::post('/patients', [PatientFormController::class, 'store'])->name('patient.store');
-
-// Appointment Form Routes
-Route::get('/appointments/create', [AppointmentFormController::class, 'create'])->name('appointment.create');
-Route::post('/appointments', [AppointmentFormController::class, 'store'])->name('appointment.store');
+// Book Appointment Routes
+Route::get('/book-appointment', [BookAppointmentController::class, 'create'])->name('book.appointment');
+Route::post('/book-appointment', [BookAppointmentController::class, 'store'])->name('book.appointment.store');
+Route::get('/appointment/{appointment}/confirmation', [BookAppointmentController::class, 'confirmation'])->name('appointment.confirmation');

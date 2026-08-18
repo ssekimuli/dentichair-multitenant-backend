@@ -1,6 +1,18 @@
 @extends('layout')
 
-@section('title', 'Book Appointment')
+@section('title', 'Book Appointment - ' . config('app.name'))
+
+@section('og_type', 'website')
+@section('og_title', 'Book Your Appointment - ' . config('app.name'))
+@section('og_description', 'Schedule your appointment with our professional healthcare team. Quick and easy booking process.')
+@section('og_url', url('/book-appointment'))
+@section('og_image', asset('images/og-appointment.jpg'))
+
+@section('twitter_card', 'summary_large_image')
+@section('twitter_title', 'Book Your Appointment')
+@section('twitter_description', 'Schedule your appointment with us today')
+
+@section('meta_description', 'Book an appointment with ' . config('app.name') . '. Schedule your visit with our healthcare professionals.')
 
 @section('content')
 <div class="max-w-4xl mx-auto">

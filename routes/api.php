@@ -12,6 +12,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MigrationController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,7 @@ Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function ()
 // Public template downloads (browser direct access)
 Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);
+Route::get('/downloads/printer-driver', [DownloadController::class, 'printerDriver']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {

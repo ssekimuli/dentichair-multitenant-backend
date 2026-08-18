@@ -79,6 +79,7 @@ class BookAppointmentController extends Controller
             'date' => $validated['appointment_date'],
             'time' => $validated['appointment_time'],
             'branch_id' => $patient->branch_id,
+            'status' => 'Scheduled',
         ]);
 
         return redirect()->route('appointment.confirmation', $appointment->id)

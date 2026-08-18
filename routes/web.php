@@ -11,3 +11,4 @@ Route::get('/', function () {
 Route::get('/book-appointment', [BookAppointmentController::class, 'create'])->name('book.appointment');
 Route::post('/book-appointment', [BookAppointmentController::class, 'store'])->name('book.appointment.store');
 Route::get('/appointment/{appointment}/confirmation', [BookAppointmentController::class, 'confirmation'])->name('appointment.confirmation');
+

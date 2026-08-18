@@ -25,7 +25,7 @@ class BookAppointmentController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'avatar' => 'nullable|string',
-            'email' => 'nullable|email|unique:patients,email',
+            'email' => 'nullable|email',
             'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
@@ -40,9 +40,13 @@ class BookAppointmentController extends Controller
             'token_number' => 'nullable|string',
         ]);
 
-        // Check if patient exists by email
+        // Check if patient exists by phone first, then by email
         $patient = null;
-        if (!empty($validated['email'])) {
+        if (!empty($validated['phone'])) {
+            $patient = Patient::where('phone', $validated['phone'])->first();
+        }
+
+        if (!$patient && !empty($validated['email'])) {
             $patient = Patient::where('email', $validated['email'])->first();
         }
 

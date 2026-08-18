@@ -26,11 +26,11 @@
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
-        <nav class="bg-white shadow">
+        <nav class="bg-green-700 shadow">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-                        <h1 class="text-xl font-bold text-gray-900">{{ config('app.name') }}</h1>
+                        <h1 class="text-xl font-bold text-white">{{ config('app.name') }}</h1>
                     </div>
                 </div>
             </div>

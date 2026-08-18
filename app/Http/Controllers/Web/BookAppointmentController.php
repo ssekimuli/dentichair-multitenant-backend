@@ -25,7 +25,6 @@ class BookAppointmentController extends Controller
             // Patient fields
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'avatar' => 'nullable|string',
             'email' => 'nullable|email',
             'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
@@ -57,7 +56,6 @@ class BookAppointmentController extends Controller
             $patient = Patient::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
-                'avatar' => $validated['avatar'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
                 'address' => $validated['address'],

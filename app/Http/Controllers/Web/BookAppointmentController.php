@@ -102,8 +102,9 @@ class BookAppointmentController extends Controller
 
     private function generateTokenNumber()
     {
+        $appName = strtoupper(substr(config('app.name'), 0, 3));
         $date = now()->format('Ymd');
         $random = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-        return "APT{$date}{$random}";
+        return "{$appName}{$date}{$random}";
     }
 }

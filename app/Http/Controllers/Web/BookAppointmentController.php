@@ -16,7 +16,10 @@ class BookAppointmentController extends Controller
 {
     public function create()
     {
-        $doctors = Employee::all(['id', 'name', 'email']);
+        $doctorRoles = ['Dental Assistant', 'Receptionist', 'Hygienist', 'Dentist'];
+        $doctors = Employee::whereIn('role', $doctorRoles)
+            ->where('status', 'Active')
+            ->get(['id', 'name', 'email', 'role']);
         $branches = Branch::all(['id', 'name']);
 
         return view('forms.book-appointment', compact('doctors', 'branches'));

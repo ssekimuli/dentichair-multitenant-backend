@@ -98,37 +98,6 @@
                         @enderror
                     </div>
 
-                    <!-- Branch -->
-                    <div>
-                        <label for="branch_id" class="block text-sm font-medium text-gray-700">Branch *</label>
-                        <select name="branch_id" id="branch_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
-                            required>
-                            <option value="">Select Branch</option>
-                            @foreach ($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
-                                    {{ $branch->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('branch_id')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- Status -->
-                    <div>
-                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-                        <select name="status" id="status"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
-                            <option value="">Select Status</option>
-                            <option value="Active" {{ old('status') === 'Active' ? 'selected' : '' }}>Active</option>
-                            <option value="Inactive" {{ old('status') === 'Inactive' ? 'selected' : '' }}>Inactive</option>
-                        </select>
-                        @error('status')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
                 </div>
 
                 <!-- Address -->
@@ -141,46 +110,12 @@
                     @enderror
                 </div>
 
-                <!-- History -->
+                <!-- Avatar -->
                 <div class="mt-6">
-                    <label for="history" class="block text-sm font-medium text-gray-700">Medical History</label>
-                    <textarea name="history" id="history" rows="3"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">{{ old('history') }}</textarea>
-                    @error('history')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Optional Fields -->
-                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Avatar -->
-                    <div>
-                        <label for="avatar" class="block text-sm font-medium text-gray-700">Avatar URL</label>
-                        <input type="text" name="avatar" id="avatar" value="{{ old('avatar') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
-                        @error('avatar')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- Last Visit -->
-                    <div>
-                        <label for="last_visit" class="block text-sm font-medium text-gray-700">Last Visit</label>
-                        <input type="date" name="last_visit" id="last_visit" value="{{ old('last_visit') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
-                        @error('last_visit')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
-
-                <!-- Occlusal Records -->
-                <div class="mt-6">
-                    <label for="occlusal_records" class="block text-sm font-medium text-gray-700">Occlusal Records (JSON)</label>
-                    <textarea name="occlusal_records" id="occlusal_records" rows="2"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2 font-mono text-sm">{{ old('occlusal_records') }}</textarea>
-                    <p class="mt-1 text-xs text-gray-500">Optional JSON data for occlusal records</p>
-                    @error('occlusal_records')
+                    <label for="avatar" class="block text-sm font-medium text-gray-700">Avatar URL</label>
+                    <input type="text" name="avatar" id="avatar" value="{{ old('avatar') }}"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
+                    @error('avatar')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>

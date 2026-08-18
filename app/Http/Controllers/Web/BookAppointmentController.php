@@ -14,9 +14,8 @@ class BookAppointmentController extends Controller
     public function create()
     {
         $doctors = Employee::all(['id', 'name', 'email']);
-        $branches = Branch::all(['id', 'name']);
 
-        return view('forms.book-appointment', compact('doctors', 'branches'));
+        return view('forms.book-appointment', compact('doctors'));
     }
 
     public function store(Request $request)
@@ -31,11 +30,6 @@ class BookAppointmentController extends Controller
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'required|date',
-            'last_visit' => 'nullable|date',
-            'status' => 'nullable|in:Active,Inactive',
-            'branch_id' => 'required|exists:branches,id',
-            'history' => 'nullable|string',
-            'occlusal_records' => 'nullable|json',
             'nationality' => 'nullable|string|max:255',
 
             // Appointment fields
@@ -54,6 +48,7 @@ class BookAppointmentController extends Controller
 
         // Create patient if doesn't exist
         if (!$patient) {
+            $defaultBranch = Branch::first()->id ?? 1;
             $patient = Patient::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
@@ -63,11 +58,8 @@ class BookAppointmentController extends Controller
                 'address' => $validated['address'],
                 'gender' => $validated['gender'],
                 'date_of_birth' => $validated['date_of_birth'],
-                'last_visit' => $validated['last_visit'],
-                'status' => $validated['status'] ?? 'Active',
-                'branch_id' => $validated['branch_id'],
-                'history' => $validated['history'],
-                'occlusal_records' => $validated['occlusal_records'],
+                'status' => 'Active',
+                'branch_id' => $defaultBranch,
                 'nationality' => $validated['nationality'],
             ]);
         }
@@ -84,7 +76,7 @@ class BookAppointmentController extends Controller
             'treatment' => $validated['treatment'],
             'date' => $validated['appointment_date'],
             'time' => $validated['appointment_time'],
-            'branch_id' => $validated['branch_id'],
+            'branch_id' => $patient->branch_id,
             'token_number' => $validated['token_number'],
         ]);
 

@@ -16,7 +16,7 @@ class BookAppointmentController extends Controller
 {
     public function create()
     {
-        $doctorRoles = ['Dental Assistant', 'Receptionist', 'Hygienist', 'Dentist'];
+        $doctorRoles = ['Dental Assistant', 'Receptionist', 'Hygienist', 'Dentist','Super Admin'];
         $doctors = Employee::whereIn('role', $doctorRoles)
             ->where('status', 'Active')
             ->get(['id', 'name', 'email', 'role']);

@@ -80,7 +80,7 @@ class BookAppointmentController extends Controller
             'time' => $validated['appointment_time'],
             'branch_id' => $patient->branch_id,
             'status' => 'Scheduled',
-            'token_number' => null,
+            'token_number' => $this->generateTokenNumber(),
         ]);
 
         return redirect()->route('appointment.confirmation', $appointment->id)
@@ -98,5 +98,12 @@ class BookAppointmentController extends Controller
         }
 
         return view('forms.appointment-confirmation', compact('appointment'));
+    }
+
+    private function generateTokenNumber()
+    {
+        $date = now()->format('Ymd');
+        $random = str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+        return "APT{$date}{$random}";
     }
 }

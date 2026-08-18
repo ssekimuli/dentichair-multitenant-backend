@@ -33,7 +33,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- First Name -->
                     <div>
-                        <label for="first_name" class="block text-sm font-medium text-gray-700">First Name *</label>
+                        <label for="first_name" class="block text-sm font-medium text-gray-800 font-semibold">First Name *</label>
                         <input type="text" name="first_name" id="first_name" value="{{ old('first_name') }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
                             required>

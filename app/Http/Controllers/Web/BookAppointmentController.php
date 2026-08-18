@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Employee;
 use App\Models\Branch;
 use App\Mail\AppointmentBookedNotification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -120,47 +121,11 @@ class BookAppointmentController extends Controller
             $appointmentTime = \Carbon\Carbon::parse($appointment->time, 'UTC')->format('h:i A');
             $patientName = $appointment->patient->first_name . ' ' . $appointment->patient->last_name;
 
-            $message = "New appointment booking: {$patientName} on {$appointmentDate} at {$appointmentTime}. Treatment: {$appointment->treatment}. Token: {$appointment->token_number}";
+            $message = "New appointment: {$patientName} on {$appointmentDate} at {$appointmentTime}. Treatment: {$appointment->treatment}. Token: {$appointment->token_number}";
 
-            // Send SMS using the notification service
-            $this->sendSMS($doctor->phone, $message);
+            NotificationService::sendSms($doctor->phone, $message);
         } catch (\Exception $e) {
             \Log::error('Failed to send SMS to doctor: ' . $e->getMessage());
-        }
-    }
-
-    private function sendSMS($phone, $message)
-    {
-        try {
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => env('SMS_API_URL', 'https://api.africastalking.com/version1/messaging'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query([
-                    'username' => env('SMS_USERNAME'),
-                    'message' => $message,
-                    'recipients' => $phone,
-                ]),
-                CURLOPT_HTTPHEADER => [
-                    'Accept: application/json',
-                    'Content-Type: application/x-www-form-urlencoded',
-                    'apiKey: ' . env('SMS_API_KEY'),
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            curl_close($curl);
-
-            return $response;
-        } catch (\Exception $e) {
-            \Log::error('SMS sending error: ' . $e->getMessage());
-            return false;
         }
     }
 

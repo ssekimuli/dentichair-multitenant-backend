@@ -14,8 +14,9 @@ class BookAppointmentController extends Controller
     public function create()
     {
         $doctors = Employee::all(['id', 'name', 'email']);
+        $branches = Branch::all(['id', 'name']);
 
-        return view('forms.book-appointment', compact('doctors'));
+        return view('forms.book-appointment', compact('doctors', 'branches'));
     }
 
     public function store(Request $request)
@@ -31,6 +32,7 @@ class BookAppointmentController extends Controller
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'required|date',
             'nationality' => 'nullable|string|max:255',
+            'branch_id' => 'required|exists:branches,id',
 
             // Appointment fields
             'doctor_id' => 'required|exists:employees,id',
@@ -52,7 +54,6 @@ class BookAppointmentController extends Controller
 
         // Create patient if doesn't exist
         if (!$patient) {
-            $defaultBranch = Branch::first()->id ?? 1;
             $patient = Patient::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
@@ -63,7 +64,7 @@ class BookAppointmentController extends Controller
                 'gender' => $validated['gender'],
                 'date_of_birth' => $validated['date_of_birth'],
                 'status' => 'Active',
-                'branch_id' => $defaultBranch,
+                'branch_id' => $validated['branch_id'],
                 'nationality' => $validated['nationality'],
             ]);
         }

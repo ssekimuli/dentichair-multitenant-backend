@@ -38,7 +38,6 @@ class BookAppointmentController extends Controller
             'treatment' => 'required|string',
             'appointment_date' => 'required|date',
             'appointment_time' => 'required|string',
-            'token_number' => 'nullable|string',
         ]);
 
         // Check if patient exists by phone first, then by email
@@ -80,7 +79,6 @@ class BookAppointmentController extends Controller
             'date' => $validated['appointment_date'],
             'time' => $validated['appointment_time'],
             'branch_id' => $patient->branch_id,
-            'token_number' => $validated['token_number'],
         ]);
 
         return redirect()->route('appointment.confirmation', $appointment->id)

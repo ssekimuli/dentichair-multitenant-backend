@@ -185,17 +185,6 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-
-                    <!-- Token Number -->
-                    <div>
-                        <label for="token_number" class="block text-sm font-medium text-gray-700">Token Number</label>
-                        <input type="text" name="token_number" id="token_number" value="{{ old('token_number') }}"
-                            placeholder="Optional"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
-                        @error('token_number')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
                 </div>
             </div>
 

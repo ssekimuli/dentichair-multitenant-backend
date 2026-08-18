@@ -68,12 +68,6 @@
                             <p class="text-sm text-gray-600">Time</p>
                             <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($appointment->time, 'UTC')->format('h:i A') }}</p>
                         </div>
-                        @if ($appointment->token_number)
-                            <div>
-                                <p class="text-sm text-gray-600">Token Number</p>
-                                <p class="text-sm text-gray-900 font-mono">{{ $appointment->token_number }}</p>
-                            </div>
-                        @endif
                     </div>
                 </div>
             </div>

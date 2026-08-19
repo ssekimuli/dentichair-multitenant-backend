@@ -130,6 +130,7 @@ class EmployeeController extends Controller
             'name' => 'required|string',
             'avatar' => 'nullable|string',
             'email' => 'required|email|unique:employees,email',
+            'phone' => 'nullable|string',
             'role' => 'required|exists:role_permissions,id',
             'salary' => 'required|numeric',
             'hire_date' => 'required|date',
@@ -138,13 +139,14 @@ class EmployeeController extends Controller
 
         // Fetch the role name automatically
         $role = RolePermission::find($validated['role']);
-        
+
         $temporaryPassword = Str::password(6, true, true, false, false);
 
         $employee = Employee::create([
             'name' => $validated['name'],
             'avatar' => $validated['avatar'] ?? null,
             'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
             'role_id' => $validated['role'],
             'role' => $role->name ?? 'Unknown',
             'salary' => $validated['salary'],
@@ -193,7 +195,21 @@ class EmployeeController extends Controller
             }
         }
 
-        return response()->json($employee, 201);
+        // Return JSON for API, redirect for web form
+        if ($request->expectsJson()) {
+            return response()->json($employee, 201);
+        }
+
+        return redirect()->route('employee.show', $employee->id)
+            ->with('success', "Employee {$employee->name} created successfully! Temporary password: {$temporaryPassword}");
+    }
+
+    public function createForm()
+    {
+        $roles = RolePermission::all(['id', 'name']);
+        $branches = \App\Models\Branch::all(['id', 'name']);
+
+        return view('forms.add-employee', compact('roles', 'branches'));
     }
 
 

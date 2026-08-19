@@ -6,7 +6,7 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'https://arisedentalcare.poslycloud.com',
+      'https://arisedentalcare.poslycloud.com',
       'https://dental.poslycloud.com',
       'https://zyrendentalapi.poslycloud.com',
       'https://crogendentalapi.poslycloud.com',
@@ -15,6 +15,7 @@ return [
       'https://oasisdentalapi.poslycloud.com',
       'https://icondentalapi.poslycloud.com',
       'https://stagingapi.poslycloud.com'
+      
     ],
 
     'allowed_origins_patterns' => [],

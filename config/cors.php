@@ -13,7 +13,7 @@ return [
       'https://victoriousdental.poslycloud.com',
       'https://shalomdentalcare.poslycloud.com',
       'https://oasisdental.poslycloud.com',
-      'https://icondental.poslycloud.com',
+      'https://icondentalservice.poslycloud.com',
       'https://staging.poslycloud.com',
       'https://staging-mu-ten.vercel.app'
       

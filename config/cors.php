@@ -8,13 +8,14 @@ return [
     'allowed_origins' => [
       'https://arisedentalcare.poslycloud.com',
       'https://dental.poslycloud.com',
-      'https://zyrendentalapi.poslycloud.com',
-      'https://crogendentalapi.poslycloud.com',
-      'https://victoriousdentalapi.poslycloud.com',
-      'https://shalomdentalcareapi.poslycloud.com',
-      'https://oasisdentalapi.poslycloud.com',
-      'https://icondentalapi.poslycloud.com',
-      'https://stagingapi.poslycloud.com'
+      'https://zyrendental.poslycloud.com',
+      'https://crogendental.poslycloud.com',
+      'https://victoriousdental.poslycloud.com',
+      'https://shalomdentalcare.poslycloud.com',
+      'https://oasisdental.poslycloud.com',
+      'https://icondental.poslycloud.com',
+      'https://staging.poslycloud.com',
+      'https://staging-mu-ten.vercel.app'
       
     ],
 

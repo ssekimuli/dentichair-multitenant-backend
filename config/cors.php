@@ -7,7 +7,14 @@ return [
 
     'allowed_origins' => [
         'https://arisedentalcare.poslycloud.com',
-      'https://dental.poslycloud.com'
+      'https://dental.poslycloud.com',
+      'https://zyrendentalapi.poslycloud.com',
+      'https://crogendentalapi.poslycloud.com',
+      'https://victoriousdentalapi.poslycloud.com',
+      'https://shalomdentalcareapi.poslycloud.com',
+      'https://oasisdentalapi.poslycloud.com',
+      'https://icondentalapi.poslycloud.com',
+      'https://stagingapi.poslycloud.com'
     ],
 
     'allowed_origins_patterns' => [],

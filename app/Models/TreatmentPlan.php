@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\LogsActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 
 class TreatmentPlan extends Model
@@ -26,12 +27,18 @@ class TreatmentPlan extends Model
         'token_number',
         'tooth',
         'invoice_id',
+        'restorative_record_id',
     ];
 
     protected $casts = [
         'cost' => 'decimal:2',
         'date' => 'date',
     ];
+
+    public function restorativeRecord(): BelongsTo
+    {
+        return $this->belongsTo(RestorativeRecord::class, 'restorative_record_id');
+    }
 
     protected static function booted(): void
     {

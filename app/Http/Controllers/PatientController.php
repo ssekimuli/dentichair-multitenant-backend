@@ -374,7 +374,8 @@ class PatientController extends Controller
             'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
-            'date_of_birth' => 'required|date',
+            'date_of_birth' => 'nullable|date',
+            'age' => 'nullable|integer|min:0|max:150',
             'last_visit' => 'nullable|date',
             'status' => 'nullable|in:Active,Inactive',
             'branch_id' => 'required|exists:branches,id',
@@ -382,6 +383,17 @@ class PatientController extends Controller
             'occlusal_records' => 'nullable|json',
             'nationality' => 'nullable|string|max:255',
         ]);
+
+        // Handle flexible date of birth / age input
+        if (!$validated['date_of_birth'] && !isset($validated['age'])) {
+            return response()->json(['error' => 'Either date_of_birth or age is required'], 422);
+        }
+
+        if ($validated['age']) {
+            $validated['date_of_birth'] = now()->subYears($validated['age'])->format('Y-m-d');
+        }
+
+        unset($validated['age']);
 
         $patient = Patient::create($validated);
         $patient->load('branch');
@@ -501,7 +513,8 @@ class PatientController extends Controller
             'phone' => 'required|string|max:20|starts_with:+',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
-            'date_of_birth' => 'sometimes|date',
+            'date_of_birth' => 'nullable|date',
+            'age' => 'nullable|integer|min:0|max:150',
             'last_visit' => 'nullable|date',
             'status' => 'nullable|in:Active,Inactive',
             'branch_id' => 'sometimes|exists:branches,id',
@@ -509,6 +522,13 @@ class PatientController extends Controller
             'occlusal_records' => 'nullable|json',
             'nationality' => 'nullable|string|max:255',
         ]);
+
+        // Handle flexible date of birth / age input
+        if (isset($validated['age'])) {
+            $validated['date_of_birth'] = now()->subYears($validated['age'])->format('Y-m-d');
+        }
+
+        unset($validated['age']);
 
         $patient->update($validated);
 

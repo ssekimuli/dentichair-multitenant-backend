@@ -1352,12 +1352,27 @@ class ManagementController extends Controller
                 'instructions' => 'nullable|string',
                 'cost' => 'nullable|numeric',
                 'doctorId' => 'nullable|exists:employees,id',
+                'labServiceId' => 'nullable|exists:lab_services,id',
+                'appliedPrice' => 'nullable|numeric|min:0',
             ]);
 
             $patientName = $validated['patientName'] ?? null;
             if (!$patientName) {
                 $client = Client::find($validated['clientId']);
                 $patientName = $client?->name;
+            }
+
+            // Determine applied price
+            $appliedPrice = null;
+            if ($validated['labServiceId'] ?? null) {
+                $service = LabService::find($validated['labServiceId']);
+                $activePrice = $service?->getActivePrice();
+
+                // Use provided price or active price from service
+                $appliedPrice = $validated['appliedPrice'] ?? $activePrice?->base_price;
+            } else {
+                // Use manually provided price
+                $appliedPrice = $validated['appliedPrice'] ?? null;
             }
 
             $labOrder = LaboratoryOrder::create([
@@ -1376,6 +1391,8 @@ class ManagementController extends Controller
                 'instructions' => $validated['instructions'] ?? null,
                 'cost' => $validated['cost'] ?? null,
                 'doctor_id' => $validated['doctorId'] ?? null,
+                'lab_service_id' => $validated['labServiceId'] ?? null,
+                'applied_price' => $appliedPrice,
             ]);
 
             // Generate invoice if status is "In Production"

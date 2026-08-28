@@ -18,7 +18,7 @@ class Appointment extends Model
 
     protected $fillable = [
         'patient_name', 'patient_id', 'doctor_name', 'doctor_id',
-        'treatment', 'status', 'date', 'time', 'branch_id', 'token_number'
+        'treatment', 'status', 'date', 'time', 'branch_id', 'token_number', 'confirmation_token'
     ];
 
     protected $casts = [

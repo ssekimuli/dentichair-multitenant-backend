@@ -11,6 +11,8 @@ use App\Mail\AppointmentBookedNotification;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class BookAppointmentController extends Controller
 {
@@ -32,7 +34,7 @@ class BookAppointmentController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|email',
-            'phone' => 'required|string|max:20|starts_with:+',
+            'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'date_of_birth' => 'required|date',
@@ -41,10 +43,21 @@ class BookAppointmentController extends Controller
 
             // Appointment fields
             'doctor_id' => 'required|exists:employees,id',
-            'treatment' => 'required|string',
-            'appointment_date' => 'required|date',
-            'appointment_time' => 'required|string',
+            'treatment' => 'required|string|max:255',
+            'appointment_date' => 'required|date|after:today|before:+1 year',
+            'appointment_time' => 'required|date_format:H:i|between:08:00,18:00',
         ]);
+
+        // Check for double-booking
+        $conflictingAppointment = Appointment::where('doctor_id', $validated['doctor_id'])
+            ->where('date', $validated['appointment_date'])
+            ->where('time', $validated['appointment_time'])
+            ->where('status', '!=', 'Cancelled')
+            ->exists();
+
+        if ($conflictingAppointment) {
+            return back()->withErrors(['appointment_time' => 'This doctor is already booked at this time. Please choose another time.'])->withInput();
+        }
 
         // Check if patient exists by phone first, then by email
         $patient = null;
@@ -75,7 +88,7 @@ class BookAppointmentController extends Controller
         // Get doctor info for appointment
         $doctor = Employee::find($validated['doctor_id']);
 
-        // Create appointment
+        // Create appointment with secure confirmation token
         $appointment = Appointment::create([
             'patient_name' => $patient->first_name . ' ' . $patient->last_name,
             'patient_id' => $patient->id,
@@ -87,6 +100,7 @@ class BookAppointmentController extends Controller
             'branch_id' => $patient->branch_id,
             'status' => 'Scheduled',
             'token_number' => $this->generateTokenNumber(),
+            'confirmation_token' => Str::random(32),
         ]);
 
         // Send email to doctor
@@ -100,19 +114,15 @@ class BookAppointmentController extends Controller
             $this->sendDoctorSMS($appointment, $doctor);
         }
 
-        return redirect()->route('appointment.confirmation', $appointment->id)
+        return redirect()->route('appointment.confirmation', $appointment->confirmation_token)
             ->with('success', 'Appointment booked successfully!');
     }
 
-    public function confirmation($appointmentId)
+    public function confirmation($token)
     {
         $appointment = Appointment::with(['patient', 'doctor' => function ($query) {
             $query->select('id', 'name', 'email');
-        }])->find($appointmentId);
-
-        if (!$appointment) {
-            return redirect()->route('book.appointment')->with('error', 'Appointment not found');
-        }
+        }])->where('confirmation_token', $token)->firstOrFail();
 
         return view('forms.appointment-confirmation', compact('appointment'));
     }

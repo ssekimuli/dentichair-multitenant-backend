@@ -139,4 +139,51 @@ class Patient extends Model
     {
         return $this->insurancePolicies()->wherePivot('is_primary', true)->wherePivot('status', 'active');
     }
+
+    protected static function booted(): void
+    {
+        static::updated(function (Patient $patient) {
+            if ($patient->isDirty('next_visit') && $patient->next_visit) {
+                $patient->createNextVisitAppointment();
+            }
+        });
+
+        static::created(function (Patient $patient) {
+            if ($patient->next_visit) {
+                $patient->createNextVisitAppointment();
+            }
+        });
+    }
+
+    public function createNextVisitAppointment(): void
+    {
+        if (!$this->next_visit) {
+            return;
+        }
+
+        $existingAppointment = Appointment::where('patient_id', $this->id)
+            ->whereDate('date', $this->next_visit)
+            ->where('status', '!=', 'Cancelled')
+            ->first();
+
+        if ($existingAppointment) {
+            return;
+        }
+
+        Appointment::create([
+            'patient_id' => $this->id,
+            'patient_name' => $this->first_name . ' ' . $this->last_name,
+            'date' => $this->next_visit,
+            'time' => '09:00',
+            'status' => 'Scheduled',
+            'branch_id' => $this->branch_id,
+            'treatment' => 'Follow-up Visit',
+        ]);
+
+        ActivityLog::log(
+            'Next Visit Appointment Created',
+            "Appointment automatically created for next visit on {$this->next_visit->format('Y-m-d')}",
+            ['patient_id' => $this->id, 'appointment_date' => $this->next_visit]
+        );
+    }
 }

@@ -12,10 +12,25 @@ class LabServiceController extends Controller
     public function index(Request $request)
     {
         $branchId = $request->user()->branch_id ?? $request->branch_id;
+        $search = $request->query('search');
+        $category = $request->query('category');
+        $active = $request->query('active');
 
-        $services = LabService::where('branch_id', $branchId)
-            ->with('prices')
-            ->get();
+        $query = LabService::where('branch_id', $branchId);
+
+        if ($search) {
+            $query->search($search);
+        }
+
+        if ($category) {
+            $query->byCategory($category);
+        }
+
+        if ($active !== null) {
+            $query->where('is_active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        $services = $query->with('prices')->get();
 
         return response()->json(LabServiceResource::collection($services));
     }

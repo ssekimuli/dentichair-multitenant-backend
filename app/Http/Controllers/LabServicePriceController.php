@@ -9,6 +9,47 @@ use Illuminate\Http\Request;
 
 class LabServicePriceController extends Controller
 {
+    public function index(Request $request)
+    {
+        $branchId = $request->user()->branch_id ?? $request->branch_id;
+        $search = $request->query('search');
+        $lab = $request->query('lab');
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+        $active = $request->query('active');
+        $serviceId = $request->query('service_id');
+
+        $query = LabServicePrice::where('branch_id', $branchId);
+
+        if ($search) {
+            $query->search($search);
+        }
+
+        if ($lab) {
+            $query->byLab($lab);
+        }
+
+        if ($minPrice !== null && $maxPrice !== null) {
+            $query->priceBetween($minPrice, $maxPrice);
+        } elseif ($minPrice !== null) {
+            $query->where('base_price', '>=', $minPrice);
+        } elseif ($maxPrice !== null) {
+            $query->where('base_price', '<=', $maxPrice);
+        }
+
+        if ($active !== null) {
+            $query->where('is_active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        if ($serviceId !== null) {
+            $query->where('lab_service_id', $serviceId);
+        }
+
+        $prices = $query->with('labService')->get();
+
+        return response()->json(LabServicePriceResource::collection($prices));
+    }
+
     public function store(StoreLabServicePriceRequest $request)
     {
         $branchId = $request->user()->branch_id ?? $request->branch_id;

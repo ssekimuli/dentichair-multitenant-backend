@@ -43,4 +43,22 @@ class LabServicePrice extends Model
     {
         return $query->where('branch_id', $branchId);
     }
+
+    public function scopeSearch(Builder $query, $search): Builder
+    {
+        return $query->where('lab', 'like', "%{$search}%")
+            ->orWhereHas('labService', function ($q) use ($search) {
+                $q->where('service_name', 'like', "%{$search}%");
+            });
+    }
+
+    public function scopeByLab(Builder $query, $lab): Builder
+    {
+        return $query->where('lab', $lab);
+    }
+
+    public function scopePriceBetween(Builder $query, $min, $max): Builder
+    {
+        return $query->whereBetween('base_price', [$min, $max]);
+    }
 }

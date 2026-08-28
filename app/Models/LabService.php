@@ -47,4 +47,20 @@ class LabService extends Model
     {
         return $this->prices()->get();
     }
+
+    public function scopeSearch($query, $search)
+    {
+        return $query->where('service_name', 'like', "%{$search}%")
+            ->orWhere('category', 'like', "%{$search}%");
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
 }

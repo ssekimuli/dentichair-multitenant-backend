@@ -185,7 +185,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Lab Services Management
     Route::apiResource('lab-services', LabServiceController::class);
     Route::get('lab-services/{labService}/prices', [LabServiceController::class, 'prices']);
-    Route::apiResource('lab-service-prices', LabServicePriceController::class)->only(['store', 'update', 'destroy']);
+    Route::apiResource('lab-service-prices', LabServicePriceController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('lab-services/price-for-date', [LabServicePriceController::class, 'priceForDate']);
 
     // Management

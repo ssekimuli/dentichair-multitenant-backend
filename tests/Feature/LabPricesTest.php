@@ -159,4 +159,130 @@ class LabPricesTest extends TestCase
 
         $this->assertEquals(1, LabServicePrice::where('lab_service_id', $service->id)->where('is_active', true)->count());
     }
+
+    public function test_search_lab_services_by_name()
+    {
+        LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'service_name' => 'Crown',
+        ]);
+        LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'service_name' => 'Bridge',
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/lab-services?search=crown');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_filter_lab_services_by_category()
+    {
+        LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'service_name' => 'Crown',
+            'category' => 'Prosthodontics',
+        ]);
+        LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'service_name' => 'Implant',
+            'category' => 'Implantology',
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/lab-services?category=Prosthodontics');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_filter_lab_services_by_active_status()
+    {
+        LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'is_active' => true,
+        ]);
+        LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/lab-services?active=true');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_search_lab_prices_by_lab_name()
+    {
+        $service = LabService::factory()->create(['branch_id' => $this->branch->id]);
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service->id,
+            'branch_id' => $this->branch->id,
+            'lab' => 'Premier Lab',
+        ]);
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service->id,
+            'branch_id' => $this->branch->id,
+            'lab' => 'Standard Lab',
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/lab-service-prices?search=premier');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_filter_lab_prices_by_price_range()
+    {
+        $service = LabService::factory()->create(['branch_id' => $this->branch->id]);
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service->id,
+            'branch_id' => $this->branch->id,
+            'base_price' => 2000,
+        ]);
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service->id,
+            'branch_id' => $this->branch->id,
+            'base_price' => 5000,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/lab-service-prices?min_price=3000&max_price=6000');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_filter_lab_prices_by_service_id()
+    {
+        $service1 = LabService::factory()->create(['branch_id' => $this->branch->id]);
+        $service2 = LabService::factory()->create(['branch_id' => $this->branch->id]);
+
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service1->id,
+            'branch_id' => $this->branch->id,
+        ]);
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service2->id,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson("/api/lab-service-prices?service_id={$service1->id}");
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_combine_multiple_price_filters()
+    {
+        $service = LabService::factory()->create([
+            'branch_id' => $this->branch->id,
+            'service_name' => 'Crown',
+        ]);
+        LabServicePrice::factory()->create([
+            'lab_service_id' => $service->id,
+            'branch_id' => $this->branch->id,
+            'lab' => 'Premier Lab',
+            'base_price' => 5000,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/lab-service-prices?search=crown&min_price=4000&max_price=6000&active=true');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
 }

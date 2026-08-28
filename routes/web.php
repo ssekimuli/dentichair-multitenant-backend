@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\BookAppointmentController;
+use App\Http\Controllers\Web\PatientRegistrationController;
 
 Route::get('/', function () {
     return null;
@@ -18,4 +19,16 @@ Route::post('/book-appointment', [BookAppointmentController::class, 'store'])
 
 Route::get('/appointment/{token}/confirmation', [BookAppointmentController::class, 'confirmation'])
     ->name('appointment.confirmation');
+
+// Patient Registration Routes
+Route::get('/register', [PatientRegistrationController::class, 'create'])
+    ->middleware('throttle:20,1')
+    ->name('patient.register');
+
+Route::post('/register', [PatientRegistrationController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('patient.register.store');
+
+Route::get('/registration/{patient}/confirmation', [PatientRegistrationController::class, 'confirmation'])
+    ->name('patient.registration.confirmation');
 

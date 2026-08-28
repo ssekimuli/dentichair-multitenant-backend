@@ -1416,6 +1416,91 @@ class ManagementController extends Controller
         }
     }
 
+    public function updateLabOrder(Request $request, $id)
+    {
+        try {
+            $labOrder = LaboratoryOrder::find($id);
+            if (!$labOrder) {
+                return response()->json(['message' => 'Lab order not found'], 404);
+            }
+
+            $validated = $request->validate([
+                'clientId' => 'sometimes|required|exists:clients,id',
+                'patientName' => 'nullable|string',
+                'lab' => 'sometimes|required|string',
+                'item' => 'sometimes|required|string',
+                'tooth' => 'nullable|integer',
+                'status' => 'sometimes|required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+                'sentDate' => 'sometimes|required|date',
+                'dueDate' => 'sometimes|required|date',
+                'receivedDate' => 'nullable|date',
+                'shade' => 'nullable|string',
+                'material' => 'nullable|string',
+                'instructions' => 'nullable|string',
+                'cost' => 'nullable|numeric',
+                'doctorId' => 'nullable|exists:employees,id',
+                'labServiceId' => 'nullable|exists:lab_services,id',
+                'appliedPrice' => 'nullable|numeric|min:0',
+                'invoiceId' => 'nullable|exists:invoices,id',
+            ]);
+
+            // Handle patient name
+            if (isset($validated['patientName'])) {
+                $validated['patient_name'] = $validated['patientName'];
+                unset($validated['patientName']);
+            } elseif (isset($validated['clientId'])) {
+                $client = Client::find($validated['clientId']);
+                $validated['patient_name'] = $client?->name;
+            }
+
+            // Handle applied price logic
+            if (isset($validated['labServiceId'])) {
+                $service = LabService::find($validated['labServiceId']);
+                $activePrice = $service?->getActivePrice();
+                $validated['applied_price'] = $validated['appliedPrice'] ?? $activePrice?->base_price;
+            } elseif (isset($validated['appliedPrice'])) {
+                $validated['applied_price'] = $validated['appliedPrice'];
+            }
+
+            // Convert camelCase to snake_case
+            $updates = [
+                'client_id' => $validated['clientId'] ?? $labOrder->client_id,
+                'patient_name' => $validated['patient_name'] ?? $labOrder->patient_name,
+                'lab' => $validated['lab'] ?? $labOrder->lab,
+                'item' => $validated['item'] ?? $labOrder->item,
+                'tooth' => $validated['tooth'] ?? $labOrder->tooth,
+                'status' => $validated['status'] ?? $labOrder->status,
+                'sent_date' => $validated['sentDate'] ?? $labOrder->sent_date,
+                'due_date' => $validated['dueDate'] ?? $labOrder->due_date,
+                'received_date' => $validated['receivedDate'] ?? $labOrder->received_date,
+                'shade' => $validated['shade'] ?? $labOrder->shade,
+                'material' => $validated['material'] ?? $labOrder->material,
+                'instructions' => $validated['instructions'] ?? $labOrder->instructions,
+                'cost' => $validated['cost'] ?? $labOrder->cost,
+                'doctor_id' => $validated['doctorId'] ?? $labOrder->doctor_id,
+                'lab_service_id' => $validated['labServiceId'] ?? $labOrder->lab_service_id,
+                'applied_price' => $validated['applied_price'] ?? $labOrder->applied_price,
+                'invoice_id' => $validated['invoiceId'] ?? $labOrder->invoice_id,
+            ];
+
+            $labOrder->update($updates);
+
+            \App\Models\ActivityLog::log(
+                'Lab Order Updated',
+                "Lab order #{$labOrder->id} was updated.",
+                ['lab_order_id' => $labOrder->id]
+            );
+
+            return response()->json($labOrder->load(['client', 'branch', 'labService']), 200);
+        } catch (\Exception $e) {
+            Log::error('Error updating lab order', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Server Error'], 500);
+        }
+    }
+
     public function createInventoryItem(Request $request)
     {
         $validated = $request->validate([

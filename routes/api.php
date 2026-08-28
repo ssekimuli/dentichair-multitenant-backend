@@ -207,6 +207,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         // Laboratory
         Route::get('/lab-orders', [ManagementController::class, 'getLabOrders']);
         Route::post('/lab-orders', [ManagementController::class, 'createLabOrder']);
+        Route::put('/lab-orders/{id}', [ManagementController::class, 'updateLabOrder']);
         Route::patch('/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus']);
         Route::post('/lab-orders/{id}/send', [ManagementController::class, 'sendLabOrder']);
 

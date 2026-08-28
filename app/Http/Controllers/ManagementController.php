@@ -1501,6 +1501,32 @@ class ManagementController extends Controller
         }
     }
 
+    public function deleteLabOrder($id)
+    {
+        try {
+            $labOrder = LaboratoryOrder::find($id);
+            if (!$labOrder) {
+                return response()->json(['message' => 'Lab order not found'], 404);
+            }
+
+            \App\Models\ActivityLog::log(
+                'Lab Order Deleted',
+                "Lab order #{$labOrder->id} was deleted.",
+                ['lab_order_id' => $labOrder->id]
+            );
+
+            $labOrder->delete();
+
+            return response()->json(['message' => 'Lab order deleted successfully'], 200);
+        } catch (\Exception $e) {
+            Log::error('Error deleting lab order', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Server Error'], 500);
+        }
+    }
+
     public function createInventoryItem(Request $request)
     {
         $validated = $request->validate([

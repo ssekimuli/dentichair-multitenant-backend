@@ -13,6 +13,8 @@ use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MigrationController;
 use App\Http\Controllers\DownloadController;
+use App\Http\Controllers\LabServiceController;
+use App\Http\Controllers\LabServicePriceController;
 use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -179,6 +181,12 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/financial-summary', [ManagementController::class, 'getFinancialSummary']);
     Route::get('/expense-records', [ManagementController::class, 'getExpenseRecords']);
     Route::get('/reports/overview', [ManagementController::class, 'getReportsOverview']);
+
+    // Lab Services Management
+    Route::apiResource('lab-services', LabServiceController::class);
+    Route::get('lab-services/{labService}/prices', [LabServiceController::class, 'prices']);
+    Route::apiResource('lab-service-prices', LabServicePriceController::class)->only(['store', 'update', 'destroy']);
+    Route::get('lab-services/price-for-date', [LabServicePriceController::class, 'priceForDate']);
 
     // Management
     Route::prefix('management')->group(function () {

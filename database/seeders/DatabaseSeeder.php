@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             // InvoiceSeeder::class,
             ManagementSeeder::class,
             MedicineSeeder::class,
+            LabServiceSeeder::class,
+            LabServicePriceSeeder::class,
         ]);
     }
 }

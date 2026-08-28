@@ -40,4 +40,14 @@ use HasFactory, SoftDeletes;
     {
         return $this->hasMany(Employee::class, 'branch_id', 'id');
     }
+
+    public function labServices()
+    {
+        return $this->hasMany(LabService::class);
+    }
+
+    public function labServicePrices()
+    {
+        return $this->hasMany(LabServicePrice::class);
+    }
 }

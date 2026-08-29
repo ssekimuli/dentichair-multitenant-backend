@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('laboratory_orders', function (Blueprint $table) {
-            // Drop the foreign key first
-            $table->dropForeignIdFor(\App\Models\Employee::class, 'doctor_id');
+            // Drop the foreign key constraint first
+            $table->dropForeign('laboratory_orders_doctor_id_foreign');
             // Drop the column
             $table->dropColumn('doctor_id');
             // Add new doctor_name column

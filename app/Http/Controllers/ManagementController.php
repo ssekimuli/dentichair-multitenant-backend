@@ -319,7 +319,7 @@ class ManagementController extends Controller
      */
     public function getLabOrders(Request $request)
     {
-        $query = LaboratoryOrder::with(['client', 'branch', 'doctor']);
+        $query = LaboratoryOrder::with(['client', 'branch']);
 
         // Branch filter
         if ($request->filled('branch_id')) {
@@ -330,8 +330,7 @@ class ManagementController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('patient_name', 'like', "%{$search}%")
-                  ->orWhere('lab', 'like', "%{$search}%")
+                $q->where('doctor_name', 'like', "%{$search}%")
                   ->orWhere('item', 'like', "%{$search}%")
                   ->orWhere('tooth', 'like', "%{$search}%");
             });
@@ -348,8 +347,8 @@ class ManagementController extends Controller
         }
 
         // Doctor filter
-        if ($request->filled('doctor_id')) {
-            $query->where('doctor_id', $request->doctor_id);
+        if ($request->filled('doctor_name')) {
+            $query->where('doctor_name', 'like', "%{$request->doctor_name}%");
         }
 
         // Date range filters
@@ -371,7 +370,7 @@ class ManagementController extends Controller
         $sortBy = $request->input('sort_by', 'created_at');
         $sortOrder = $request->input('sort_order', 'desc');
 
-        $allowedSortFields = ['id', 'patient_name', 'lab', 'item', 'status', 'sent_date', 'due_date', 'cost', 'created_at'];
+        $allowedSortFields = ['id', 'doctor_name', 'item', 'status', 'sent_date', 'due_date', 'applied_price', 'created_at'];
         if (in_array($sortBy, $allowedSortFields)) {
             $query->orderBy($sortBy, $sortOrder);
         } else {
@@ -443,9 +442,9 @@ class ManagementController extends Controller
     private function generateLabOrderInvoice(LaboratoryOrder $order)
     {
         try {
-            $invoiceAmount = $order->cost ?? 0;
+            $invoiceAmount = $order->applied_price ?? 0;
 
-            $clientName = $order->patient_name ?? $order->client->name ?? 'Lab Order';
+            $clientName = $order->client->name ?? 'Lab Order';
 
             $invoice = Invoice::create([
                 'patient_name' => $clientName,
@@ -530,7 +529,7 @@ class ManagementController extends Controller
                     if ($order->client && $order->client->email) {
                         try {
                             Mail::send('emails.lab-order-cancelled', [
-                                'clientName' => $order->patient_name ?? $order->client->name,
+                                'clientName' => $order->client->name,
                                 'labOrder' => $order,
                                 'invoice' => $invoice,
                             ], function ($message) use ($order) {
@@ -1335,32 +1334,25 @@ class ManagementController extends Controller
 
     public function createLabOrder(Request $request)
     {
-        try {
-            $validated = $request->validate([
-                'clientId' => 'required|exists:clients,id',
-                'patientName' => 'nullable|string',
-                'lab' => 'required|string',
-                'item' => 'required|string',
-                'tooth' => 'nullable|integer',
-                'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
-                'sentDate' => 'required|date',
-                'dueDate' => 'required|date',
-                'branchId' => 'required|exists:branches,id',
-                'receivedDate' => 'nullable|date',
-                'shade' => 'nullable|string',
-                'material' => 'nullable|string',
-                'instructions' => 'nullable|string',
-                'cost' => 'nullable|numeric',
-                'doctorId' => 'nullable|exists:employees,id',
-                'labServiceId' => 'nullable|exists:lab_services,id',
-                'appliedPrice' => 'nullable|numeric|min:0',
-            ]);
+        $validated = $request->validate([
+            'clientId' => 'required|exists:clients,id',
+            'doctorName' => 'nullable|string',
+            'item' => 'required|string',
+            'tooth' => 'nullable|integer',
+            'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+            'sentDate' => 'required|date',
+            'dueDate' => 'required|date',
+            'branchId' => 'required|exists:branches,id',
+            'receivedDate' => 'nullable|date',
+            'shade' => 'nullable|string',
+            'material' => 'nullable|string',
+            'instructions' => 'nullable|string',
+            'labServiceId' => 'required_without:appliedPrice|nullable|exists:lab_services,id',
+            'appliedPrice' => 'required_without:labServiceId|nullable|numeric|min:0',
+        ]);
 
-            $patientName = $validated['patientName'] ?? null;
-            if (!$patientName) {
-                $client = Client::find($validated['clientId']);
-                $patientName = $client?->name;
-            }
+        try {
+            $client = Client::find($validated['clientId']);
 
             // Determine applied price
             $appliedPrice = null;
@@ -1377,8 +1369,7 @@ class ManagementController extends Controller
 
             $labOrder = LaboratoryOrder::create([
                 'client_id' => $validated['clientId'],
-                'patient_name' => $patientName,
-                'lab' => $validated['lab'],
+                'doctor_name' => $validated['doctorName'] ?? null,
                 'item' => $validated['item'],
                 'tooth' => $validated['tooth'] ?? null,
                 'status' => $validated['status'],
@@ -1389,8 +1380,6 @@ class ManagementController extends Controller
                 'shade' => $validated['shade'] ?? null,
                 'material' => $validated['material'] ?? null,
                 'instructions' => $validated['instructions'] ?? null,
-                'cost' => $validated['cost'] ?? null,
-                'doctor_id' => $validated['doctorId'] ?? null,
                 'lab_service_id' => $validated['labServiceId'] ?? null,
                 'applied_price' => $appliedPrice,
             ]);
@@ -1402,7 +1391,7 @@ class ManagementController extends Controller
 
             \App\Models\ActivityLog::log(
                 'Lab Order Created',
-                "Lab order for {$patientName} was created.",
+                "Lab order for {$client?->name} was created.",
                 ['lab_order_id' => $labOrder->id, 'client_id' => $validated['clientId']]
             );
 
@@ -1418,41 +1407,29 @@ class ManagementController extends Controller
 
     public function updateLabOrder(Request $request, $id)
     {
+        $labOrder = LaboratoryOrder::find($id);
+        if (!$labOrder) {
+            return response()->json(['message' => 'Lab order not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'clientId' => 'sometimes|required|exists:clients,id',
+            'doctorName' => 'nullable|string',
+            'item' => 'sometimes|required|string',
+            'tooth' => 'nullable|integer',
+            'status' => 'sometimes|required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+            'sentDate' => 'sometimes|required|date',
+            'dueDate' => 'sometimes|required|date',
+            'receivedDate' => 'nullable|date',
+            'shade' => 'nullable|string',
+            'material' => 'nullable|string',
+            'instructions' => 'nullable|string',
+            'labServiceId' => 'nullable|exists:lab_services,id',
+            'appliedPrice' => 'nullable|numeric|min:0',
+            'invoiceId' => 'nullable|exists:invoices,id',
+        ]);
+
         try {
-            $labOrder = LaboratoryOrder::find($id);
-            if (!$labOrder) {
-                return response()->json(['message' => 'Lab order not found'], 404);
-            }
-
-            $validated = $request->validate([
-                'clientId' => 'sometimes|required|exists:clients,id',
-                'patientName' => 'nullable|string',
-                'lab' => 'sometimes|required|string',
-                'item' => 'sometimes|required|string',
-                'tooth' => 'nullable|integer',
-                'status' => 'sometimes|required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
-                'sentDate' => 'sometimes|required|date',
-                'dueDate' => 'sometimes|required|date',
-                'receivedDate' => 'nullable|date',
-                'shade' => 'nullable|string',
-                'material' => 'nullable|string',
-                'instructions' => 'nullable|string',
-                'cost' => 'nullable|numeric',
-                'doctorId' => 'nullable|exists:employees,id',
-                'labServiceId' => 'nullable|exists:lab_services,id',
-                'appliedPrice' => 'nullable|numeric|min:0',
-                'invoiceId' => 'nullable|exists:invoices,id',
-            ]);
-
-            // Handle patient name
-            if (isset($validated['patientName'])) {
-                $validated['patient_name'] = $validated['patientName'];
-                unset($validated['patientName']);
-            } elseif (isset($validated['clientId'])) {
-                $client = Client::find($validated['clientId']);
-                $validated['patient_name'] = $client?->name;
-            }
-
             // Handle applied price logic
             if (isset($validated['labServiceId'])) {
                 $service = LabService::find($validated['labServiceId']);
@@ -1465,8 +1442,7 @@ class ManagementController extends Controller
             // Convert camelCase to snake_case
             $updates = [
                 'client_id' => $validated['clientId'] ?? $labOrder->client_id,
-                'patient_name' => $validated['patient_name'] ?? $labOrder->patient_name,
-                'lab' => $validated['lab'] ?? $labOrder->lab,
+                'doctor_name' => $validated['doctorName'] ?? $labOrder->doctor_name,
                 'item' => $validated['item'] ?? $labOrder->item,
                 'tooth' => $validated['tooth'] ?? $labOrder->tooth,
                 'status' => $validated['status'] ?? $labOrder->status,
@@ -1476,8 +1452,6 @@ class ManagementController extends Controller
                 'shade' => $validated['shade'] ?? $labOrder->shade,
                 'material' => $validated['material'] ?? $labOrder->material,
                 'instructions' => $validated['instructions'] ?? $labOrder->instructions,
-                'cost' => $validated['cost'] ?? $labOrder->cost,
-                'doctor_id' => $validated['doctorId'] ?? $labOrder->doctor_id,
                 'lab_service_id' => $validated['labServiceId'] ?? $labOrder->lab_service_id,
                 'applied_price' => $validated['applied_price'] ?? $labOrder->applied_price,
                 'invoice_id' => $validated['invoiceId'] ?? $labOrder->invoice_id,
@@ -1763,7 +1737,7 @@ class ManagementController extends Controller
         } else {
             $viewData = [
                 'clientName' => $client->name,
-                'patientName' => $order->patient_name,
+                'patientName' => $client->name,
                 'item' => $order->item,
                 'tooth' => $order->tooth,
                 'status' => $order->status,

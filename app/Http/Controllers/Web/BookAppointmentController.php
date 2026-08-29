@@ -45,7 +45,15 @@ class BookAppointmentController extends Controller
             'doctor_id' => 'required|exists:employees,id',
             'treatment' => 'required|string|max:255',
             'appointment_date' => 'required|date|after:today|before:+1 year',
-            'appointment_time' => 'required|date_format:H:i|between:08:00,18:00',
+            'appointment_time' => [
+                'required',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) {
+                    if ($value < '08:00' || $value > '18:00') {
+                        $fail('The appointment time must be between 08:00 and 18:00.');
+                    }
+                },
+            ],
         ]);
 
         // Check for double-booking

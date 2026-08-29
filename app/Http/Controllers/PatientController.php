@@ -385,11 +385,11 @@ class PatientController extends Controller
         ]);
 
         // Handle flexible date of birth / age input
-        if (!$validated['date_of_birth'] && !isset($validated['age'])) {
+        if (empty($validated['date_of_birth']) && !isset($validated['age'])) {
             return response()->json(['error' => 'Either date_of_birth or age is required'], 422);
         }
 
-        if ($validated['age']) {
+        if (!empty($validated['age'])) {
             $validated['date_of_birth'] = now()->subYears($validated['age'])->format('Y-m-d');
         }
 

@@ -25,7 +25,7 @@ Route::get('/self-register', [PatientRegistrationController::class, 'create'])
     ->middleware('throttle:20,1')
     ->name('patient.self-register');
 
-Route::post('/register', [PatientRegistrationController::class, 'store'])
+Route::post('/self-register', [PatientRegistrationController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('patient.register.store');
 

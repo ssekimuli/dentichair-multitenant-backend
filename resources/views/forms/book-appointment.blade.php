@@ -34,7 +34,7 @@
                     <!-- First Name -->
                     <div>
                         <label for="first_name" class="block text-sm font-medium text-gray-800 font-semibold">First Name *</label>
-                        <input type="text" name="first_name" id="first_name" value="{{ old('first_name') }}"
+                        <input type="text" name="first_name" id="first_name" value="{{ old('first_name', $patient?->first_name) }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
                             required>
                         @error('first_name')
@@ -45,7 +45,7 @@
                     <!-- Last Name -->
                     <div>
                         <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name *</label>
-                        <input type="text" name="last_name" id="last_name" value="{{ old('last_name') }}"
+                        <input type="text" name="last_name" id="last_name" value="{{ old('last_name', $patient?->last_name) }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
                             required>
                         @error('last_name')
@@ -56,7 +56,7 @@
                     <!-- Email -->
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" name="email" id="email" value="{{ old('email') }}"
+                        <input type="email" name="email" id="email" value="{{ old('email', $patient?->email) }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
                         @error('email')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -66,7 +66,7 @@
                     <!-- Phone -->
                     <div>
                         <label for="phone" class="block text-sm font-medium text-gray-700">Phone *</label>
-                        <input type="tel" name="phone" id="phone" value="{{ old('phone') }}"
+                        <input type="tel" name="phone" id="phone" value="{{ old('phone', $patient?->phone) }}"
                             placeholder="+1234567890"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
                             required>
@@ -81,9 +81,9 @@
                         <select name="gender" id="gender"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
                             <option value="">Select Gender</option>
-                            <option value="Male" {{ old('gender') === 'Male' ? 'selected' : '' }}>Male</option>
-                            <option value="Female" {{ old('gender') === 'Female' ? 'selected' : '' }}>Female</option>
-                            <option value="Other" {{ old('gender') === 'Other' ? 'selected' : '' }}>Other</option>
+                            <option value="Male" {{ old('gender', $patient?->gender) === 'Male' ? 'selected' : '' }}>Male</option>
+                            <option value="Female" {{ old('gender', $patient?->gender) === 'Female' ? 'selected' : '' }}>Female</option>
+                            <option value="Other" {{ old('gender', $patient?->gender) === 'Other' ? 'selected' : '' }}>Other</option>
                         </select>
                         @error('gender')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -93,7 +93,7 @@
                     <!-- Date of Birth -->
                     <div>
                         <label for="date_of_birth" class="block text-sm font-medium text-gray-700">Date of Birth *</label>
-                        <input type="date" name="date_of_birth" id="date_of_birth" value="{{ old('date_of_birth') }}"
+                        <input type="date" name="date_of_birth" id="date_of_birth" value="{{ old('date_of_birth', $patient?->date_of_birth?->format('Y-m-d')) }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
                             required>
                         @error('date_of_birth')
@@ -104,7 +104,7 @@
                     <!-- Nationality -->
                     <div>
                         <label for="nationality" class="block text-sm font-medium text-gray-700">Nationality</label>
-                        <input type="text" name="nationality" id="nationality" value="{{ old('nationality') }}"
+                        <input type="text" name="nationality" id="nationality" value="{{ old('nationality', $patient?->nationality) }}"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">
                         @error('nationality')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -119,7 +119,7 @@
                             required>
                             <option value="">Select Branch</option>
                             @foreach ($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
+                                <option value="{{ $branch->id }}" {{ old('branch_id', $patient?->branch_id) == $branch->id ? 'selected' : '' }}>
                                     {{ $branch->name }}
                                 </option>
                             @endforeach
@@ -135,7 +135,7 @@
                 <div class="mt-6">
                     <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
                     <textarea name="address" id="address" rows="2"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">{{ old('address') }}</textarea>
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2">{{ old('address', $patient?->address) }}</textarea>
                     @error('address')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror

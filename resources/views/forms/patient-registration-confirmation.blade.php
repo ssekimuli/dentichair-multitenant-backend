@@ -140,7 +140,7 @@
                 class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                 Return Home
             </a>
-            <a href="{{ route('book.appointment') }}"
+            <a href="{{ route('book.appointment', ['patient_id' => $patient->id]) }}"
                 class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
                 Book an Appointment
             </a>

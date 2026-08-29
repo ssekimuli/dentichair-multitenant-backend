@@ -16,7 +16,7 @@ use Carbon\Carbon;
 
 class BookAppointmentController extends Controller
 {
-    public function create()
+    public function create(Request $request)
     {
         $doctorRoles = ['Dental Assistant', 'Receptionist', 'Hygienist', 'Dentist','Super Admin'];
         $doctors = Employee::whereIn('role', $doctorRoles)
@@ -24,7 +24,13 @@ class BookAppointmentController extends Controller
             ->get(['id', 'name', 'email', 'role']);
         $branches = Branch::all(['id', 'name']);
 
-        return view('forms.book-appointment', compact('doctors', 'branches'));
+        // Get patient data if redirected from self-registration
+        $patient = null;
+        if ($request->has('patient_id')) {
+            $patient = Patient::find($request->query('patient_id'));
+        }
+
+        return view('forms.book-appointment', compact('doctors', 'branches', 'patient'));
     }
 
     public function store(Request $request)

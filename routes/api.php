@@ -225,6 +225,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         // Expenses
         Route::get('/expenses', [ManagementController::class, 'getExpenses']);
         Route::post('/expenses', [ManagementController::class, 'createExpense']);
+        Route::patch('/expenses/{id}', [ManagementController::class, 'updateExpense']);
+        Route::delete('/expenses/{id}', [ManagementController::class, 'deleteExpense']);
 
         // Chart Data
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);

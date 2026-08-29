@@ -15,7 +15,7 @@ use HasFactory;
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'client_id', 'lab', 'item', 'tooth', 'doctor_id',
+        'id', 'client_id', 'lab', 'item', 'tooth', 'doctor_name',
         'status', 'sent_date', 'due_date', 'branch_id',
         'received_date', 'shade', 'material', 'instructions', 'invoice_id',
         'lab_service_id', 'applied_price'
@@ -36,11 +36,6 @@ use HasFactory;
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
-    }
-
-    public function doctor(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class, 'doctor_id');
     }
 
     public function invoice(): BelongsTo

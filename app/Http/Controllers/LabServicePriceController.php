@@ -112,9 +112,13 @@ class LabServicePriceController extends Controller
     {
         $validated = $request->validate([
             'service_id' => 'required|exists:lab_services,id',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
+        $branchId = $validated['branch_id'] ?? $request->user()->branch_id ?? $request->branch_id;
+
         $price = LabServicePrice::where('lab_service_id', $validated['service_id'])
+            ->where('branch_id', $branchId)
             ->active()
             ->first();
 

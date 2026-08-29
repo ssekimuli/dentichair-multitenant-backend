@@ -73,6 +73,7 @@ class RestorativeRecord extends Model
             'branch_id' => $patientBranchId,
             'doctor_id' => $doctorId,
             'notes' => $this->notes,
+            'date' => now()->format('Y-m-d'),
         ]);
 
         \App\Models\ActivityLog::log(
@@ -151,7 +152,7 @@ class RestorativeRecord extends Model
     /**
      * Get estimated cost based on material type
      */
-    private function getEstimatedCost(): ?float
+    private function getEstimatedCost(): float
     {
         $materialCosts = [
             'amalgam' => 150,
@@ -162,7 +163,7 @@ class RestorativeRecord extends Model
         ];
 
         if (!$this->material) {
-            return null;
+            return 0.0;
         }
 
         $material = strtolower($this->material);
@@ -173,6 +174,6 @@ class RestorativeRecord extends Model
             }
         }
 
-        return null;
+        return 0.0;
     }
 }

@@ -15,7 +15,7 @@ use HasFactory;
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'client_id', 'lab', 'item', 'tooth', 'doctor_name',
+        'id', 'client_id', 'item', 'tooth', 'doctor_name',
         'status', 'sent_date', 'due_date', 'branch_id',
         'received_date', 'shade', 'material', 'instructions', 'invoice_id',
         'lab_service_id', 'applied_price'

@@ -1587,6 +1587,78 @@ class ManagementController extends Controller
         return response()->json($expense->load('branch'), 201);
     }
 
+    /**
+     * Update Expense
+     *
+     * Update an existing expense record.
+     *
+     * @authenticated
+     * @urlParam id int required The expense ID. Example: 1
+     * @bodyParam date date required Expense date. Example: 2026-08-28
+     * @bodyParam category string required Expense category. Example: "Utilities"
+     * @bodyParam description string required Expense description. Example: "Monthly electricity bill"
+     * @bodyParam amount numeric required Expense amount. Example: 150.00
+     * @response 200 {
+     *   "id": 1,
+     *   "branch_id": 1,
+     *   "date": "2026-08-28",
+     *   "category": "Utilities",
+     *   "description": "Monthly electricity bill",
+     *   "amount": "150.00",
+     *   "branch": {
+     *     "id": 1,
+     *     "name": "Main Branch",
+     *     "currency": "USD"
+     *   }
+     * }
+     */
+    public function updateExpense(Request $request, $id)
+    {
+        $expense = Expense::find($id);
+
+        if (!$expense) {
+            return response()->json(['error' => 'Expense not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'date' => 'sometimes|required|date',
+            'category' => 'sometimes|required|string',
+            'description' => 'sometimes|required|string',
+            'amount' => 'sometimes|required|numeric',
+        ]);
+
+        $expense->update($validated);
+
+        return response()->json($expense->load('branch'), 200);
+    }
+
+    /**
+     * Delete Expense
+     *
+     * Delete an expense record.
+     *
+     * @authenticated
+     * @urlParam id int required The expense ID. Example: 1
+     * @response 200 {
+     *   "message": "Expense deleted successfully"
+     * }
+     * @response 404 {
+     *   "error": "Expense not found"
+     * }
+     */
+    public function deleteExpense($id)
+    {
+        $expense = Expense::find($id);
+
+        if (!$expense) {
+            return response()->json(['error' => 'Expense not found'], 404);
+        }
+
+        $expense->delete();
+
+        return response()->json(['message' => 'Expense deleted successfully'], 200);
+    }
+
     public function updateBranch(Request $request, $id)
     {
         $validated = $request->validate([

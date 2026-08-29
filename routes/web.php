@@ -21,9 +21,9 @@ Route::get('/appointment/{token}/confirmation', [BookAppointmentController::clas
     ->name('appointment.confirmation');
 
 // Patient Registration Routes
-Route::get('/register', [PatientRegistrationController::class, 'create'])
+Route::get('/self-register', [PatientRegistrationController::class, 'create'])
     ->middleware('throttle:20,1')
-    ->name('patient.register');
+    ->name('patient.self-register');
 
 Route::post('/register', [PatientRegistrationController::class, 'store'])
     ->middleware('throttle:5,1')

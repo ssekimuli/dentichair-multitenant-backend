@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Patient extends Model
 {
@@ -178,6 +179,7 @@ class Patient extends Model
             'status' => 'Scheduled',
             'branch_id' => $this->branch_id,
             'treatment' => 'Follow-up Visit',
+            'token_number' => 'T' . Str::random(6),
         ]);
 
         ActivityLog::log(

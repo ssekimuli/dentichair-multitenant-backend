@@ -490,7 +490,7 @@ class PatientController extends Controller
         return response()->json($patient->load([
             'dentalRecords',
             'treatmentPlans',
-            'imaging',
+            'images',
             'softTissueRecords',
             'orthodonticRecords',
             'endodonticRecords'

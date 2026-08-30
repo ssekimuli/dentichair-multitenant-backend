@@ -585,7 +585,7 @@ class EmployeeController extends Controller
     public function getDoctors(Request $request)
     {
         $query = Employee::with(['branch'])->whereIn('role', [
-            'Dentist', 'Doctor', 'Orthodontist', 'Dental Hygienist', 
+            'Dentist', 'Doctor','Super Admin','Hygienist','Dental Assistant','Orthodontist', 'Dental Hygienist', 
             'Prosthodontist', 'Endodontist', 'Periodontist'
         ]);
 

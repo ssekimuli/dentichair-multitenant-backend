@@ -57,6 +57,8 @@ class AutoScheduleNextVisits extends Command
                 ->exists();
 
             if ($exists) {
+                // Already created (e.g. by the next-visit API's model hook) - just clear the flag.
+                $patient->update(['next_visit' => null]);
                 continue;
             }
 

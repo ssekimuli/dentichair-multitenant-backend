@@ -43,7 +43,7 @@ class BookAppointmentController extends Controller
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
-            'date_of_birth' => 'required|date',
+            'age' => 'required|integer|min:1|max:150',
             'nationality' => 'nullable|string|max:255',
             'branch_id' => 'required|exists:branches,id',
 
@@ -61,6 +61,9 @@ class BookAppointmentController extends Controller
                 },
             ],
         ]);
+
+        // Calculate date_of_birth from age
+        $dateOfBirth = Carbon::now()->subYears($validated['age'])->format('Y-m-d');
 
         // Check for double-booking
         $conflictingAppointment = Appointment::where('doctor_id', $validated['doctor_id'])
@@ -92,7 +95,7 @@ class BookAppointmentController extends Controller
                 'phone' => $validated['phone'],
                 'address' => $validated['address'],
                 'gender' => $validated['gender'],
-                'date_of_birth' => $validated['date_of_birth'],
+                'date_of_birth' => $dateOfBirth,
                 'status' => 'Active',
                 'branch_id' => $validated['branch_id'],
                 'nationality' => $validated['nationality'],

@@ -90,13 +90,16 @@
                         @enderror
                     </div>
 
-                    <!-- Date of Birth -->
+                    <!-- Age -->
                     <div>
-                        <label for="date_of_birth" class="block text-sm font-medium text-gray-700">Date of Birth *</label>
-                        <input type="date" name="date_of_birth" id="date_of_birth" value="{{ old('date_of_birth', $patient?->date_of_birth?->format('Y-m-d')) }}"
+                        <label for="age" class="block text-sm font-medium text-gray-700">Age *</label>
+                        <input type="number" name="age" id="age"
+                            value="{{ old('age', $patient?->date_of_birth ? now()->diffInYears($patient->date_of_birth) : '') }}"
+                            placeholder="e.g., 27"
+                            min="1" max="150"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border px-3 py-2"
                             required>
-                        @error('date_of_birth')
+                        @error('age')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>

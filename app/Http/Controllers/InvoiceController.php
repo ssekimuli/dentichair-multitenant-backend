@@ -316,6 +316,7 @@ class InvoiceController extends Controller
             'issue_date' => 'required|date',
             'due_date' => 'required|date',
             'branch_id' => 'required|exists:branches,id',
+            'category' => 'nullable|string|in:lab-income,pharmacy-income,procedure-income',
             'discount' => 'nullable|numeric|min:0',
             'tax' => 'nullable|numeric|min:0',
             'insurance_coverage' => 'nullable|numeric|min:0',
@@ -382,6 +383,7 @@ class InvoiceController extends Controller
                 ...collect($validated)->except(['treatments', 'other_charges', 'medicines'])->toArray(),
                 'paid_amount' => 0,
                 'status' => 'Pending',
+                'category' => $validated['category'] ?? null,
                 'medicines' => $validated['medicines'] ?? null,
             ]);
         }

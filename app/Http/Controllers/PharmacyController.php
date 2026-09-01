@@ -285,6 +285,7 @@ class PharmacyController extends Controller
                         'issue_date' => $prescription->prescription_date,
                         'due_date' => Carbon::parse($prescription->prescription_date)->addDays(30),
                         'branch_id' => $prescription->branch_id,
+                        'category' => 'pharmacy-income',
                         'medicines' => $medicinesList,
                     ]);
                 }

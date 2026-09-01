@@ -236,6 +236,7 @@ class InsuranceClaimController extends Controller
                             'issue_date' => now()->format('Y-m-d'),
                             'due_date' => now()->addDays(30)->format('Y-m-d'),
                             'branch_id' => $patient->branch_id ?? \App\Models\Branch::first()->id,
+                            'category' => 'procedure-income',
                             'payment_method' => 'Insurance',
                         ]);
 

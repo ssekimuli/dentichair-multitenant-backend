@@ -98,6 +98,7 @@ class InsuranceBillingService
                 'patient_balance' => $estimate['patient_responsibility'],
                 'insurance_balance' => $estimate['insurance_responsibility'],
                 'payment_status' => 'Unpaid',
+                'category' => 'procedure-income',
             ]);
 
             foreach ($estimate['items'] as $item) {

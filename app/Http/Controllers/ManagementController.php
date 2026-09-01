@@ -455,6 +455,7 @@ class ManagementController extends Controller
                 'due_date' => $order->due_date,
                 'branch_id' => $order->branch_id,
                 'status' => 'Pending',
+                'category' => 'lab-income',
                 'medicines' => json_encode(['lab_order_id' => $order->id]),
             ]);
 
@@ -1661,15 +1662,46 @@ class ManagementController extends Controller
         }
 
         try {
-            $branch->delete();
-        } catch (\Illuminate\Database\QueryException $e) {
-            if ($e->getCode() == 23000) {
-                return response()->json(['message' => 'Cannot delete this branch because it has related records (e.g., patients, employees, appointments).'], 400);
+            // Delete all related data in cascade
+            $branch->patients()->delete();
+            $branch->appointments()->delete();
+            $branch->invoices()->delete();
+            $branch->employees()->delete();
+            $branch->labServices()->delete();
+            $branch->labServicePrices()->delete();
+            $branch->payrolls()->delete();
+            $branch->expenses()->delete();
+            $branch->laboratoryOrders()->delete();
+            $branch->attendanceRecords()->delete();
+            $branch->leaveRequests()->delete();
+            $branch->staffAdvances()->delete();
+            $branch->inventoryItems()->delete();
+            $branch->prescriptions()->delete();
+            $branch->medicines()->delete();
+
+            // Delete branch setting if exists
+            if ($branch->setting) {
+                $branch->setting->delete();
             }
-            return response()->json(['message' => 'An error occurred while deleting the branch.'], 500);
+
+            // Delete the branch itself
+            $branch->delete();
+
+            \App\Models\ActivityLog::log(
+                'Branch Deleted',
+                "Branch #{$branch->id} ({$branch->name}) and all associated data were deleted.",
+                ['branch_id' => $branch->id]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error deleting branch and related data', [
+                'branch_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'An error occurred while deleting the branch and its data.'], 500);
         }
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'Branch and all associated data deleted successfully']);
     }
 
     /**

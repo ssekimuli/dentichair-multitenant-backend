@@ -166,6 +166,7 @@ class TreatmentPlan extends Model
                     'patient_balance' => 0,
                     'insurance_balance' => 0,
                     'status' => 'Pending',
+                    'category' => 'procedure-income',
                     'issue_date' => $formattedDate,
                     'due_date' => Carbon::parse($formattedDate)
                         ->addDays(30)

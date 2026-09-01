@@ -52,6 +52,7 @@ class RestorativeRecordController extends Controller
                     'issue_date' => today(),
                     'due_date' => today()->addDays(30),
                     'branch_id' => $patient->branch_id,
+                    'category' => 'procedure-income',
                 ]);
             }
 

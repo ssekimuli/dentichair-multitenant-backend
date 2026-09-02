@@ -160,6 +160,9 @@ class InvoiceController extends Controller
         $invoices = $query->latest()->get();
         $totalPaid = $invoices->sum('paid_amount');
 
+        // Define all available categories
+        $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'other'];
+
         // Group by category
         $groupedByCategory = $invoices->groupBy(function ($invoice) {
             return $invoice->category ?? 'other';
@@ -171,13 +174,31 @@ class InvoiceController extends Controller
             ];
         });
 
-        // Create summary with just totals per category
+        // Create summary with all categories, including those with 0 records
         $summary = [];
-        foreach ($groupedByCategory as $category => $data) {
-            $summary[$category] = [
-                'count' => $data['count'],
-                'total' => floatval($data['total']),
-            ];
+        foreach ($allCategories as $category) {
+            if (isset($groupedByCategory[$category])) {
+                $summary[$category] = [
+                    'count' => $groupedByCategory[$category]['count'],
+                    'total' => floatval($groupedByCategory[$category]['total']),
+                ];
+            } else {
+                $summary[$category] = [
+                    'count' => 0,
+                    'total' => 0.0,
+                ];
+            }
+        }
+
+        // Ensure by_category also has all categories
+        foreach ($allCategories as $category) {
+            if (!isset($groupedByCategory[$category])) {
+                $groupedByCategory[$category] = [
+                    'records' => [],
+                    'count' => 0,
+                    'total' => '0.00',
+                ];
+            }
         }
 
         return response()->json([

@@ -20,6 +20,15 @@ class RestorativeRecord extends Model
         'surface',
         'material',
         'notes',
+        'procedure_cost',
+        'material_cost',
+        'other_charges',
+    ];
+
+    protected $casts = [
+        'procedure_cost' => 'decimal:2',
+        'material_cost' => 'decimal:2',
+        'other_charges' => 'decimal:2',
     ];
 
     public function patient(): BelongsTo
@@ -39,7 +48,7 @@ class RestorativeRecord extends Model
         });
 
         static::updated(function (RestorativeRecord $record) {
-            if ($record->isDirty(['tooth_id', 'surface', 'material', 'notes'])) {
+            if ($record->isDirty(['tooth_id', 'surface', 'material', 'notes', 'procedure_cost', 'material_cost', 'other_charges'])) {
                 $record->updateTreatmentPlanEntry();
             }
         });
@@ -150,9 +159,28 @@ class RestorativeRecord extends Model
     }
 
     /**
-     * Get estimated cost based on material type
+     * Total cost for the treatment plan entry: the sum of the
+     * procedure, material, and other charges submitted with the
+     * record. Falls back to a material-based estimate when no
+     * cost breakdown was provided.
      */
     private function getEstimatedCost(): float
+    {
+        $totalCost = (float) ($this->procedure_cost ?? 0)
+            + (float) ($this->material_cost ?? 0)
+            + (float) ($this->other_charges ?? 0);
+
+        if ($totalCost > 0) {
+            return $totalCost;
+        }
+
+        return $this->getEstimatedCostFromMaterial();
+    }
+
+    /**
+     * Get estimated cost based on material type
+     */
+    private function getEstimatedCostFromMaterial(): float
     {
         $materialCosts = [
             'amalgam' => 150,

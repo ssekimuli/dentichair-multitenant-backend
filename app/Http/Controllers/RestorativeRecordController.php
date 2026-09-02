@@ -21,10 +21,6 @@ class RestorativeRecordController extends Controller
             'other_charges' => 'nullable|numeric|min:0',
         ]);
 
-        $record = $patient->restorativeRecords()->create(
-            \Illuminate\Support\Arr::except($validated, ['cost', 'procedure_cost', 'material_cost', 'other_charges'])
-        );
-
         $procedureCost = $validated['procedure_cost'] ?? 0;
         $materialCost = $validated['material_cost'] ?? 0;
         $otherCharges = $validated['other_charges'] ?? 0;
@@ -34,6 +30,14 @@ class RestorativeRecordController extends Controller
             $totalCost = $validated['cost'];
             $procedureCost = $totalCost;
         }
+
+        $record = $patient->restorativeRecords()->create(
+            \Illuminate\Support\Arr::except($validated, ['cost', 'procedure_cost', 'material_cost', 'other_charges']) + [
+                'procedure_cost' => $procedureCost,
+                'material_cost' => $materialCost,
+                'other_charges' => $otherCharges,
+            ]
+        );
 
         if ($totalCost > 0) {
             $invoice = \App\Models\Invoice::where('patient_id', $patient->id)
@@ -92,6 +96,9 @@ class RestorativeRecordController extends Controller
             'surface' => 'required|string',
             'material' => 'required|string',
             'notes' => 'nullable|string',
+            'procedure_cost' => 'nullable|numeric|min:0',
+            'material_cost' => 'nullable|numeric|min:0',
+            'other_charges' => 'nullable|numeric|min:0',
         ]);
 
         $restorativeRecord->update($validated);

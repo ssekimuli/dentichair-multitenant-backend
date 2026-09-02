@@ -171,12 +171,22 @@ class InvoiceController extends Controller
             ];
         });
 
+        // Create summary with just totals per category
+        $summary = [];
+        foreach ($groupedByCategory as $category => $data) {
+            $summary[$category] = [
+                'count' => $data['count'],
+                'total' => floatval($data['total']),
+            ];
+        }
+
         return response()->json([
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
             ] : null,
             'total' => number_format($totalPaid, 2, '.', ''),
+            'summary' => $summary,
             'by_category' => $groupedByCategory,
             'records' => $invoices,
         ]);

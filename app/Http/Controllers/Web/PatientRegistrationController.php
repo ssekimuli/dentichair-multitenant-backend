@@ -7,6 +7,7 @@ use App\Models\Patient;
 use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class PatientRegistrationController extends Controller
 {
@@ -25,10 +26,13 @@ class PatientRegistrationController extends Controller
             'phone' => 'required|string|max:20|unique:patients,phone',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
-            'date_of_birth' => 'required|date|before:today',
+            'age' => 'required|integer|min:1|max:150',
             'nationality' => 'nullable|string|max:255',
             'branch_id' => 'required|exists:branches,id',
         ]);
+
+        // Calculate date_of_birth from age
+        $dateOfBirth = Carbon::now()->subYears($validated['age'])->format('Y-m-d');
 
         // Check if patient already exists by phone or email
         $existingPatient = Patient::where('phone', $validated['phone'])
@@ -53,7 +57,7 @@ class PatientRegistrationController extends Controller
             'phone' => $validated['phone'],
             'address' => $validated['address'],
             'gender' => $validated['gender'],
-            'date_of_birth' => $validated['date_of_birth'],
+            'date_of_birth' => $dateOfBirth,
             'nationality' => $validated['nationality'],
             'branch_id' => $validated['branch_id'],
             'status' => 'Active',

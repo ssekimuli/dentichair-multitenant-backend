@@ -1050,6 +1050,22 @@ class ManagementController extends Controller
         $totalExpenses = $totalOtherExpenses + $totalPayroll;
         $netProfit = $totalIncome - $totalExpenses;
 
+        // Calculate income by category
+        $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'other'];
+        $incomeByCategory = [];
+        foreach ($allCategories as $category) {
+            $categoryIncome = $incomeQuery
+                ->where(function ($q) use ($category) {
+                    if ($category === 'other') {
+                        $q->whereNull('category')->orWhere('category', '');
+                    } else {
+                        $q->where('category', $category);
+                    }
+                })
+                ->sum('paid_amount');
+            $incomeByCategory[$category] = number_format($categoryIncome, 2, '.', '');
+        }
+
         $incomeByMonth = $incomeQuery
             ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as month, SUM(paid_amount) as income")
             ->groupBy('month')
@@ -1089,10 +1105,12 @@ class ManagementController extends Controller
         return response()->json([
             'branch_id' => $branchId,
             'total_income' => number_format($totalIncome, 2, '.', ''),
+            'income_by_category' => $incomeByCategory,
             'total_expenses' => number_format($totalExpenses, 2, '.', ''),
             'net_profit' => number_format($netProfit, 2, '.', ''),
             'from' => $startDate->toDateString(),
             'to' => $endDate->toDateString(),
+            'monthlyFinancials' => $financialSummary,
             'financial_summary' => $financialSummary,
         ]);
     }

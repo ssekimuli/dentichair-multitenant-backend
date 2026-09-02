@@ -59,15 +59,15 @@
                             @enderror
                         </div>
 
-                        <!-- Date of Birth -->
+                        <!-- Age -->
                         <div>
-                            <label for="date_of_birth" class="block text-sm font-medium text-gray-700">
-                                Date of Birth <span class="text-red-500">*</span>
+                            <label for="age" class="block text-sm font-medium text-gray-700">
+                                Age <span class="text-red-500">*</span>
                             </label>
-                            <input type="date" id="date_of_birth" name="date_of_birth" required
-                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 @error('date_of_birth') border-red-500 @enderror"
-                                value="{{ old('date_of_birth') }}">
-                            @error('date_of_birth')
+                            <input type="number" id="age" name="age" required min="1" max="150"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 @error('age') border-red-500 @enderror"
+                                value="{{ old('age') }}" placeholder="25">
+                            @error('age')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>

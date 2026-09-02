@@ -565,26 +565,7 @@ class PatientController extends Controller
         }
 
         DB::transaction(function () use ($patient) {
-            // Delete related invoices and their sub-records (including already soft-deleted ones)
-            foreach ($patient->invoices()->withTrashed()->get() as $invoice) {
-                $invoice->treatments()->delete();
-                $invoice->otherCharges()->delete();
-                $invoice->transactions()->delete();
-                $invoice->forceDelete();
-            }
-
-            // Delete other related records
-            $patient->dentalRecords()->delete();
-            $patient->treatmentPlans()->delete();
-            $patient->images()->delete();
-            $patient->periodontalRecords()->delete();
-            $patient->softTissueRecords()->delete();
-            $patient->orthodonticRecords()->delete();
-            $patient->endodonticRecords()->delete();
-            $patient->appointments()->delete();
-
-            // Delete the patient
-            $patient->delete();
+            app(\App\Services\PatientDeletionService::class)->delete($patient);
         });
 
         return response()->json(['success' => true]);

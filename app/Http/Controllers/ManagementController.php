@@ -1662,30 +1662,52 @@ class ManagementController extends Controller
         }
 
         try {
-            // Delete all related data in cascade
-            $branch->patients()->delete();
-            $branch->appointments()->delete();
-            $branch->invoices()->delete();
-            $branch->employees()->delete();
-            $branch->labServices()->delete();
-            $branch->labServicePrices()->delete();
-            $branch->payrolls()->delete();
-            $branch->expenses()->delete();
-            $branch->laboratoryOrders()->delete();
-            $branch->attendanceRecords()->delete();
-            $branch->leaveRequests()->delete();
-            $branch->staffAdvances()->delete();
-            $branch->inventoryItems()->delete();
-            $branch->prescriptions()->delete();
-            $branch->medicines()->delete();
+            \Illuminate\Support\Facades\DB::transaction(function () use ($branch) {
+                // Each patient has its own web of dependent records (invoices,
+                // appointments, dental records, ...); reuse the same cascade
+                // used when deleting a patient directly rather than a bare
+                // bulk delete, which leaves those dependents behind and trips
+                // their foreign keys.
+                $patientDeletionService = app(\App\Services\PatientDeletionService::class);
+                foreach ($branch->patients()->get() as $patient) {
+                    $patientDeletionService->delete($patient);
+                }
 
-            // Delete branch setting if exists
-            if ($branch->setting) {
-                $branch->setting->delete();
-            }
+                // Clean up anything left over that isn't tied to a patient
+                // (e.g. lab-order invoices), plus their sub-records.
+                $branch->appointments()->delete();
+                foreach ($branch->invoices()->withTrashed()->get() as $invoice) {
+                    $invoice->treatments()->delete();
+                    $invoice->otherCharges()->delete();
+                    $invoice->transactions()->delete();
+                    $invoice->forceDelete();
+                }
 
-            // Delete the branch itself
-            $branch->delete();
+                // Employee-dependent records must go before employees, since
+                // payrolls/attendance/leave/advances reference employee_id
+                // with no cascade.
+                $branch->payrolls()->delete();
+                $branch->attendanceRecords()->delete();
+                $branch->leaveRequests()->delete();
+                $branch->staffAdvances()->delete();
+                $branch->employees()->delete();
+
+                $branch->labServicePrices()->delete();
+                $branch->labServices()->delete();
+                $branch->laboratoryOrders()->delete();
+                $branch->expenses()->delete();
+                $branch->inventoryItems()->delete();
+                $branch->prescriptions()->delete();
+                $branch->medicines()->delete();
+
+                // Delete branch setting if exists
+                if ($branch->setting) {
+                    $branch->setting->delete();
+                }
+
+                // Delete the branch itself
+                $branch->delete();
+            });
 
             \App\Models\ActivityLog::log(
                 'Branch Deleted',

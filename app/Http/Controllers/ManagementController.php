@@ -1054,7 +1054,7 @@ class ManagementController extends Controller
         $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'other'];
         $incomeByCategory = [];
         foreach ($allCategories as $category) {
-            $categoryIncome = $incomeQuery
+            $categoryIncome = (clone $incomeQuery)
                 ->where(function ($q) use ($category) {
                     if ($category === 'other') {
                         $q->whereNull('category')->orWhere('category', '');

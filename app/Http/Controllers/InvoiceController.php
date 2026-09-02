@@ -160,12 +160,24 @@ class InvoiceController extends Controller
         $invoices = $query->latest()->get();
         $totalPaid = $invoices->sum('paid_amount');
 
+        // Group by category
+        $groupedByCategory = $invoices->groupBy(function ($invoice) {
+            return $invoice->category ?? 'other';
+        })->map(function ($group) {
+            return [
+                'records' => $group->values(),
+                'count' => $group->count(),
+                'total' => number_format($group->sum('paid_amount'), 2, '.', ''),
+            ];
+        });
+
         return response()->json([
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
             ] : null,
             'total' => number_format($totalPaid, 2, '.', ''),
+            'by_category' => $groupedByCategory,
             'records' => $invoices,
         ]);
     }

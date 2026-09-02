@@ -260,7 +260,6 @@ class PatientController extends Controller
             'appointments' => fn($q) => $q->latest(),
             'treatmentPlans' => fn($q) => $q->latest(),
             'invoices' => fn($q) => $q->latest(),
-            'labOrders' => fn($q) => $q->latest(),
             'dentalRecords' => fn($q) => $q->latest(),
             'images' => fn($q) => $q->latest(),
             'periodontalRecords' => fn($q) => $q->latest(),
@@ -310,7 +309,6 @@ class PatientController extends Controller
                     'due_date' => $invoice->due_date,
                 ];
             }),
-            'lab_orders' => $patient->labOrders,
             'dental_records' => $patient->dentalRecords,
             'images' => $patient->images,
             'periodontal_records' => $patient->periodontalRecords,
@@ -567,12 +565,12 @@ class PatientController extends Controller
         }
 
         DB::transaction(function () use ($patient) {
-            // Delete related invoices and their sub-records
-            foreach ($patient->invoices as $invoice) {
+            // Delete related invoices and their sub-records (including already soft-deleted ones)
+            foreach ($patient->invoices()->withTrashed()->get() as $invoice) {
                 $invoice->treatments()->delete();
                 $invoice->otherCharges()->delete();
                 $invoice->transactions()->delete();
-                $invoice->delete();
+                $invoice->forceDelete();
             }
 
             // Delete other related records
@@ -584,7 +582,6 @@ class PatientController extends Controller
             $patient->orthodonticRecords()->delete();
             $patient->endodonticRecords()->delete();
             $patient->appointments()->delete();
-            $patient->labOrders()->delete();
 
             // Delete the patient
             $patient->delete();

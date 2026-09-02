@@ -109,11 +109,6 @@ class Patient extends Model
         return $this->hasMany(Invoice::class)->whereIn('status', ['Pending', 'Overdue']);
     }
 
-    public function labOrders(): HasMany
-    {
-        return $this->hasMany(LaboratoryOrder::class);
-    }
-
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class)->orderBy('id', 'desc');

@@ -10,7 +10,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE laboratory_orders CHANGE status status ENUM('Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE laboratory_orders CHANGE status status ENUM('Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled') NOT NULL");
+        }
     }
 
     /**
@@ -18,6 +20,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE laboratory_orders CHANGE status status ENUM('Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE laboratory_orders CHANGE status status ENUM('Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled') NOT NULL");
+        }
     }
 };

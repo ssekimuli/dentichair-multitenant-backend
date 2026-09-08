@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,14 +12,27 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF;');
+        }
+        Schema::disableForeignKeyConstraints();
         Schema::table('laboratory_orders', function (Blueprint $table) {
-            // Drop the foreign key constraint first
-            $table->dropForeign('laboratory_orders_doctor_id_foreign');
-            // Drop the column
-            $table->dropColumn('doctor_id');
+            // Drop the foreign key constraint first if supported
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->dropForeign('laboratory_orders_doctor_id_foreign');
+                if (Schema::hasColumn('laboratory_orders', 'doctor_id')) {
+                    $table->dropColumn('doctor_id');
+                }
+            }
             // Add new doctor_name column
-            $table->string('doctor_name')->nullable()->after('client_id');
+            if (!Schema::hasColumn('laboratory_orders', 'doctor_name')) {
+                $table->string('doctor_name')->nullable()->after('client_id');
+            }
         });
+        Schema::enableForeignKeyConstraints();
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON;');
+        }
     }
 
     /**

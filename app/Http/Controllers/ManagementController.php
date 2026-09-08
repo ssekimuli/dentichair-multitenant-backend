@@ -16,6 +16,7 @@ use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\Appointment;
 use App\Models\Patient;
+use App\Models\LabService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -1485,7 +1486,7 @@ class ManagementController extends Controller
             );
 
             return response()->json($labOrder->load(['client', 'branch', 'labService']), 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Error updating lab order', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

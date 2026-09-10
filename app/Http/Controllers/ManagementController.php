@@ -6,6 +6,7 @@ use App\Models\Payroll;
 use App\Models\AttendanceRecord;
 use App\Models\InventoryItem;
 use App\Models\LaboratoryOrder;
+use App\Models\LabService;
 use App\Models\LeaveRequest;
 use App\Models\StaffAdvance;
 use App\Models\Branch;
@@ -19,6 +20,7 @@ use App\Models\Patient;
 use App\Models\LabService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
@@ -473,6 +475,10 @@ class ManagementController extends Controller
                 try {
                     Mail::send('emails.lab-order', [
                         'clientName' => $clientName,
+                        'patientName' => $clientName,
+                        'item' => $order->item,
+                        'tooth' => $order->tooth,
+                        'status' => $order->status,
                         'labOrder' => $order,
                         'invoice' => $invoice,
                         'invoiceAmount' => $invoiceAmount,
@@ -1352,8 +1358,206 @@ class ManagementController extends Controller
         ]);
     }
 
+    public function createBatchLabOrders(Request $request)
+    {
+        $raw = $request->all();
+
+        // Support array list payload: [ {...}, {...} ]
+        if (array_is_list($raw) || (isset($raw[0]) && is_array($raw[0]))) {
+            $createdOrders = [];
+            DB::beginTransaction();
+            try {
+                foreach ($raw as $orderData) {
+                    $clientId = $orderData['clientId'] ?? $orderData['client_id'] ?? null;
+                    $branchId = $orderData['branchId'] ?? $orderData['branch_id'] ?? null;
+                    $doctorName = $orderData['doctorName'] ?? $orderData['doctor_name'] ?? null;
+                    $item = $orderData['item'] ?? null;
+                    $tooth = !empty($orderData['tooth']) ? (int) $orderData['tooth'] : null;
+                    $status = $orderData['status'] ?? 'Draft';
+                    $sentDate = $orderData['sentDate'] ?? $orderData['sent_date'] ?? null;
+                    $dueDate = $orderData['dueDate'] ?? $orderData['due_date'] ?? null;
+                    $receivedDate = $orderData['receivedDate'] ?? $orderData['received_date'] ?? null;
+                    $shade = $orderData['shade'] ?? null;
+                    $material = $orderData['material'] ?? null;
+                    $instructions = $orderData['instructions'] ?? null;
+                    $labServiceId = $orderData['lab_service_id'] ?? $orderData['labServiceId'] ?? null;
+                    $appliedPrice = $orderData['applied_price'] ?? $orderData['appliedPrice'] ?? null;
+
+                    if ($labServiceId && ($appliedPrice === null || $appliedPrice === '')) {
+                        $service = LabService::find($labServiceId);
+                        $activePrice = $service?->getActivePrice();
+                        $appliedPrice = $activePrice?->base_price;
+                    }
+
+                    $labOrder = LaboratoryOrder::create([
+                        'client_id' => $clientId,
+                        'doctor_name' => $doctorName,
+                        'item' => $item,
+                        'tooth' => $tooth,
+                        'status' => $status,
+                        'sent_date' => $sentDate,
+                        'due_date' => $dueDate,
+                        'branch_id' => $branchId,
+                        'received_date' => $receivedDate,
+                        'shade' => $shade,
+                        'material' => $material,
+                        'instructions' => $instructions,
+                        'lab_service_id' => $labServiceId,
+                        'applied_price' => $appliedPrice,
+                    ]);
+
+                    if ($status === 'In Production') {
+                        $this->generateLabOrderInvoice($labOrder);
+                    }
+
+                    $createdOrders[] = $labOrder->load(['client', 'branch', 'labService']);
+                }
+
+                DB::commit();
+
+                \App\Models\ActivityLog::log(
+                    'Lab Orders Created (Batch)',
+                    count($createdOrders) . " lab order(s) created.",
+                    [
+                        'lab_order_ids' => collect($createdOrders)->pluck('id')->toArray(),
+                        'count' => count($createdOrders),
+                    ]
+                );
+
+                return response()->json($createdOrders, 201);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error creating batch lab orders (list payload)', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json(['message' => 'Server Error'], 500);
+            }
+        }
+
+        // Support single order with 'item' passed to batch endpoint
+        if (!$request->has('items') && $request->filled('item')) {
+            $request->merge([
+                'items' => [[
+                    'item' => $request->input('item'),
+                    'tooth' => $request->input('tooth'),
+                    'lab_service_id' => $request->input('lab_service_id', $request->input('labServiceId')),
+                    'applied_price' => $request->input('applied_price', $request->input('appliedPrice')),
+                    'material' => $request->input('material'),
+                    'shade' => $request->input('shade'),
+                    'instructions' => $request->input('instructions'),
+                ]]
+            ]);
+        }
+
+        // Normalize camelCase / snake_case top-level keys
+        $request->merge([
+            'clientId' => $request->input('clientId', $request->input('client_id')),
+            'branchId' => $request->input('branchId', $request->input('branch_id')),
+            'doctorName' => $request->input('doctorName', $request->input('doctor_name')),
+            'sentDate' => $request->input('sentDate', $request->input('sent_date')),
+            'dueDate' => $request->input('dueDate', $request->input('due_date')),
+            'receivedDate' => $request->input('receivedDate', $request->input('received_date')),
+            'status' => $request->input('status', 'Draft'),
+        ]);
+
+        $validated = $request->validate([
+            'clientId' => 'required|exists:clients,id',
+            'branchId' => 'required|exists:branches,id',
+            'doctorName' => 'nullable|string',
+            'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+            'sentDate' => 'required|date',
+            'dueDate' => 'required|date',
+            'receivedDate' => 'nullable|date',
+            'instructions' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.item' => 'required|string',
+            'items.*.tooth' => 'nullable|integer',
+            'items.*.lab_service_id' => 'nullable|exists:lab_services,id',
+            'items.*.labServiceId' => 'nullable|exists:lab_services,id',
+            'items.*.applied_price' => 'nullable|numeric|min:0',
+            'items.*.appliedPrice' => 'nullable|numeric|min:0',
+            'items.*.material' => 'nullable|string',
+            'items.*.shade' => 'nullable|string',
+            'items.*.instructions' => 'nullable|string',
+        ]);
+
+        $client = Client::find($validated['clientId']);
+        $createdOrders = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['items'] as $itemData) {
+                $labServiceId = $itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null;
+                $appliedPrice = $itemData['applied_price'] ?? $itemData['appliedPrice'] ?? null;
+
+                if ($labServiceId && ($appliedPrice === null || $appliedPrice === '')) {
+                    $service = LabService::find($labServiceId);
+                    $activePrice = $service?->getActivePrice();
+                    $appliedPrice = $activePrice?->base_price;
+                }
+
+                $orderStatus = $itemData['status'] ?? $validated['status'];
+                $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? $validated['sentDate'];
+                $dueDate = $itemData['due_date'] ?? $itemData['dueDate'] ?? $validated['dueDate'];
+                $receivedDate = $itemData['received_date'] ?? $itemData['receivedDate'] ?? ($validated['receivedDate'] ?? null);
+                $branchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $validated['branchId'];
+                $doctorName = $itemData['doctor_name'] ?? $itemData['doctorName'] ?? ($validated['doctorName'] ?? null);
+                $instructions = $itemData['instructions'] ?? ($validated['instructions'] ?? null);
+
+                $labOrder = LaboratoryOrder::create([
+                    'client_id' => $validated['clientId'],
+                    'doctor_name' => $doctorName,
+                    'item' => $itemData['item'],
+                    'tooth' => !empty($itemData['tooth']) ? (int) $itemData['tooth'] : null,
+                    'status' => $orderStatus,
+                    'sent_date' => $sentDate,
+                    'due_date' => $dueDate,
+                    'branch_id' => $branchId,
+                    'received_date' => $receivedDate,
+                    'shade' => $itemData['shade'] ?? null,
+                    'material' => $itemData['material'] ?? null,
+                    'instructions' => $instructions,
+                    'lab_service_id' => $labServiceId,
+                    'applied_price' => $appliedPrice,
+                ]);
+
+                if ($orderStatus === 'In Production') {
+                    $this->generateLabOrderInvoice($labOrder);
+                }
+
+                $createdOrders[] = $labOrder->load(['client', 'branch', 'labService']);
+            }
+
+            DB::commit();
+
+            \App\Models\ActivityLog::log(
+                'Lab Orders Created (Batch)',
+                count($createdOrders) . " lab order(s) for {$client?->name} were created.",
+                [
+                    'lab_order_ids' => collect($createdOrders)->pluck('id')->toArray(),
+                    'client_id' => $validated['clientId'],
+                    'count' => count($createdOrders),
+                ]
+            );
+
+            return response()->json($createdOrders, 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating batch lab orders', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Server Error'], 500);
+        }
+    }
+
     public function createLabOrder(Request $request)
     {
+        if ($request->has('items') && is_array($request->input('items'))) {
+            return $this->createBatchLabOrders($request);
+        }
+
         $validated = $request->validate([
             'clientId' => 'required|exists:clients,id',
             'doctorName' => 'nullable|string',

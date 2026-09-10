@@ -96,6 +96,7 @@ class BookAppointmentController extends Controller
                 'address' => $validated['address'],
                 'gender' => $validated['gender'],
                 'date_of_birth' => $dateOfBirth,
+                'age' => $validated['age'],
                 'status' => 'Active',
                 'branch_id' => $validated['branch_id'],
                 'nationality' => $validated['nationality'],

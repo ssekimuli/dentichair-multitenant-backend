@@ -282,6 +282,7 @@ class PatientController extends Controller
             'address' => $patient->address,
             'gender' => $patient->gender,
             'date_of_birth' => $patient->date_of_birth,
+            'age' => $patient->age,
             'last_visit' => $patient->last_visit,
             'status' => $patient->status,
             'branch' => $patient->branch,
@@ -384,15 +385,18 @@ class PatientController extends Controller
         ]);
 
         // Handle flexible date of birth / age input
-        if (empty($validated['date_of_birth']) && !isset($validated['age'])) {
+        $hasAge = array_key_exists('age', $validated) && $validated['age'] !== null;
+        $hasDob = !empty($validated['date_of_birth']);
+
+        if (!$hasDob && !$hasAge) {
             return response()->json(['error' => 'Either date_of_birth or age is required'], 422);
         }
 
-        if (!empty($validated['age'])) {
+        if (!$hasDob && $hasAge) {
             $validated['date_of_birth'] = now()->subYears($validated['age'])->format('Y-m-d');
+        } elseif ($hasDob && !$hasAge) {
+            $validated['age'] = \Carbon\Carbon::parse($validated['date_of_birth'])->age;
         }
-
-        unset($validated['age']);
 
         $patient = Patient::create($validated);
         $patient->load('branch');
@@ -524,11 +528,14 @@ class PatientController extends Controller
         ]);
 
         // Handle flexible date of birth / age input
-        if (isset($validated['age'])) {
-            $validated['date_of_birth'] = now()->subYears($validated['age'])->format('Y-m-d');
-        }
+        $hasAge = array_key_exists('age', $validated) && $validated['age'] !== null;
+        $hasDob = !empty($validated['date_of_birth']);
 
-        unset($validated['age']);
+        if (!$hasDob && $hasAge) {
+            $validated['date_of_birth'] = now()->subYears($validated['age'])->format('Y-m-d');
+        } elseif ($hasDob && !$hasAge) {
+            $validated['age'] = \Carbon\Carbon::parse($validated['date_of_birth'])->age;
+        }
 
         $patient->update($validated);
 

@@ -43,7 +43,21 @@ class Patient extends Model
         'last_visit' => 'date',
         'next_visit' => 'date',
         'occlusal_records' => 'array',
+        'age' => 'integer',
     ];
+
+    public function getAgeAttribute($value)
+    {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
+        if ($this->date_of_birth) {
+            return (int) $this->date_of_birth->age;
+        }
+
+        return null;
+    }
 
     public function branch(): BelongsTo
     {

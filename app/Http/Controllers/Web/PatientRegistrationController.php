@@ -58,6 +58,7 @@ class PatientRegistrationController extends Controller
             'address' => $validated['address'],
             'gender' => $validated['gender'],
             'date_of_birth' => $dateOfBirth,
+            'age' => $validated['age'],
             'nationality' => $validated['nationality'],
             'branch_id' => $validated['branch_id'],
             'status' => 'Active',

@@ -124,9 +124,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Treatment Plans
     Route::get('/patients/{patientId}/treatments', [PatientController::class, 'getTreatments']);
     Route::post('/patients/{patientId}/treatments', [PatientController::class, 'addTreatment']);
+    Route::post('/patients/{patientId}/treatments/batch', [PatientController::class, 'addTreatmentsBatch']);
     Route::put('/patients/{patientId}/treatments/{treatmentId}', [PatientController::class, 'updateTreatment']);
     Route::patch('/patients/{patientId}/treatments/{treatmentId}/status', [PatientController::class, 'updateTreatmentStatus']);
     Route::delete('/patients/{patientId}/treatments/{treatmentId}', [PatientController::class, 'deleteTreatment']);
+
 
     // Soft Tissue Records
     Route::get('/patients/{patientId}/soft-tissue-records', [PatientController::class, 'getSoftTissueRecords']);
@@ -147,8 +149,10 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::delete('/patients/{patient}/endodontic-records/{endodonticRecord}', [App\Http\Controllers\EndodonticRecordController::class, 'destroy']);
 
     Route::post('/patients/{patient}/restorative-records', [App\Http\Controllers\RestorativeRecordController::class, 'store']);
+    Route::post('/patients/{patient}/restorative-records/batch', [App\Http\Controllers\RestorativeRecordController::class, 'storeBatch']);
     Route::put('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'update']);
     Route::delete('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'destroy']);
+
 
     // Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);

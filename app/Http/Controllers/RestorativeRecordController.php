@@ -85,6 +85,92 @@ class RestorativeRecordController extends Controller
         return response()->json($record, 201);
     }
 
+    /**
+     * Store multiple restorative records in one request.
+     */
+    public function storeBatch(Request $request, Patient $patient)
+    {
+        $request->validate([
+            'records'                       => 'required|array|min:1',
+            'records.*.tooth_id'            => 'required|integer',
+            'records.*.surface'             => 'required|string',
+            'records.*.material'            => 'required|string',
+            'records.*.notes'               => 'nullable|string',
+            'records.*.procedure_cost'      => 'nullable|numeric|min:0',
+            'records.*.material_cost'       => 'nullable|numeric|min:0',
+            'records.*.other_charges'       => 'nullable|numeric|min:0',
+        ]);
+
+        $created = [];
+
+        // Locate or create today's invoice once for all records
+        $invoice = \App\Models\Invoice::where('patient_id', $patient->id)
+            ->whereDate('issue_date', today())
+            ->where('branch_id', $patient->branch_id)
+            ->whereIn('status', ['Pending', 'Overdue'])
+            ->first();
+
+        foreach ($request->records as $item) {
+            $procedureCost = $item['procedure_cost'] ?? 0;
+            $materialCost  = $item['material_cost']  ?? 0;
+            $otherCharges  = $item['other_charges']  ?? 0;
+            $totalCost     = $procedureCost + $materialCost + $otherCharges;
+
+            $record = $patient->restorativeRecords()->create([
+                'tooth_id'       => $item['tooth_id'],
+                'surface'        => $item['surface'],
+                'material'       => $item['material'],
+                'notes'          => $item['notes'] ?? null,
+                'procedure_cost' => $procedureCost,
+                'material_cost'  => $materialCost,
+                'other_charges'  => $otherCharges,
+            ]);
+
+            if ($totalCost > 0) {
+                if (!$invoice) {
+                    $invoice = \App\Models\Invoice::create([
+                        'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+                        'patient_id'   => $patient->id,
+                        'amount'       => 0,
+                        'paid_amount'  => 0,
+                        'status'       => 'Pending',
+                        'issue_date'   => today(),
+                        'due_date'     => today()->addDays(30),
+                        'branch_id'    => $patient->branch_id,
+                        'category'     => 'procedure-income',
+                    ]);
+                }
+
+                $invoice->increment('amount', $totalCost);
+
+                if ($procedureCost > 0) {
+                    $invoice->treatments()->create([
+                        'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' (' . $record->surface . ' - ' . $record->material . ') - Procedure',
+                        'cost'      => $procedureCost,
+                    ]);
+                }
+                if ($materialCost > 0) {
+                    $invoice->treatments()->create([
+                        'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' - Material',
+                        'cost'      => $materialCost,
+                    ]);
+                }
+                if ($otherCharges > 0) {
+                    $invoice->treatments()->create([
+                        'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' - Other Charges',
+                        'cost'      => $otherCharges,
+                    ]);
+                }
+            }
+
+            $created[] = $record;
+        }
+
+        return response()->json($created, 201);
+    }
+
+
+
     public function update(Request $request, Patient $patient, RestorativeRecord $restorativeRecord)
     {
         if ($restorativeRecord->patient_id !== $patient->id) {

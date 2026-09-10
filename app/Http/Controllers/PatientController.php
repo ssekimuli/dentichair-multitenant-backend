@@ -1768,6 +1768,72 @@ class PatientController extends Controller
     }
 
     /**
+     * Add Multiple Treatments (Batch)
+     *
+     * Save multiple treatment plan items in a single request.
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function addTreatmentsBatch(Request $request, $patientId)
+    {
+        $patient = Patient::find($patientId);
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'treatments'                    => 'required|array|min:1',
+            'treatments.*.procedure'        => 'required|string',
+            'treatments.*.tooth'            => 'nullable|integer',
+            'treatments.*.status'           => 'required|in:Proposed,Completed',
+            'treatments.*.cost'             => 'required|numeric',
+            'treatments.*.date'             => 'required|date',
+            'treatments.*.condition'        => 'nullable|string',
+            'treatments.*.treatment_id'     => 'nullable|integer|exists:treatments,id',
+        ]);
+
+        try {
+            foreach ($validated['treatments'] as $item) {
+                $treatmentData = \Illuminate\Support\Arr::only(
+                    $item,
+                    ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id']
+                );
+                $patient->treatmentPlans()->create($treatmentData);
+
+                // Update dental condition if provided
+                if (!empty($item['condition']) && !empty($item['tooth'])) {
+                    $existingRecord = $patient->dentalRecords()
+                        ->where('tooth_id', $item['tooth'])
+                        ->first();
+
+                    if ($existingRecord) {
+                        $existingRecord->update([
+                            'condition' => $item['condition'],
+                            'tooth_id'  => $item['tooth'],
+                        ]);
+                    } else {
+                        $patient->dentalRecords()->create([
+                            'condition' => $item['condition'],
+                            'tooth_id'  => $item['tooth'],
+                            'notes'     => $item['procedure'],
+                        ]);
+                    }
+                }
+            }
+
+            return response()->json($patient->load('treatmentPlans'), 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to batch add treatments: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Failed to save treatments.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+
+
+    /**
      * Update Treatment Plan
      *
      * Update an existing treatment plan.

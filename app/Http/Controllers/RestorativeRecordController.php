@@ -96,6 +96,7 @@ class RestorativeRecordController extends Controller
             'records.*.surface'             => 'required|string',
             'records.*.material'            => 'required|string',
             'records.*.notes'               => 'nullable|string',
+            'records.*.cost'                => 'nullable|numeric|min:0',
             'records.*.procedure_cost'      => 'nullable|numeric|min:0',
             'records.*.material_cost'       => 'nullable|numeric|min:0',
             'records.*.other_charges'       => 'nullable|numeric|min:0',
@@ -115,6 +116,12 @@ class RestorativeRecordController extends Controller
             $materialCost  = $item['material_cost']  ?? 0;
             $otherCharges  = $item['other_charges']  ?? 0;
             $totalCost     = $procedureCost + $materialCost + $otherCharges;
+
+            // Mirror store() fallback: if all costs are 0 but a generic cost was sent, use it
+            if ($totalCost == 0 && !empty($item['cost']) && $item['cost'] > 0) {
+                $procedureCost = $item['cost'];
+                $totalCost     = $procedureCost;
+            }
 
             $record = $patient->restorativeRecords()->create([
                 'tooth_id'       => $item['tooth_id'],

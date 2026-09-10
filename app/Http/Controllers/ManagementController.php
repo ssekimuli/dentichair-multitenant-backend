@@ -17,7 +17,6 @@ use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\Appointment;
 use App\Models\Patient;
-use App\Models\LabService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -322,7 +321,7 @@ class ManagementController extends Controller
      */
     public function getLabOrders(Request $request)
     {
-        $query = LaboratoryOrder::with(['client', 'branch']);
+        $query = LaboratoryOrder::with(['client', 'branch', 'labService']);
 
         // Branch filter
         if ($request->filled('branch_id')) {

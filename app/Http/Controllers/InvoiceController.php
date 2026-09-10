@@ -141,8 +141,7 @@ class InvoiceController extends Controller
      */
     public function getIncomeRecords(Request $request)
     {
-        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client'])
-            ->where('status', 'Paid');
+        $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client']);
 
         $branch = null;
         if ($request->has('branch_id')) {

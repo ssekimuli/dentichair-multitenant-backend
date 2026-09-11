@@ -16,10 +16,15 @@ return new class extends Migration
             DB::statement('PRAGMA foreign_keys = OFF;');
         }
         Schema::disableForeignKeyConstraints();
-        Schema::table('laboratory_orders', function (Blueprint $table) {
+        $foreignKeys = DB::getDriverName() !== 'sqlite'
+            ? collect(Schema::getForeignKeys('laboratory_orders'))->pluck('name')->all()
+            : [];
+        Schema::table('laboratory_orders', function (Blueprint $table) use ($foreignKeys) {
             // Drop the foreign key constraint first if supported
             if (DB::getDriverName() !== 'sqlite') {
-                $table->dropForeign('laboratory_orders_doctor_id_foreign');
+                if (in_array('laboratory_orders_doctor_id_foreign', $foreignKeys)) {
+                    $table->dropForeign('laboratory_orders_doctor_id_foreign');
+                }
                 if (Schema::hasColumn('laboratory_orders', 'doctor_id')) {
                     $table->dropColumn('doctor_id');
                 }

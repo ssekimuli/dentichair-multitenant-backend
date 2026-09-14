@@ -14,6 +14,8 @@ class CentralMonitoringService
         // }
 
         try {
+            $clientId = env('SMS_CLIENT_ID');
+
             $usage = [
                 'users' => \App\Models\User::count(),
                 'workers' => \App\Models\Employee::count(),
@@ -42,20 +44,14 @@ class CentralMonitoringService
 
                 'sms_sent' => 0, // replace with your actual SMS model/count
             ];
+            
+            $response = Http::withHeaders([
+                'X-Client-Id' => $clientId,
+                'X-Client-domain' => env('APP_URL'),
+            ])->post('https://onboarddental.poslycloud.com/monitoring/usage', $usage);
 
-            Http::timeout(10)
-                ->withToken(config('monitoring.token'))
-                ->withHeaders([
-                    'X-Client-ID' => config('monitoring.client_id'),
-                ])
-                ->post(
-                    rtrim(config('monitoring.url'), '/') . '/monitoring/usage',
-                    $usage
-                );
-        } catch (\Throwable $e) {
-            Log::warning('Central monitoring usage failed', [
-                'error' => $e->getMessage(),
-            ]);
+        } catch (\Exception $e) {
+            Log::info($e->getMessage());
         }
     }
 }

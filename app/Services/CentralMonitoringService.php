@@ -23,7 +23,7 @@ class CentralMonitoringService
                 'active_users' => \App\Models\Employee::where(
                     'last_login_at',
                     '>=',
-                    now()->subDays(30)
+                    now()->subDays(14)
                 )->count(),
 
                 // 'active_users' => \App\Models\User::where(
@@ -44,11 +44,11 @@ class CentralMonitoringService
 
                 'sms_sent' => 0, // replace with your actual SMS model/count
             ];
-            
+
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
                 'X-Client-domain' => env('APP_URL'),
-            ])->post('https://onboarddental.poslycloud.com/monitoring/usage', $usage);
+            ])->post('https://onboarddental.poslycloud.com/api/monitoring/usage', $usage);
 
         } catch (\Exception $e) {
             Log::info($e->getMessage());

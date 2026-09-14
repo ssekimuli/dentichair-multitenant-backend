@@ -91,6 +91,11 @@ class AuthController extends Controller
                 ]);
             }
 
+            // Update last login time
+            $employee->update([
+                'last_login_at' => now(),
+            ]);
+
             $token = $employee->createToken('api-token')->plainTextToken;
 
             // Get permissions based on role
@@ -485,7 +490,6 @@ class AuthController extends Controller
 
             $branches = Branch::latest()->get();
             return response()->json($branches);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Something went wrong while fetching branches.'

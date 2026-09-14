@@ -22,7 +22,7 @@ class Employee extends Model implements AuthenticatableContract
 
     protected $fillable = [
         'name', 'avatar', 'email', 'phone', 'role', 'status',
-        'salary', 'hire_date', 'branch_id','password','role_id'
+        'salary', 'hire_date', 'branch_id','password','role_id',
     ];
     protected $hidden = [
         'password',
@@ -31,6 +31,7 @@ class Employee extends Model implements AuthenticatableContract
     protected $casts = [
         'hire_date' => 'date',
         'salary' => 'decimal:2',
+        'last_login_at' => 'datetime',
     ];
 
     

@@ -25,6 +25,10 @@ class CentralMonitoringService
                     '>=',
                     now()->subDays(14)
                 )->count(),
+                'last_login_today' => \App\Models\Employee::whereDate(
+                    'last_login_at',
+                    today()
+                )->count(),
 
                 // 'active_users' => \App\Models\User::where(
                 //     'last_login_at',
@@ -33,17 +37,23 @@ class CentralMonitoringService
                 // )->count(),
 
                 'patients' => \App\Models\Patient::count(),
+                'patients_created_today' => \App\Models\Patient::whereDate('created_at', today())->count(),
 
                 'appointments' => \App\Models\Appointment::count(),
+                'appointments_created_today' => \App\Models\Appointment::whereDate('created_at', today())->count(),
 
                 'invoices' => \App\Models\Invoice::count(),
-
+                'invoices_pending' => \App\Models\Invoice::unpaid()->count(),
+                'invoices_today' => \App\Models\Invoice::whereDate('created_at', today())->count(),
+                'invoices_paid' => \App\Models\Invoice::paid()->count(),
+                
                 'payments' => \App\Models\PaymentTransaction::count(),
 
                 'lab_orders' => \App\Models\LaboratoryOrder::count(),
+                'lab_orders_created_today' => \App\Models\LaboratoryOrder::whereDate('created_at', today())->count(),
 
                 'sms_sent' => 0, // replace with your actual SMS model/count
-                'recorded_at'=>now(),
+                'recorded_at' => now(),
             ];
 
             $response = Http::withHeaders([

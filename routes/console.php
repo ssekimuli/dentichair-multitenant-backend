@@ -19,4 +19,5 @@ Schedule::command('patients:send-birthday-wishes')->dailyAt('09:00');
 Schedule::command('app:auto-schedule-next-visits')->daily();
 Schedule::command('monitoring:usage')
     ->everyTenMinutes()
+    // ->dailyAt('18:00')
     ->withoutOverlapping();

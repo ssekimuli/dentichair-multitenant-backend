@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('employer', function (Blueprint $table) {
+        Schema::table('employees', function (Blueprint $table) {
             $table->timestamp('last_login_at')->nullable()->after('updated_at');
         });
 

@@ -43,6 +43,7 @@ class CentralMonitoringService
                 'lab_orders' => \App\Models\LaboratoryOrder::count(),
 
                 'sms_sent' => 0, // replace with your actual SMS model/count
+                'recorded_at'=>now(),
             ];
 
             $response = Http::withHeaders([

@@ -50,7 +50,7 @@ class BookAppointmentController extends Controller
             // Appointment fields
             'doctor_id' => 'required|exists:employees,id',
             'treatment' => 'required|string|max:255',
-            'appointment_date' => 'required|date|after:today|before:+1 year',
+            'appointment_date' => 'required|date|before:+1 year',
             'appointment_time' => [
                 'required',
                 'date_format:H:i',

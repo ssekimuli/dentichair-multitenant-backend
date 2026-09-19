@@ -74,8 +74,9 @@ class LabServicePriceController extends Controller
         return response()->json(new LabServicePriceResource($price), 201);
     }
 
-    public function update(StoreLabServicePriceRequest $request, LabServicePrice $price)
+    public function update(StoreLabServicePriceRequest $request, LabServicePrice $labServicePrice)
     {
+        $price = $labServicePrice;
         $branchId = $request->user()->branch_id ?? $request->branch_id;
 
         if ($request->input('is_active', false) && !$price->is_active) {
@@ -96,8 +97,9 @@ class LabServicePriceController extends Controller
         return response()->json(new LabServicePriceResource($price));
     }
 
-    public function destroy(LabServicePrice $price)
+    public function destroy(LabServicePrice $labServicePrice)
     {
+        $price = $labServicePrice;
         \App\Models\ActivityLog::log(
             'Lab Service Price Deleted',
             "Lab service price was deleted.",

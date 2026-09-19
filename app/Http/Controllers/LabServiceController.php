@@ -53,14 +53,16 @@ class LabServiceController extends Controller
         return response()->json(new LabServiceResource($service), 201);
     }
 
-    public function show(LabService $service)
+    public function show(LabService $labService)
     {
+        $service = $labService;
         $service->load('prices');
         return response()->json(new LabServiceResource($service));
     }
 
-    public function update(StoreLabServiceRequest $request, LabService $service)
+    public function update(StoreLabServiceRequest $request, LabService $labService)
     {
+        $service = $labService;
         $service->update($request->validated());
 
         \App\Models\ActivityLog::log(
@@ -73,8 +75,9 @@ class LabServiceController extends Controller
         return response()->json(new LabServiceResource($service));
     }
 
-    public function destroy(LabService $service)
+    public function destroy(LabService $labService)
     {
+        $service = $labService;
         \App\Models\ActivityLog::log(
             'Lab Service Deleted',
             "Lab service {$service->service_name} was deleted.",
@@ -85,8 +88,9 @@ class LabServiceController extends Controller
         return response()->json(null, 204);
     }
 
-    public function prices(LabService $service)
+    public function prices(LabService $labService)
     {
+        $service = $labService;
         $service->load('prices');
         return response()->json($service->prices);
     }

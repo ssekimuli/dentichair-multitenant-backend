@@ -644,12 +644,19 @@ class InvoiceController extends Controller
 
         // Update treatments if provided
         if (isset($validated['treatments'])) {
-            // First unlink all existing treatments for this invoice so we only link the ones provided
-            $existingTps = \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->get();
-            foreach ($existingTps as $tp) {
-                $tp->invoice_id = null;
-                $tp->saveQuietly();
+            $keepTpIds = [];
+            foreach ($validated['treatments'] as $treatment) {
+                if (!empty($treatment['procedure_id'])) {
+                    $keepTpIds[] = $treatment['procedure_id'];
+                }
             }
+
+            // Delete existing treatment plans associated with this invoice, except any being reused
+            $existingTpQuery = \App\Models\TreatmentPlan::whereIn('invoice_id', [$invoice->id, 'inv' . $invoice->id]);
+            if (!empty($keepTpIds)) {
+                $existingTpQuery->whereNotIn('id', $keepTpIds);
+            }
+            $existingTpQuery->delete();
 
             foreach ($validated['treatments'] as $treatment) {
                 if ($invoice->patient_id) {
@@ -685,12 +692,12 @@ class InvoiceController extends Controller
         // Sync basic details of existing treatment plans for this invoice (if not recreated)
         if (!isset($validated['treatments'])) {
             if ($invoice->patient_id) {
-                \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->update([
+                \App\Models\TreatmentPlan::whereIn('invoice_id', [$invoice->id, 'inv' . $invoice->id])->update([
                     'patient_id' => $invoice->patient_id,
                     'date' => \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'),
                 ]);
             } else {
-                \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->delete();
+                \App\Models\TreatmentPlan::whereIn('invoice_id', [$invoice->id, 'inv' . $invoice->id])->delete();
             }
         }
 
@@ -892,8 +899,22 @@ class InvoiceController extends Controller
                 return response()->json(['error' => 'Invoice not found'], 404);
             }
 
-            // Unlink associated treatment plans rather than deleting them
-            \App\Models\TreatmentPlan::where('invoice_id', 'inv' . $invoice->id)->update(['invoice_id' => null]);
+            // Delete associated treatment plans so they are not re-billed when billing again on the same date
+            \App\Models\TreatmentPlan::whereIn('invoice_id', [$invoice->id, 'inv' . $invoice->id])->delete();
+
+            if ($invoice->patient_id && $invoice->issue_date) {
+                \App\Models\TreatmentPlan::where('patient_id', $invoice->patient_id)
+                    ->whereDate('date', $invoice->issue_date)
+                    ->where(function ($q) use ($invoice) {
+                        $q->whereNull('invoice_id')
+                          ->orWhereIn('invoice_id', ['', (string) $invoice->id, 'inv' . $invoice->id]);
+                    })
+                    ->delete();
+            }
+
+            // Delete invoice line items
+            $invoice->treatments()->delete();
+            $invoice->otherCharges()->delete();
 
             // Restore medicine stock
             $medicines = $invoice->medicines ?? [];

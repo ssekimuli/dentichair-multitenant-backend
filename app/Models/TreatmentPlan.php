@@ -107,6 +107,19 @@ class TreatmentPlan extends Model
                 return;
             }
 
+            // Clean up any treatment plans linked to soft-deleted invoices so they are never re-billed
+            $trashedInvoiceIds = Invoice::onlyTrashed()->pluck('id')->toArray();
+            if (!empty($trashedInvoiceIds)) {
+                $trashedKeys = array_merge(
+                    array_map(fn($id) => (string) $id, $trashedInvoiceIds),
+                    array_map(fn($id) => 'inv' . $id, $trashedInvoiceIds)
+                );
+                self::where('patient_id', $patientId)
+                    ->whereDate('date', $formattedDate)
+                    ->whereIn('invoice_id', $trashedKeys)
+                    ->delete();
+            }
+
             $completedTreatments = self::query()
                 ->where('patient_id', $patientId)
                 ->whereDate('date', $formattedDate)

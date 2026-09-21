@@ -51,14 +51,19 @@ class AutoScheduleNextVisits extends Command
                 continue;
             }
 
+            // Skip if the next_visit date is already in the past
+            if ($patient->next_visit->startOfDay()->isPast()) {
+                $this->warn("Skipping past next_visit date for patient: {$patient->first_name} {$patient->last_name} (ID: {$patient->id}, Date: {$patient->next_visit->toDateString()}).");
+                continue;
+            }
+
             // Check if appointment already exists for this date
             $exists = Appointment::where('patient_id', $patient->id)
                 ->whereDate('date', $patient->next_visit)
                 ->exists();
 
             if ($exists) {
-                // Already created (e.g. by the next-visit API's model hook) - just clear the flag.
-                $patient->update(['next_visit' => null]);
+                // Appointment already exists — leave next_visit as-is.
                 continue;
             }
 
@@ -81,8 +86,6 @@ class AutoScheduleNextVisits extends Command
                 'phone' => $patient->phone,
                 'email' => $patient->email,
             ];
-
-            $patient->update(['next_visit' => null]);
 
             $count++;
         }

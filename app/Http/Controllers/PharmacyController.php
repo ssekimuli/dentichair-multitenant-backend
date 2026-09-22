@@ -23,9 +23,9 @@ class PharmacyController extends Controller
     {
         $query = Medicine::with(['units']);
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
-        }
+        // if ($request->filled('branch_id')) {
+        //     $query->where('branch_id', $request->branch_id);
+        // }
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%')

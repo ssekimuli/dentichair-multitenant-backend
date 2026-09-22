@@ -250,50 +250,77 @@ class PharmacyController extends Controller
                 $medicinesList = [];
                 foreach ($validated['items'] as $itemData) {
                     $medicinesList[] = [
-                        'medicine_id' => $itemData['medicine_id'],
+                        'medicine_id'      => $itemData['medicine_id'],
                         'medicine_unit_id' => $itemData['medicine_unit_id'],
-                        'quantity' => $itemData['quantity'],
-                        'price' => $itemData['price'],
+                        'quantity'         => $itemData['quantity'],
+                        'price'            => $itemData['price'],
                     ];
                 }
 
-                // Check if a pending invoice already exists for this patient, date, and branch
+                $prescriptionDate = \Carbon\Carbon::parse($prescription->prescription_date)->format('Y-m-d');
+
+                // ── Look for an existing same-patient / same-day / same-branch pharmacy invoice ──
                 $invoice = null;
+
                 if ($prescription->patient_id) {
+                    // Named patient — match by patient_id
                     $invoice = Invoice::where('patient_id', $prescription->patient_id)
-                        ->whereDate('issue_date', \Carbon\Carbon::parse($prescription->prescription_date)->format('Y-m-d'))
+                        ->whereDate('issue_date', $prescriptionDate)
                         ->where('branch_id', $prescription->branch_id)
-                        ->whereIn('status', ['Pending', 'Overdue'])
+                        ->where('category', 'pharmacy-income')
+                        ->whereIn('status', ['Pending', 'Overdue', 'Paid'])
+                        ->first();
+                } elseif ($prescription->patient_name) {
+                    // Anonymous patient — match by name
+                    $invoice = Invoice::whereNull('patient_id')
+                        ->where('patient_name', $prescription->patient_name)
+                        ->whereDate('issue_date', $prescriptionDate)
+                        ->where('branch_id', $prescription->branch_id)
+                        ->where('category', 'pharmacy-income')
+                        ->whereIn('status', ['Pending', 'Overdue', 'Paid'])
                         ->first();
                 }
 
                 if ($invoice) {
-                    // Update existing invoice amount and append medicines
-                    $existingMedsStr = $invoice->getRawOriginal('medicines');
-                    $existingMeds = $existingMedsStr ? json_decode($existingMedsStr, true) : [];
-                    $mergedMeds = array_merge($existingMeds ?: [], $medicinesList);
+                    // ── Merge: append medicines and add to the total amount ──
+                    $existingMedsRaw = $invoice->getRawOriginal('medicines');
+                    $existingMeds    = $existingMedsRaw ? json_decode($existingMedsRaw, true) : [];
+                    $mergedMeds      = array_merge(is_array($existingMeds) ? $existingMeds : [], $medicinesList);
+
                     $invoice->increment('amount', $totalAmount);
-                    $invoice->update(['medicines' => $mergedMeds]);
+                    $invoice->refresh();
+
+                    // Re-evaluate status after the new amount
+                    if ($invoice->paid_amount >= $invoice->amount) {
+                        $newStatus = 'Paid';
+                    } else {
+                        $newStatus = \Carbon\Carbon::parse($invoice->issue_date)->isPast() ? 'Overdue' : 'Pending';
+                    }
+
+                    $invoice->update([
+                        'medicines' => $mergedMeds,
+                        'status'    => $newStatus,
+                    ]);
                 } else {
-                    // Create a new Invoice
+                    // ── Create a new pharmacy invoice ──
                     $invoice = Invoice::create([
                         'patient_name' => $prescription->patient_name,
-                        'patient_id' => $prescription->patient_id,
-                        'amount' => $totalAmount,
-                        'paid_amount' => 0,
-                        'status' => 'Pending',
-                        'issue_date' => $prescription->prescription_date,
-                        'due_date' => Carbon::parse($prescription->prescription_date)->addDays(30),
-                        'branch_id' => $prescription->branch_id,
-                        'category' => 'pharmacy-income',
-                        'medicines' => $medicinesList,
+                        'patient_id'   => $prescription->patient_id,
+                        'amount'       => $totalAmount,
+                        'paid_amount'  => 0,
+                        'status'       => 'Pending',
+                        'issue_date'   => $prescription->prescription_date,
+                        'due_date'     => Carbon::parse($prescription->prescription_date)->addDays(30),
+                        'branch_id'    => $prescription->branch_id,
+                        'category'     => 'pharmacy-income',
+                        'medicines'    => $medicinesList,
                     ]);
                 }
 
                 // Link Invoice to Prescription
                 $prescription->update([
                     'invoice_id' => $invoice->id,
-                    'status' => 'Billed',
+                    'status'     => 'Billed',
                 ]);
             }
 

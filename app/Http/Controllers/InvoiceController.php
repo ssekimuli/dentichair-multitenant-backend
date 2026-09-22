@@ -22,13 +22,15 @@ class InvoiceController extends Controller
     /**
      * Get All Invoices
      * 
-     * Retrieve a list of invoices with optional filtering by branch or status.
+     * Retrieve a paginated list of invoices with optional filtering by branch, status, or search term.
      * Returns complete invoice details including treatments, charges, and payment transactions.
      * 
      * @authenticated
      * 
      * @queryParam branch_id string Filter invoices by branch ID. Example: b1
-     * @queryParam status string Filter invoices by status. Example: Paid
+     * @queryParam status string Filter invoices by status (Pending, Paid, Overdue). Example: Paid
+     * @queryParam search string Search invoices by patient name, receipt number, or status. Example: John
+     * @queryParam per_page int Number of results per page (default: 10). Example: 20
      * 
      * @response 200 {
      *   "data": [
@@ -68,7 +70,13 @@ class InvoiceController extends Controller
      *         "name": "Downtown Clinic"
      *       }
      *     }
-     *   ]
+     *   ],
+     *   "meta": {
+     *     "current_page": 1,
+     *     "last_page": 5,
+     *     "per_page": 10,
+     *     "total": 48
+     *   }
      * }
      * 
      * @return \Illuminate\Http\JsonResponse
@@ -77,12 +85,27 @@ class InvoiceController extends Controller
     {
         $query = Invoice::with(['patient.insurancePolicies.package.company', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client']);
 
-        if ($request->has('branch_id')) {
+        if ($request->filled('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('patient_name', 'like', "%{$search}%")
+                  ->orWhere('receipt_number', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('patient', function ($pq) use ($search) {
+                      $pq->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('last_name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%")
+                         ->orWhereRaw("CONCAT(first_name, ' ', last_name) like ?", ["%{$search}%"]);
+                  });
+            });
         }
 
         $invoices = $query->latest()->paginate($request->input('per_page', 10));

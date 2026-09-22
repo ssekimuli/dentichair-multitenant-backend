@@ -128,8 +128,10 @@ class TreatmentPlan extends Model
 
             /*
              * This application assumes that a patient has one invoice
-             * per branch per day. Prefer a non-Paid invoice so that
-             * already-settled invoices are not accidentally reopened.
+             * per branch per day. When a new treatment is added to a day
+             * that already has a Paid invoice, that invoice is reopened:
+             * the status recalculation below will set it back to Pending
+             * if the new total exceeds what has already been paid.
              */
             $invoiceQuery = Invoice::query()
                 ->where('patient_id', $patientId)
@@ -140,7 +142,6 @@ class TreatmentPlan extends Model
             }
 
             $invoice = $invoiceQuery
-                ->orderByRaw("CASE WHEN status != 'Paid' THEN 0 ELSE 1 END")
                 ->lockForUpdate()
                 ->first();
 

@@ -439,71 +439,116 @@ class ManagementController extends Controller
 
     /**
      * Generate Invoice for Lab Order
-     * When status is "In Production", generate and send invoice to client
+     *
+     * When status changes to "In Production", generate and send invoice to client.
+     * If the same client already has a Pending/Overdue lab-income invoice for the
+     * same branch on the same day, the new order is merged into that invoice instead
+     * of creating a duplicate.
      */
     private function generateLabOrderInvoice(LaboratoryOrder $order)
     {
         try {
             $invoiceAmount = $order->applied_price ?? 0;
+            $clientName    = $order->client->name ?? 'Lab Order';
+            $today         = now()->format('Y-m-d');
 
-            $clientName = $order->client->name ?? 'Lab Order';
+            // ── Look for an existing same-client / same-day / same-branch invoice ──
+            $existingInvoice = Invoice::where('branch_id', $order->branch_id)
+                ->where('patient_name', $clientName)
+                ->where('patient_id', null)        // lab-order invoices never have a patient_id
+                ->where('category', 'lab-income')
+                ->whereIn('status', ['Pending', 'Overdue', 'Paid'])
+                ->whereDate('issue_date', $today)
+                ->first();
 
-            $invoice = Invoice::create([
-                'patient_name' => $clientName,
-                'patient_id' => null,
-                'amount' => $invoiceAmount,
-                'paid_amount' => 0,
-                'issue_date' => now()->format('Y-m-d'),
-                'due_date' => $order->due_date,
-                'branch_id' => $order->branch_id,
-                'status' => 'Pending',
-                'category' => 'lab-income',
-                'medicines' => json_encode(['lab_order_id' => $order->id]),
-            ]);
+            if ($existingInvoice) {
+                // ── Merge: add amount and point this order at the existing invoice ──
+                $existingInvoice->increment('amount', $invoiceAmount);
 
-            $order->update(['invoice_id' => $invoice->id]);
+                // Re-evaluate status after the new amount
+                $existingInvoice->refresh();
+                if ($existingInvoice->paid_amount >= $existingInvoice->amount) {
+                    $existingInvoice->status = 'Paid';
+                } else {
+                    $existingInvoice->status = \Carbon\Carbon::parse($existingInvoice->issue_date)->isPast()
+                        ? 'Overdue'
+                        : 'Pending';
+                }
+                $existingInvoice->save();
 
-            Log::info('Invoice created for lab order', [
-                'invoice_id' => $invoice->id,
-                'lab_order_id' => $order->id,
-                'amount' => $invoiceAmount
-            ]);
+                $order->update(['invoice_id' => $existingInvoice->id]);
+                $invoice = $existingInvoice;
 
-            // Send invoice to client via email if email exists
+                Log::info('Lab order merged into existing invoice', [
+                    'invoice_id'   => $invoice->id,
+                    'lab_order_id' => $order->id,
+                    'added_amount' => $invoiceAmount,
+                    'new_total'    => $invoice->amount,
+                ]);
+
+                \App\Models\ActivityLog::log(
+                    'Lab Order Merged into Invoice',
+                    "Lab order #{$order->id} (amount {$invoiceAmount}) merged into Invoice #{$invoice->id}.",
+                    ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
+                );
+            } else {
+                // ── Create a brand-new invoice ──
+                $invoice = Invoice::create([
+                    'patient_name' => $clientName,
+                    'patient_id'   => null,
+                    'amount'       => $invoiceAmount,
+                    'paid_amount'  => 0,
+                    'issue_date'   => $today,
+                    'due_date'     => $order->due_date,
+                    'branch_id'    => $order->branch_id,
+                    'status'       => 'Pending',
+                    'category'     => 'lab-income',
+                ]);
+
+                $order->update(['invoice_id' => $invoice->id]);
+
+                Log::info('Invoice created for lab order', [
+                    'invoice_id'   => $invoice->id,
+                    'lab_order_id' => $order->id,
+                    'amount'       => $invoiceAmount,
+                ]);
+
+                \App\Models\ActivityLog::log(
+                    'Invoice Generated from Lab Order',
+                    "Invoice #{$invoice->id} generated for lab order #{$order->id}.",
+                    ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
+                );
+            }
+
+            // ── Send email notification to client ──
             if ($order->client && $order->client->email) {
                 try {
                     Mail::send('emails.lab-order', [
-                        'clientName' => $clientName,
-                        'patientName' => $clientName,
-                        'item' => $order->item,
-                        'tooth' => $order->tooth,
-                        'status' => $order->status,
-                        'labOrder' => $order,
-                        'invoice' => $invoice,
+                        'clientName'    => $clientName,
+                        'patientName'   => $clientName,
+                        'item'          => $order->item,
+                        'tooth'         => $order->tooth,
+                        'status'        => $order->status,
+                        'labOrder'      => $order,
+                        'invoice'       => $invoice,
                         'invoiceAmount' => $invoiceAmount,
-                        'dueDate' => $order->due_date,
+                        'dueDate'       => $order->due_date,
                     ], function ($message) use ($order, $invoice) {
                         $message->to($order->client->email)
-                                ->subject("Invoice Generated: Lab Order #{$order->id} is in Production");
+                                ->subject("Invoice #{$invoice->id}: Lab Order #{$order->id} is in Production");
                     });
                 } catch (\Exception $e) {
                     Log::error('Failed to send lab order invoice email', [
-                        'invoice_id' => $invoice->id,
+                        'invoice_id'   => $invoice->id,
                         'lab_order_id' => $order->id,
-                        'error' => $e->getMessage()
+                        'error'        => $e->getMessage(),
                     ]);
                 }
             }
-
-            \App\Models\ActivityLog::log(
-                'Invoice Generated from Lab Order',
-                "Invoice #{$invoice->id} generated and sent for lab order #{$order->id}.",
-                ['invoice_id' => $invoice->id, 'lab_order_id' => $order->id]
-            );
         } catch (\Exception $e) {
             Log::error('Error generating lab order invoice', [
                 'lab_order_id' => $order->id,
-                'error' => $e->getMessage()
+                'error'        => $e->getMessage(),
             ]);
         }
     }

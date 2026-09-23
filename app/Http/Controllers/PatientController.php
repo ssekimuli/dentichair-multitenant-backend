@@ -86,7 +86,8 @@ class PatientController extends Controller
             $query->where(function($q) use ($searchTerm) {
                 $q->where('first_name', 'like', "%{$searchTerm}%")
                   ->orWhere('last_name', 'like', "%{$searchTerm}%")
-                  ->orWhere('patient_id', 'like', "%{$searchTerm}%");
+                  ->orWhere('phone', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%");
             });
         }
 

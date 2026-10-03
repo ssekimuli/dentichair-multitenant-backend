@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\SyncController;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AppointmentController;
@@ -20,6 +22,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
+// Health check for offline/online synchronization
+Route::get('/health', [SyncController::class, 'health']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
@@ -49,6 +53,10 @@ Route::get('/downloads/printer-driver', [DownloadController::class, 'printerDriv
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
+
+    // Offline-First Synchronization Endpoints
+    Route::post('/sync', [SyncController::class, 'sync']);
+    Route::get('/sync/pull', [SyncController::class, 'pull']);
 
     Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
     Route::post('/verify-transaction', [NotificationController::class, 'verifyWebhook']);

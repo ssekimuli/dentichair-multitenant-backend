@@ -1402,6 +1402,88 @@ class ManagementController extends Controller
         ]);
     }
 
+        private function resolveOrCreateClient(Request $request, ?array $itemData = null): ?Client
+    {
+        // 1. Try finding by numeric clientId / client_id
+        $clientId = $itemData['clientId'] ?? $itemData['client_id'] ?? $request->input('clientId', $request->input('client_id'));
+        if (!empty($clientId) && is_numeric($clientId)) {
+            $client = Client::find($clientId);
+            if ($client) {
+                return $client;
+            }
+        }
+
+        // 2. Extract client name from various possible fields
+        $rawClient = $itemData['client'] ?? $request->input('client');
+        $clientName = null;
+
+        if (is_array($rawClient)) {
+            $clientName = $rawClient['name'] ?? null;
+        } elseif (is_string($rawClient) && !empty(trim($rawClient))) {
+            $clientName = trim($rawClient);
+        }
+
+        if (empty($clientName)) {
+            $clientName = $itemData['clientName'] 
+                ?? $itemData['client_name'] 
+                ?? $request->input('clientName', $request->input('client_name'));
+        }
+
+        // If clientId is a non-numeric string (e.g. "Apex Dental"), treat it as the name
+        if (empty($clientName) && !empty($clientId) && !is_numeric($clientId)) {
+            $clientName = trim((string)$clientId);
+        }
+
+        if (empty($clientName)) {
+            $clientName = $itemData['name'] ?? $request->input('name');
+        }
+
+        // 3. If client name found, search or create
+        if (!empty($clientName)) {
+            $clientName = trim((string)$clientName);
+
+            // Case-insensitive lookup
+            $client = Client::whereRaw('LOWER(name) = ?', [strtolower($clientName)])->first();
+
+            if (!$client) {
+                $email = $itemData['clientEmail'] 
+                    ?? $itemData['client_email'] 
+                    ?? $itemData['email'] 
+                    ?? (is_array($rawClient) ? ($rawClient['email'] ?? null) : null)
+                    ?? $request->input('clientEmail', $request->input('client_email', $request->input('email')));
+
+                $phone = $itemData['clientPhone'] 
+                    ?? $itemData['client_phone'] 
+                    ?? $itemData['phone'] 
+                    ?? (is_array($rawClient) ? ($rawClient['phone'] ?? null) : null)
+                    ?? $request->input('clientPhone', $request->input('client_phone', $request->input('phone')));
+
+                $address = $itemData['clientAddress'] 
+                    ?? $itemData['client_address'] 
+                    ?? $itemData['address'] 
+                    ?? (is_array($rawClient) ? ($rawClient['address'] ?? null) : null)
+                    ?? $request->input('clientAddress', $request->input('client_address', $request->input('address')));
+
+                $client = Client::create([
+                    'name'    => $clientName,
+                    'email'   => !empty($email) ? trim($email) : null,
+                    'phone'   => !empty($phone) ? trim($phone) : null,
+                    'address' => !empty($address) ? trim($address) : null,
+                ]);
+
+                \App\Models\ActivityLog::log(
+                    'Client Created',
+                    "Client {$client->name} was automatically created.",
+                    ['client_id' => $client->id]
+                );
+            }
+
+            return $client;
+        }
+
+        return null;
+    }
+
     public function createBatchLabOrders(Request $request)
     {
         $raw = $request->all();
@@ -1412,7 +1494,8 @@ class ManagementController extends Controller
             DB::beginTransaction();
             try {
                 foreach ($raw as $orderData) {
-                    $clientId = $orderData['clientId'] ?? $orderData['client_id'] ?? null;
+                    $itemClient = $this->resolveOrCreateClient($request, $orderData);
+                    $clientId = $itemClient?->id ?? ($orderData['clientId'] ?? $orderData['client_id'] ?? null);
                     $branchId = $orderData['branchId'] ?? $orderData['branch_id'] ?? null;
                     $doctorName = $orderData['doctorName'] ?? $orderData['doctor_name'] ?? null;
                     $item = $orderData['item'] ?? null;
@@ -1433,7 +1516,7 @@ class ManagementController extends Controller
                         $appliedPrice = $activePrice?->base_price;
                     }
 
-                    $labOrder = LaboratoryOrder::create([
+                $labOrder = LaboratoryOrder::create([
                         'client_id' => $clientId,
                         'doctor_name' => $doctorName,
                         'item' => $item,
@@ -1555,8 +1638,12 @@ class ManagementController extends Controller
                 $doctorName = $itemData['doctor_name'] ?? $itemData['doctorName'] ?? ($validated['doctorName'] ?? null);
                 $instructions = $itemData['instructions'] ?? ($validated['instructions'] ?? null);
 
+                // If item specifies client name or client ID
+                $itemClient = $this->resolveOrCreateClient($request, $itemData) ?? $client;
+                $finalClientId = $itemClient?->id ?? $validated['clientId'];
+
                 $labOrder = LaboratoryOrder::create([
-                    'client_id' => $validated['clientId'],
+                    'client_id' => $finalClientId,
                     'doctor_name' => $doctorName,
                     'item' => $itemData['item'],
                     'tooth' => !empty($itemData['tooth']) ? (int) $itemData['tooth'] : null,
@@ -1586,7 +1673,7 @@ class ManagementController extends Controller
                 count($createdOrders) . " lab order(s) for {$client?->name} were created.",
                 [
                     'lab_order_ids' => collect($createdOrders)->pluck('id')->toArray(),
-                    'client_id' => $validated['clientId'],
+                    'client_id' => $finalClientId,
                     'count' => count($createdOrders),
                 ]
             );

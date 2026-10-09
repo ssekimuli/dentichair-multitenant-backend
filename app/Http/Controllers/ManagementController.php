@@ -1494,6 +1494,12 @@ class ManagementController extends Controller
             ]);
         }
 
+        // Auto-resolve or create client if not found
+        $client = $this->resolveOrCreateClient($request);
+        if ($client) {
+            $request->merge(['clientId' => $client->id]);
+        }
+
         // Normalize camelCase / snake_case top-level keys
         $request->merge([
             'clientId' => $request->input('clientId', $request->input('client_id')),
@@ -1600,6 +1606,12 @@ class ManagementController extends Controller
     {
         if ($request->has('items') && is_array($request->input('items'))) {
             return $this->createBatchLabOrders($request);
+        }
+
+        // Auto-resolve or create client if not found
+        $client = $this->resolveOrCreateClient($request);
+        if ($client) {
+            $request->merge(['clientId' => $client->id]);
         }
 
         $validated = $request->validate([

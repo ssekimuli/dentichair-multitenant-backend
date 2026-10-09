@@ -17,12 +17,19 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:1000',
         ]);
 
-        $client = Client::create($validated);
+        $data = [
+            'name' => $validated['name'],
+            'email' => !empty($validated['email']) ? $validated['email'] : null,
+            'phone' => !empty($validated['phone']) ? $validated['phone'] : null,
+            'address' => !empty($validated['address']) ? $validated['address'] : null,
+        ];
+
+        $client = Client::create($data);
 
         \App\Models\ActivityLog::log(
             'Client Created',
@@ -42,10 +49,20 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:1000',
         ]);
+
+        if (array_key_exists('email', $validated) && empty($validated['email'])) {
+            $validated['email'] = null;
+        }
+        if (array_key_exists('phone', $validated) && empty($validated['phone'])) {
+            $validated['phone'] = null;
+        }
+        if (array_key_exists('address', $validated) && empty($validated['address'])) {
+            $validated['address'] = null;
+        }
 
         $client->update($validated);
 

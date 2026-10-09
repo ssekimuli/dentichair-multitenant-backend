@@ -499,7 +499,7 @@ class ManagementController extends Controller
                     'amount'       => $invoiceAmount,
                     'paid_amount'  => 0,
                     'issue_date'   => $today,
-                    'due_date'     => $order->due_date,
+                    'due_date'     => $order->due_date ?? now()->addDays(30)->format('Y-m-d'),
                     'branch_id'    => $order->branch_id,
                     'status'       => 'Pending',
                     'category'     => 'lab-income',
@@ -1510,8 +1510,8 @@ class ManagementController extends Controller
             'branchId' => 'required|exists:branches,id',
             'doctorName' => 'nullable|string',
             'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
-            'sentDate' => 'required|date',
-            'dueDate' => 'required|date',
+            'sentDate' => 'nullable|date',
+            'dueDate' => 'nullable|date',
             'receivedDate' => 'nullable|date',
             'instructions' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -1542,8 +1542,8 @@ class ManagementController extends Controller
                 }
 
                 $orderStatus = $itemData['status'] ?? $validated['status'];
-                $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? $validated['sentDate'];
-                $dueDate = $itemData['due_date'] ?? $itemData['dueDate'] ?? $validated['dueDate'];
+                $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? ($validated['sentDate'] ?? null);
+                $dueDate = $itemData['due_date'] ?? $itemData['dueDate'] ?? ($validated['dueDate'] ?? null);
                 $receivedDate = $itemData['received_date'] ?? $itemData['receivedDate'] ?? ($validated['receivedDate'] ?? null);
                 $branchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $validated['branchId'];
                 $doctorName = $itemData['doctor_name'] ?? $itemData['doctorName'] ?? ($validated['doctorName'] ?? null);
@@ -1608,8 +1608,8 @@ class ManagementController extends Controller
             'item' => 'required|string',
             'tooth' => 'nullable|integer',
             'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
-            'sentDate' => 'required|date',
-            'dueDate' => 'required|date',
+            'sentDate' => 'nullable|date',
+            'dueDate' => 'nullable|date',
             'branchId' => 'required|exists:branches,id',
             'receivedDate' => 'nullable|date',
             'shade' => 'nullable|string',
@@ -1641,8 +1641,8 @@ class ManagementController extends Controller
                 'item' => $validated['item'],
                 'tooth' => $validated['tooth'] ?? null,
                 'status' => $validated['status'],
-                'sent_date' => $validated['sentDate'],
-                'due_date' => $validated['dueDate'],
+                'sent_date' => $validated['sentDate'] ?? null,
+                'due_date' => $validated['dueDate'] ?? null,
                 'branch_id' => $validated['branchId'],
                 'received_date' => $validated['receivedDate'] ?? null,
                 'shade' => $validated['shade'] ?? null,
@@ -1686,8 +1686,8 @@ class ManagementController extends Controller
             'item' => 'sometimes|required|string',
             'tooth' => 'nullable|integer',
             'status' => 'sometimes|required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
-            'sentDate' => 'sometimes|required|date',
-            'dueDate' => 'sometimes|required|date',
+            'sentDate' => 'sometimes|nullable|date',
+            'dueDate' => 'sometimes|nullable|date',
             'receivedDate' => 'nullable|date',
             'shade' => 'nullable|string',
             'material' => 'nullable|string',

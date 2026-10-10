@@ -7,6 +7,7 @@ use App\Models\AttendanceRecord;
 use App\Models\InventoryItem;
 use App\Models\LaboratoryOrder;
 use App\Models\LabService;
+use App\Models\LabServicePrice;
 use App\Models\LeaveRequest;
 use App\Models\StaffAdvance;
 use App\Models\Branch;
@@ -1484,6 +1485,98 @@ class ManagementController extends Controller
         return null;
     }
 
+    
+    /**
+     * Resolve existing LabService by ID or Name, or create it automatically if not found.
+     * Also creates initial LabServicePrice if a price is supplied.
+     */
+    private function resolveOrCreateLabService($itemData, $branchId, ?float $appliedPrice = null): ?LabService
+    {
+        // 1. Try finding by numeric lab_service_id / labServiceId
+        $serviceId = is_array($itemData)
+            ? ($itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null)
+            : ($itemData instanceof Request ? $itemData->input('labServiceId', $itemData->input('lab_service_id')) : null);
+
+        if (!empty($serviceId) && is_numeric($serviceId)) {
+            $service = LabService::find($serviceId);
+            if ($service) {
+                return $service;
+            }
+        }
+
+        // 2. Extract service name from various possible fields
+        $serviceName = null;
+        if (is_array($itemData)) {
+            $serviceName = $itemData['service_name'] 
+                ?? $itemData['serviceName'] 
+                ?? $itemData['lab_service_name'] 
+                ?? $itemData['labServiceName'] 
+                ?? null;
+
+            if (empty($serviceName) && !empty($serviceId) && !is_numeric($serviceId)) {
+                $serviceName = trim((string)$serviceId);
+            }
+
+            if (empty($serviceName) && !empty($itemData['item'])) {
+                $serviceName = trim((string)$itemData['item']);
+            }
+        } elseif ($itemData instanceof Request) {
+            $serviceName = $itemData->input('serviceName', $itemData->input('service_name', $itemData->input('labServiceName', $itemData->input('lab_service_name'))));
+            if (empty($serviceName) && !empty($serviceId) && !is_numeric($serviceId)) {
+                $serviceName = trim((string)$serviceId);
+            }
+            if (empty($serviceName) && $itemData->filled('item')) {
+                $serviceName = trim((string)$itemData->input('item'));
+            }
+        }
+
+        if (empty($serviceName)) {
+            return null;
+        }
+
+        $serviceName = trim((string)$serviceName);
+
+        // 3. Search case-insensitive by service_name in branch, then globally
+        $service = LabService::where('branch_id', $branchId)
+            ->whereRaw('LOWER(service_name) = ?', [strtolower($serviceName)])
+            ->first();
+
+        if (!$service) {
+            $service = LabService::whereRaw('LOWER(service_name) = ?', [strtolower($serviceName)])
+                ->first();
+        }
+
+        // 4. If not found, automatically create the LabService
+        if (!$service) {
+            $category = is_array($itemData) ? ($itemData['category'] ?? 'General') : ($itemData->input('category', 'General'));
+            $service = LabService::create([
+                'service_name' => $serviceName,
+                'category'     => $category ?: 'General',
+                'branch_id'    => $branchId,
+                'is_active'    => true,
+            ]);
+
+            // If a price was provided, create active price record for this branch
+            if ($appliedPrice !== null && $appliedPrice > 0) {
+                LabServicePrice::create([
+                    'lab_service_id' => $service->id,
+                    'lab'            => 'Default',
+                    'base_price'     => $appliedPrice,
+                    'branch_id'      => $branchId,
+                    'is_active'      => true,
+                ]);
+            }
+
+            \App\Models\ActivityLog::log(
+                'Lab Service Created',
+                "Lab service {$service->service_name} was automatically created.",
+                ['lab_service_id' => $service->id, 'branch_id' => $branchId]
+            );
+        }
+
+        return $service;
+    }
+
     public function createBatchLabOrders(Request $request)
     {
         $raw = $request->all();
@@ -1507,13 +1600,16 @@ class ManagementController extends Controller
                     $shade = $orderData['shade'] ?? null;
                     $material = $orderData['material'] ?? null;
                     $instructions = $orderData['instructions'] ?? null;
-                    $labServiceId = $orderData['lab_service_id'] ?? $orderData['labServiceId'] ?? null;
                     $appliedPrice = $orderData['applied_price'] ?? $orderData['appliedPrice'] ?? null;
+                    $service = $this->resolveOrCreateLabService($orderData, $branchId, $appliedPrice !== null ? (float)$appliedPrice : null);
+                    $labServiceId = $service?->id ?? ($orderData['lab_service_id'] ?? $orderData['labServiceId'] ?? null);
 
-                    if ($labServiceId && ($appliedPrice === null || $appliedPrice === '')) {
-                        $service = LabService::find($labServiceId);
-                        $activePrice = $service?->getActivePrice();
+                    if ($service && ($appliedPrice === null || $appliedPrice === '')) {
+                        $activePrice = $service->getActivePrice();
                         $appliedPrice = $activePrice?->base_price;
+                    }
+                    if (empty($item) && $service) {
+                        $item = $service->service_name;
                     }
 
                 $labOrder = LaboratoryOrder::create([
@@ -1583,6 +1679,23 @@ class ManagementController extends Controller
             $request->merge(['clientId' => $client->id]);
         }
 
+        // Auto-resolve or create lab services for items
+        $items = $request->input('items', []);
+        $batchBranchId = $request->input('branchId', $request->input('branch_id'));
+        foreach ($items as &$it) {
+            $itPrice = $it['applied_price'] ?? $it['appliedPrice'] ?? null;
+            $itService = $this->resolveOrCreateLabService($it, $batchBranchId, $itPrice !== null ? (float)$itPrice : null);
+            if ($itService) {
+                $it['lab_service_id'] = $itService->id;
+                $it['labServiceId'] = $itService->id;
+                if (empty($it['item'])) {
+                    $it['item'] = $itService->service_name;
+                }
+            }
+        }
+        unset($it);
+        $request->merge(['items' => $items]);
+
         // Normalize camelCase / snake_case top-level keys
         $request->merge([
             'clientId' => $request->input('clientId', $request->input('client_id')),
@@ -1606,8 +1719,10 @@ class ManagementController extends Controller
             'items' => 'required|array|min:1',
             'items.*.item' => 'required|string',
             'items.*.tooth' => 'nullable|integer',
-            'items.*.lab_service_id' => 'nullable|exists:lab_services,id',
-            'items.*.labServiceId' => 'nullable|exists:lab_services,id',
+            'items.*.lab_service_id' => 'nullable',
+            'items.*.labServiceId' => 'nullable',
+            'items.*.service_name' => 'nullable|string',
+            'items.*.serviceName' => 'nullable|string',
             'items.*.applied_price' => 'nullable|numeric|min:0',
             'items.*.appliedPrice' => 'nullable|numeric|min:0',
             'items.*.material' => 'nullable|string',
@@ -1621,12 +1736,12 @@ class ManagementController extends Controller
         DB::beginTransaction();
         try {
             foreach ($validated['items'] as $itemData) {
-                $labServiceId = $itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null;
                 $appliedPrice = $itemData['applied_price'] ?? $itemData['appliedPrice'] ?? null;
+                $service = $this->resolveOrCreateLabService($itemData, $branchId, $appliedPrice !== null ? (float)$appliedPrice : null);
+                $labServiceId = $service?->id ?? ($itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null);
 
-                if ($labServiceId && ($appliedPrice === null || $appliedPrice === '')) {
-                    $service = LabService::find($labServiceId);
-                    $activePrice = $service?->getActivePrice();
+                if ($service && ($appliedPrice === null || $appliedPrice === '')) {
+                    $activePrice = $service->getActivePrice();
                     $appliedPrice = $activePrice?->base_price;
                 }
 
@@ -1701,6 +1816,17 @@ class ManagementController extends Controller
             $request->merge(['clientId' => $client->id]);
         }
 
+        // Auto-resolve or create lab service if needed
+        $singleBranchId = $request->input('branchId', $request->input('branch_id'));
+        $singleAppliedPrice = $request->input('appliedPrice', $request->input('applied_price'));
+        $singleService = $this->resolveOrCreateLabService($request, $singleBranchId, $singleAppliedPrice !== null ? (float)$singleAppliedPrice : null);
+        if ($singleService) {
+            $request->merge(['labServiceId' => $singleService->id]);
+            if (!$request->filled('item')) {
+                $request->merge(['item' => $singleService->service_name]);
+            }
+        }
+
         $validated = $request->validate([
             'clientId' => 'required|exists:clients,id',
             'doctorName' => 'nullable|string',
@@ -1714,8 +1840,10 @@ class ManagementController extends Controller
             'shade' => 'nullable|string',
             'material' => 'nullable|string',
             'instructions' => 'nullable|string',
-            'labServiceId' => 'required_without:appliedPrice|nullable|exists:lab_services,id',
-            'appliedPrice' => 'required_without:labServiceId|nullable|numeric|min:0',
+            'labServiceId' => 'nullable',
+            'appliedPrice' => 'nullable|numeric|min:0',
+            'serviceName' => 'nullable|string',
+            'service_name' => 'nullable|string',
         ]);
 
         try {

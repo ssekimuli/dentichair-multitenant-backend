@@ -1745,22 +1745,22 @@ class ManagementController extends Controller
         DB::beginTransaction();
         try {
             foreach ($validated['items'] as $itemData) {
+                $branchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $validated['branchId'];
+                $orderStatus = $itemData['status'] ?? $validated['status'];
+                $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? ($validated['sentDate'] ?? null);
+                $dueDate = $itemData['due_date'] ?? $itemData['dueDate'] ?? ($validated['dueDate'] ?? null);
+                $receivedDate = $itemData['received_date'] ?? $itemData['receivedDate'] ?? ($validated['receivedDate'] ?? null);
+                $doctorName = $itemData['doctor_name'] ?? $itemData['doctorName'] ?? ($validated['doctorName'] ?? null);
+                $instructions = $itemData['instructions'] ?? ($validated['instructions'] ?? null);
+
                 $appliedPrice = $itemData['applied_price'] ?? $itemData['appliedPrice'] ?? null;
                 $service = $this->resolveOrCreateLabService($itemData, $branchId, $appliedPrice !== null ? (float)$appliedPrice : null);
                 $labServiceId = $service?->id ?? ($itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null);
 
                 if ($service && ($appliedPrice === null || $appliedPrice === '' || $appliedPrice == 0)) {
-                        $activePrice = $service->getActivePrice($branchId);
-                        $appliedPrice = $activePrice ? (float) $activePrice->base_price : 0;
-                    }
-
-                $orderStatus = $itemData['status'] ?? $validated['status'];
-                $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? ($validated['sentDate'] ?? null);
-                $dueDate = $itemData['due_date'] ?? $itemData['dueDate'] ?? ($validated['dueDate'] ?? null);
-                $receivedDate = $itemData['received_date'] ?? $itemData['receivedDate'] ?? ($validated['receivedDate'] ?? null);
-                $branchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $validated['branchId'];
-                $doctorName = $itemData['doctor_name'] ?? $itemData['doctorName'] ?? ($validated['doctorName'] ?? null);
-                $instructions = $itemData['instructions'] ?? ($validated['instructions'] ?? null);
+                    $activePrice = $service->getActivePrice($branchId);
+                    $appliedPrice = $activePrice ? (float) $activePrice->base_price : 0;
+                }
 
                 // If item specifies client name or client ID
                 $itemClient = $this->resolveOrCreateClient($request, $itemData) ?? $client;

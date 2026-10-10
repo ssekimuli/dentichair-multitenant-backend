@@ -35,6 +35,18 @@ class TreatmentPlan extends Model
         'date' => 'date',
     ];
 
+    protected $appends = ['doctor_name'];
+
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'doctor_id');
+    }
+
+    public function getDoctorNameAttribute(): ?string
+    {
+        return $this->doctor?->name;
+    }
+
     public function restorativeRecord(): BelongsTo
     {
         return $this->belongsTo(RestorativeRecord::class, 'restorative_record_id');

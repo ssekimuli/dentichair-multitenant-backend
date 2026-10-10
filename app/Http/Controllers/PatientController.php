@@ -59,7 +59,7 @@ class PatientController extends Controller
     {
         $query = Patient::with([
             'dentalRecords' => fn($q) => $q->latest(),
-            'treatmentPlans' => fn($q) => $q->latest(),
+            'treatmentPlans' => fn($q) => $q->with('doctor')->latest(),
             'images' => fn($q) => $q->latest(),
             'periodontalRecords' => fn($q) => $q->latest(),
             'softTissueRecords' => fn($q) => $q->latest(),
@@ -185,7 +185,7 @@ class PatientController extends Controller
         try {
             $patient = Patient::with([
                 'dentalRecords' => fn($q) => $q->latest(),
-                'treatmentPlans' => fn($q) => $q->latest(),
+                'treatmentPlans' => fn($q) => $q->with('doctor')->latest(),
                 'images' => fn($q) => $q->latest(),
                 'periodontalRecords' => fn($q) => $q->latest(),
                 'softTissueRecords' => fn($q) => $q->latest(),
@@ -259,7 +259,7 @@ class PatientController extends Controller
     {
         $patient = Patient::with([
             'appointments' => fn($q) => $q->latest(),
-            'treatmentPlans' => fn($q) => $q->latest(),
+            'treatmentPlans' => fn($q) => $q->with('doctor')->latest(),
             'invoices' => fn($q) => $q->latest(),
             'dentalRecords' => fn($q) => $q->latest(),
             'images' => fn($q) => $q->latest(),
@@ -1678,7 +1678,7 @@ class PatientController extends Controller
 
         return response()->json([
             'message' => 'Treatments retrieved successfully.',
-            'data' => $patient->treatmentPlans()->latest()->get()
+            'data' => $patient->treatmentPlans()->with('doctor')->latest()->get()
         ]);
     }
 
@@ -1730,10 +1730,14 @@ class PatientController extends Controller
             'date' => 'required|date',
             'condition' => 'nullable|string',
             'treatment_id' => 'nullable|integer|exists:treatments,id',
+            'doctor_id' => 'nullable|integer|exists:employees,id',
         ]);
 
         try {
-            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id']);
+            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id']);
+            if (empty($treatmentData['doctor_id']) && auth()->check() && auth()->user() instanceof \App\Models\Employee) {
+                $treatmentData['doctor_id'] = auth()->id();
+            }
             $patient->treatmentPlans()->create($treatmentData);
 
             if (isset($request->condition) && !empty($validated['tooth'])) {
@@ -1761,7 +1765,7 @@ class PatientController extends Controller
                 }
             }
 
-            return response()->json($patient->load('treatmentPlans'));
+            return response()->json($patient->load(['treatmentPlans.doctor']));
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to add treatment: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['message' => 'Failed to save treatment.', 'error' => $e->getMessage()], 500);
@@ -1794,14 +1798,18 @@ class PatientController extends Controller
             'treatments.*.date'             => 'required|date',
             'treatments.*.condition'        => 'nullable|string',
             'treatments.*.treatment_id'     => 'nullable|integer|exists:treatments,id',
+            'treatments.*.doctor_id'        => 'nullable|integer|exists:employees,id',
         ]);
 
         try {
             foreach ($validated['treatments'] as $item) {
                 $treatmentData = \Illuminate\Support\Arr::only(
                     $item,
-                    ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id']
+                    ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id']
                 );
+                if (empty($treatmentData['doctor_id']) && auth()->check() && auth()->user() instanceof \App\Models\Employee) {
+                    $treatmentData['doctor_id'] = auth()->id();
+                }
                 $patient->treatmentPlans()->create($treatmentData);
 
                 // Update dental condition if provided
@@ -1825,7 +1833,7 @@ class PatientController extends Controller
                 }
             }
 
-            return response()->json($patient->load('treatmentPlans'), 201);
+            return response()->json($patient->load(['treatmentPlans.doctor']), 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to batch add treatments: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['message' => 'Failed to save treatments.', 'error' => $e->getMessage()], 500);
@@ -1890,13 +1898,14 @@ class PatientController extends Controller
             'cost' => 'sometimes|numeric',
             'date' => 'sometimes|date',
             'treatment_id' => 'nullable|integer|exists:treatments,id',
+            'doctor_id' => 'nullable|integer|exists:employees,id',
         ]);
 
         $treatment->update($validated);
 
         return response()->json([
             'message' => 'Treatment plan updated successfully.',
-            'data' => $treatment
+            'data' => $treatment->load('doctor')
         ]);
     }
 

@@ -38,9 +38,16 @@ class LabService extends Model
         return $this->hasMany(LaboratoryOrder::class, 'lab_service_id');
     }
 
-    public function getActivePrice(): ?LabServicePrice
+    public function getActivePrice($branchId = null): ?LabServicePrice
     {
-        return $this->prices()->where('is_active', true)->first();
+        if ($branchId) {
+            $branchPrice = $this->prices()->where('branch_id', $branchId)->where('is_active', true)->first();
+            if ($branchPrice) {
+                return $branchPrice;
+            }
+        }
+        return $this->prices()->where('is_active', true)->first()
+            ?? $this->prices()->first();
     }
 
     public function getPrices()

@@ -47,4 +47,27 @@ use HasFactory;
     {
         return $this->belongsTo(LabService::class);
     }
+
+    public function getAppliedPriceAttribute($value)
+    {
+        if ($value !== null && $value !== '') {
+            return (float) $value;
+        }
+
+        // Auto-resolve inclusive price from the lab service if applied_price is null
+        if ($this->relationLoaded('labService') && $this->labService) {
+            $activePrice = $this->labService->getActivePrice($this->branch_id);
+            if ($activePrice) {
+                return (float) $activePrice->base_price;
+            }
+        } elseif ($this->lab_service_id) {
+            $service = $this->labService()->first();
+            $activePrice = $service?->getActivePrice($this->branch_id);
+            if ($activePrice) {
+                return (float) $activePrice->base_price;
+            }
+        }
+
+        return 0.00;
+    }
 }

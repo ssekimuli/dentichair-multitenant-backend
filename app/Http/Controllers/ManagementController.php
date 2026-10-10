@@ -322,7 +322,7 @@ class ManagementController extends Controller
      */
     public function getLabOrders(Request $request)
     {
-        $query = LaboratoryOrder::with(['client', 'branch', 'labService']);
+        $query = LaboratoryOrder::with(['client', 'branch', 'labService.prices']);
 
         // Branch filter
         if ($request->filled('branch_id')) {
@@ -449,7 +449,9 @@ class ManagementController extends Controller
     private function generateLabOrderInvoice(LaboratoryOrder $order)
     {
         try {
-            $invoiceAmount = $order->applied_price ?? 0;
+            $invoiceAmount = ($order->applied_price && $order->applied_price > 0)
+                ? (float) $order->applied_price
+                : (float) ($order->labService?->getActivePrice($order->branch_id)?->base_price ?? 0);
             $clientName    = $order->client->name ?? 'Lab Order';
             $today         = now()->format('Y-m-d');
 
@@ -1604,9 +1606,9 @@ class ManagementController extends Controller
                     $service = $this->resolveOrCreateLabService($orderData, $branchId, $appliedPrice !== null ? (float)$appliedPrice : null);
                     $labServiceId = $service?->id ?? ($orderData['lab_service_id'] ?? $orderData['labServiceId'] ?? null);
 
-                    if ($service && ($appliedPrice === null || $appliedPrice === '')) {
-                        $activePrice = $service->getActivePrice();
-                        $appliedPrice = $activePrice?->base_price;
+                    if ($service && ($appliedPrice === null || $appliedPrice === '' || $appliedPrice == 0)) {
+                        $activePrice = $service->getActivePrice($branchId);
+                        $appliedPrice = $activePrice ? (float) $activePrice->base_price : 0;
                     }
                     if (empty($item) && $service) {
                         $item = $service->service_name;
@@ -1688,6 +1690,13 @@ class ManagementController extends Controller
             if ($itService) {
                 $it['lab_service_id'] = $itService->id;
                 $it['labServiceId'] = $itService->id;
+                if ($itPrice === null || $itPrice === '' || $itPrice == 0) {
+                    $activePrice = $itService->getActivePrice($batchBranchId);
+                    if ($activePrice) {
+                        $it['applied_price'] = (float) $activePrice->base_price;
+                        $it['appliedPrice'] = (float) $activePrice->base_price;
+                    }
+                }
                 if (empty($it['item'])) {
                     $it['item'] = $itService->service_name;
                 }
@@ -1740,10 +1749,10 @@ class ManagementController extends Controller
                 $service = $this->resolveOrCreateLabService($itemData, $branchId, $appliedPrice !== null ? (float)$appliedPrice : null);
                 $labServiceId = $service?->id ?? ($itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null);
 
-                if ($service && ($appliedPrice === null || $appliedPrice === '')) {
-                    $activePrice = $service->getActivePrice();
-                    $appliedPrice = $activePrice?->base_price;
-                }
+                if ($service && ($appliedPrice === null || $appliedPrice === '' || $appliedPrice == 0)) {
+                        $activePrice = $service->getActivePrice($branchId);
+                        $appliedPrice = $activePrice ? (float) $activePrice->base_price : 0;
+                    }
 
                 $orderStatus = $itemData['status'] ?? $validated['status'];
                 $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? ($validated['sentDate'] ?? null);
@@ -1822,6 +1831,12 @@ class ManagementController extends Controller
         $singleService = $this->resolveOrCreateLabService($request, $singleBranchId, $singleAppliedPrice !== null ? (float)$singleAppliedPrice : null);
         if ($singleService) {
             $request->merge(['labServiceId' => $singleService->id]);
+            if (!$request->filled('appliedPrice') && !$request->filled('applied_price')) {
+                $activePrice = $singleService->getActivePrice($singleBranchId);
+                if ($activePrice) {
+                    $request->merge(['appliedPrice' => (float) $activePrice->base_price]);
+                }
+            }
             if (!$request->filled('item')) {
                 $request->merge(['item' => $singleService->service_name]);
             }
@@ -1926,12 +1941,20 @@ class ManagementController extends Controller
 
         try {
             // Handle applied price logic
-            if (isset($validated['labServiceId'])) {
-                $service = LabService::find($validated['labServiceId']);
-                $activePrice = $service?->getActivePrice();
-                $validated['applied_price'] = $validated['appliedPrice'] ?? $activePrice?->base_price;
+            $upBranchId = $labOrder->branch_id;
+            $upPrice = $validated['appliedPrice'] ?? $request->input('applied_price', null);
+            $service = $this->resolveOrCreateLabService($request, $upBranchId, $upPrice !== null ? (float)$upPrice : null);
+            if ($service) {
+                $validated['lab_service_id'] = $service->id;
+                $validated['labServiceId'] = $service->id;
+                if ($upPrice === null || $upPrice === '' || $upPrice == 0) {
+                    $activePrice = $service->getActivePrice($upBranchId);
+                    $validated['applied_price'] = $activePrice ? (float) $activePrice->base_price : 0;
+                } else {
+                    $validated['applied_price'] = (float) $upPrice;
+                }
             } elseif (isset($validated['appliedPrice'])) {
-                $validated['applied_price'] = $validated['appliedPrice'];
+                $validated['applied_price'] = (float) $validated['appliedPrice'];
             }
 
             // Convert camelCase to snake_case

@@ -14,6 +14,7 @@ class XrayRequest extends Model
 
     protected $fillable = [
         'client_uuid',
+        'patient',
         'patient_id',
         'facility',
         'amount',
@@ -28,17 +29,22 @@ class XrayRequest extends Model
         'request_date',
         'completed_date',
         'report_findings',
+        'attachments',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'request_date' => 'date',
         'completed_date' => 'date',
+        'attachments' => 'array',
     ];
 
-    public function patient(): BelongsTo
+    /**
+     * Optional relationship to registered patient profile
+     */
+    public function patientRecord(): BelongsTo
     {
-        return $this->belongsTo(Patient::class);
+        return $this->belongsTo(Patient::class, 'patient_id');
     }
 
     public function branch(): BelongsTo

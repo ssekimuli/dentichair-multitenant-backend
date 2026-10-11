@@ -8,15 +8,51 @@ use App\Models\Branch;
 use App\Models\Business;
 use App\Models\Invoice;
 use App\Models\InvoiceOtherCharge;
-use App\Models\GlobalSetting;
+use App\Services\CloudflareR2Service;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class XrayRequestController extends Controller
 {
+    /**
+     * Helper to upload a file to R2 or public storage
+     */
+    protected function uploadAttachment($file): array
+    {
+        $originalName = $file->getClientOriginalName();
+        $mime = $file->getClientMimeType();
+        $size = $file->getSize();
+        $url = null;
+
+        try {
+            if (config('filesystems.disks.r2.key')) {
+                $service = app(CloudflareR2Service::class);
+                $url = $service->upload($file, 'xray-requests');
+            }
+        } catch (\Throwable $e) {
+            Log::warning('R2 upload failed, using local disk: ' . $e->getMessage());
+        }
+
+        if (!$url) {
+            $path = $file->store('xray-requests', 'public');
+            $url = asset('storage/' . $path);
+        }
+
+        return [
+            'url'  => $url,
+            'name' => $originalName,
+            'mime' => $mime,
+            'size' => $size,
+            'uploaded_at' => now()->toIso8601String(),
+        ];
+    }
+
     /**
      * Display a listing of all X-ray / Radiology requests with search & filters.
      * GET /api/xray-requests
@@ -24,8 +60,8 @@ class XrayRequestController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = XrayRequest::with([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
-            'patient.branch:id,name',
+            'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+            'patientRecord.branch:id,name',
             'branch:id,name',
             'doctor:id,name',
             'invoice:id,amount,paid_amount,status,issue_date'
@@ -80,11 +116,12 @@ class XrayRequestController extends Controller
             $query->where('doctor_id', $request->doctor_id);
         }
 
-        // Multi-field text search
+        // Multi-field text search (includes direct patient string)
         if ($request->filled('search')) {
             $term = trim($request->search);
             $query->where(function ($q) use ($term) {
-                $q->where('facility', 'like', "%{$term}%")
+                $q->where('patient', 'like', "%{$term}%")
+                  ->orWhere('facility', 'like', "%{$term}%")
                   ->orWhere('xray_type', 'like', "%{$term}%")
                   ->orWhere('tooth_region', 'like', "%{$term}%")
                   ->orWhere('clinical_notes', 'like', "%{$term}%")
@@ -115,7 +152,8 @@ class XrayRequestController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'patient_id' => 'required|exists:patients,id',
+            'patient' => 'nullable|string|max:255',
+            'patient_id' => 'nullable|exists:patients,id',
             'facility' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'xray_type' => 'nullable|string|max:255',
@@ -128,6 +166,8 @@ class XrayRequestController extends Controller
             'request_date' => 'nullable|date',
             'completed_date' => 'nullable|date',
             'report_findings' => 'nullable|string',
+            'attachments' => 'nullable',
+            'files.*' => 'nullable|file|max:25600',
         ]);
 
         if (empty($validated['request_date'])) {
@@ -137,20 +177,52 @@ class XrayRequestController extends Controller
             $validated['status'] = 'pending';
         }
 
-        // Auto-assign branch from patient if not supplied
-        $patient = Patient::find($validated['patient_id']);
-        if (empty($validated['branch_id'])) {
-            $validated['branch_id'] = $patient?->branch_id ?: (Branch::first()?->id ?: 1);
+        // Resolve patient name string if patient_id is provided and patient is empty
+        $patientModel = null;
+        if (!empty($validated['patient_id'])) {
+            $patientModel = Patient::find($validated['patient_id']);
+            if (empty($validated['patient']) && $patientModel) {
+                $validated['patient'] = trim($patientModel->first_name . ' ' . $patientModel->last_name);
+            }
         }
 
-        return DB::transaction(function () use ($validated, $patient) {
+        // If neither patient nor patient_id was supplied
+        if (empty($validated['patient']) && empty($validated['patient_id'])) {
+            $validated['patient'] = 'Walk-in Patient';
+        }
+
+        // Auto-assign branch from patient if not supplied
+        if (empty($validated['branch_id'])) {
+            $validated['branch_id'] = $patientModel?->branch_id ?: (Branch::first()?->id ?: 1);
+        }
+
+        // Process attachments (existing list + any newly uploaded files)
+        $attachments = [];
+        if (!empty($validated['attachments'])) {
+            $parsed = is_string($validated['attachments']) ? json_decode($validated['attachments'], true) : $validated['attachments'];
+            if (is_array($parsed)) {
+                $attachments = $parsed;
+            }
+        }
+
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $attachments[] = $this->uploadAttachment($file);
+            }
+        } elseif ($request->hasFile('attachment')) {
+            $attachments[] = $this->uploadAttachment($request->file('attachment'));
+        }
+
+        $validated['attachments'] = $attachments;
+
+        return DB::transaction(function () use ($validated, $patientModel) {
             $xrayRequest = XrayRequest::create($validated);
 
             // ── Automatically Generate Invoice for the Patient ──
             $amount = (float) $xrayRequest->amount;
             if ($amount > 0) {
-                $patientName = $patient ? trim($patient->first_name . ' ' . $patient->last_name) : 'Patient';
-                $branchId = $xrayRequest->branch_id ?: ($patient?->branch_id ?: (Branch::first()?->id ?: 1));
+                $patientDisplayName = $xrayRequest->patient ?: ($patientModel ? trim($patientModel->first_name . ' ' . $patientModel->last_name) : 'Patient');
+                $branchId = $xrayRequest->branch_id ?: ($patientModel?->branch_id ?: (Branch::first()?->id ?: 1));
                 $issueDate = $xrayRequest->request_date ? Carbon::parse($xrayRequest->request_date)->toDateString() : now()->toDateString();
                 $dueDate = Carbon::parse($issueDate)->addDays(14)->toDateString();
 
@@ -158,12 +230,15 @@ class XrayRequestController extends Controller
                         ' (' . $xrayRequest->facility . ')' .
                         (!empty($xrayRequest->tooth_region) ? ' - ' . $xrayRequest->tooth_region : '');
 
-                // Check for existing open Pending invoice for same patient & date & branch
-                $existingInvoice = Invoice::where('patient_id', $xrayRequest->patient_id)
-                    ->whereDate('issue_date', $issueDate)
-                    ->where('branch_id', $branchId)
-                    ->whereIn('status', ['Pending', 'Overdue'])
-                    ->first();
+                // Check for existing open Pending invoice for same patient on same date
+                $existingInvoice = null;
+                if ($xrayRequest->patient_id) {
+                    $existingInvoice = Invoice::where('patient_id', $xrayRequest->patient_id)
+                        ->whereDate('issue_date', $issueDate)
+                        ->where('branch_id', $branchId)
+                        ->whereIn('status', ['Pending', 'Overdue'])
+                        ->first();
+                }
 
                 if ($existingInvoice) {
                     $existingInvoice->amount += $amount;
@@ -171,8 +246,8 @@ class XrayRequestController extends Controller
                     $invoice = $existingInvoice;
                 } else {
                     $invoice = Invoice::create([
-                        'patient_name' => $patientName,
-                        'patient_id' => $xrayRequest->patient_id,
+                        'patient_name' => $patientDisplayName,
+                        'patient_id' => $xrayRequest->patient_id ?: null,
                         'amount' => $amount,
                         'paid_amount' => 0.00,
                         'status' => 'Pending',
@@ -196,8 +271,8 @@ class XrayRequestController extends Controller
             }
 
             $xrayRequest->load([
-                'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
-                'patient.branch:id,name',
+                'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+                'patientRecord.branch:id,name',
                 'branch:id,name',
                 'invoice:id,amount,paid_amount,status,issue_date'
             ]);
@@ -216,8 +291,8 @@ class XrayRequestController extends Controller
     public function show($id): JsonResponse
     {
         $xrayRequest = XrayRequest::with([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
-            'patient.branch:id,name',
+            'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+            'patientRecord.branch:id,name',
             'branch:id,name',
             'doctor:id,name',
             'invoice:id,amount,paid_amount,status,issue_date'
@@ -237,7 +312,8 @@ class XrayRequestController extends Controller
         $xrayRequest = XrayRequest::findOrFail($id);
 
         $validated = $request->validate([
-            'patient_id' => 'sometimes|required|exists:patients,id',
+            'patient' => 'nullable|string|max:255',
+            'patient_id' => 'nullable|exists:patients,id',
             'facility' => 'sometimes|required|string|max:255',
             'amount' => 'sometimes|required|numeric|min:0',
             'xray_type' => 'nullable|string|max:255',
@@ -250,18 +326,79 @@ class XrayRequestController extends Controller
             'request_date' => 'nullable|date',
             'completed_date' => 'nullable|date',
             'report_findings' => 'nullable|string',
+            'attachments' => 'nullable',
+            'files.*' => 'nullable|file|max:25600',
         ]);
+
+        // Process attachments
+        $currentAttachments = $xrayRequest->attachments ?: [];
+        if (!empty($validated['attachments'])) {
+            $parsed = is_string($validated['attachments']) ? json_decode($validated['attachments'], true) : $validated['attachments'];
+            if (is_array($parsed)) {
+                $currentAttachments = $parsed;
+            }
+        }
+
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $currentAttachments[] = $this->uploadAttachment($file);
+            }
+        } elseif ($request->hasFile('attachment')) {
+            $currentAttachments[] = $this->uploadAttachment($request->file('attachment'));
+        }
+
+        $validated['attachments'] = $currentAttachments;
+
+        // If patient_id given and patient string empty
+        if (!empty($validated['patient_id']) && empty($validated['patient'])) {
+            $patientModel = Patient::find($validated['patient_id']);
+            if ($patientModel) {
+                $validated['patient'] = trim($patientModel->first_name . ' ' . $patientModel->last_name);
+            }
+        }
 
         $xrayRequest->update($validated);
         $xrayRequest->load([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
-            'patient.branch:id,name',
+            'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+            'patientRecord.branch:id,name',
             'branch:id,name',
             'invoice:id,amount,paid_amount,status,issue_date'
         ]);
 
         return response()->json([
             'message' => 'X-ray request updated successfully',
+            'data' => $xrayRequest
+        ]);
+    }
+
+    /**
+     * Upload an attachment to an existing X-ray request.
+     * POST /api/xray-requests/{id}/attachments
+     */
+    public function uploadFiles(Request $request, $id): JsonResponse
+    {
+        $xrayRequest = XrayRequest::findOrFail($id);
+
+        $request->validate([
+            'files' => 'required_without:attachment|array',
+            'files.*' => 'file|max:25600',
+            'attachment' => 'nullable|file|max:25600',
+        ]);
+
+        $attachments = $xrayRequest->attachments ?: [];
+
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $attachments[] = $this->uploadAttachment($file);
+            }
+        } elseif ($request->hasFile('attachment')) {
+            $attachments[] = $this->uploadAttachment($request->file('attachment'));
+        }
+
+        $xrayRequest->update(['attachments' => $attachments]);
+
+        return response()->json([
+            'message' => 'File(s) uploaded successfully',
             'data' => $xrayRequest
         ]);
     }
@@ -287,8 +424,8 @@ class XrayRequestController extends Controller
     public function print($id)
     {
         $xrayRequest = XrayRequest::with([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
-            'patient.branch:id,name',
+            'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+            'patientRecord.branch:id,name',
             'branch:id,name',
             'doctor:id,name',
             'invoice:id,amount,paid_amount,status,issue_date'

@@ -175,6 +175,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/xray-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'show']);
     Route::put('/xray-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'update']);
     Route::delete('/xray-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'destroy']);
+    Route::post('/xray-requests/{id}/attachments', [\App\Http\Controllers\XrayRequestController::class, 'uploadFiles']);
     Route::get('/xray-requests/{id}/print', [\App\Http\Controllers\XrayRequestController::class, 'print']);
 
     // Alias for /radiology-requests
@@ -183,6 +184,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/radiology-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'show']);
     Route::put('/radiology-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'update']);
     Route::delete('/radiology-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'destroy']);
+    Route::post('/radiology-requests/{id}/attachments', [\App\Http\Controllers\XrayRequestController::class, 'uploadFiles']);
     Route::get('/radiology-requests/{id}/print', [\App\Http\Controllers\XrayRequestController::class, 'print']);
 
 

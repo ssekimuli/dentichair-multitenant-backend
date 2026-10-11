@@ -463,4 +463,140 @@ class XrayRequestController extends Controller
             'clinicEmail'
         ));
     }
+
+    /**
+     * Send X-Ray / Radiology requisition details and/or attached files via Email or WhatsApp.
+     * POST /api/xray-requests/{id}/send
+     */
+    public function sendRequisition(Request $request, $id): JsonResponse
+    {
+        $xrayRequest = XrayRequest::with([
+            'patientRecord',
+            'branch',
+            'doctor',
+            'invoice'
+        ])->findOrFail($id);
+
+        $validated = $request->validate([
+            'channel' => 'required|in:email,whatsapp',
+            'recipient' => 'required|string',
+            'custom_message' => 'nullable|string',
+            'file_url' => 'nullable|string',
+            'file_name' => 'nullable|string',
+        ]);
+
+        $channel = $validated['channel'];
+        $recipient = trim($validated['recipient']);
+        $customMessage = $validated['custom_message'] ?? '';
+        $fileUrl = $validated['file_url'] ?? null;
+        $fileName = $validated['file_name'] ?? null;
+
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $clinicName = $settings->clinic_name ?? config('app.name', 'Dental Clinic');
+
+        $patientName = $xrayRequest->patient
+            ?: ($xrayRequest->patientRecord ? trim($xrayRequest->patientRecord->first_name . ' ' . $xrayRequest->patientRecord->last_name) : 'Patient');
+
+        $links = [];
+        $mailAttachments = [];
+
+        if ($fileUrl) {
+            $links[] = [
+                'name' => $fileName ?: 'Radiology Scan',
+                'url' => $fileUrl,
+            ];
+        } else {
+            $attachments = $xrayRequest->attachments ?: [];
+            foreach ($attachments as $idx => $att) {
+                $url = is_array($att) ? ($att['url'] ?? '') : $att;
+                $name = is_array($att) ? ($att['name'] ?? ('Scan File ' . ($idx + 1))) : ('Scan File ' . ($idx + 1));
+                if ($url) {
+                    $links[] = ['name' => $name, 'url' => $url];
+                }
+            }
+        }
+
+        // Prepare mail attachments if applicable
+        foreach ($links as $link) {
+            $url = $link['url'];
+            $storageUrl = url('/storage');
+            if (str_starts_with($url, $storageUrl)) {
+                $localPath = str_replace($storageUrl, storage_path('app/public'), $url);
+                if (file_exists($localPath)) {
+                    $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($localPath);
+                }
+            } else {
+                try {
+                    $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromUrl($url);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Could not attach remote scan to email: {$url}. " . $e->getMessage());
+                }
+            }
+        }
+
+        // Send Email
+        if ($channel === 'email') {
+            $subject = "Radiology Requisition #" . str_pad($xrayRequest->id, 5, '0', STR_PAD_LEFT) . " - {$patientName} ({$clinicName})";
+            $viewData = [
+                'name' => $patientName,
+                'clinicName' => $clinicName,
+                'links' => $links,
+                'customMessage' => $customMessage,
+                'requisition' => $xrayRequest,
+            ];
+
+            try {
+                $mail = new \App\Mail\GenericMarkdownMail(
+                    'emails.patient-documents',
+                    $viewData,
+                    $subject,
+                    $mailAttachments
+                );
+                \Illuminate\Support\Facades\Mail::to($recipient)->send($mail);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Email send failed for requisition #{$xrayRequest->id}: " . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to send email: ' . $e->getMessage()
+                ], 500);
+            }
+        }
+
+        // Send WhatsApp
+        if ($channel === 'whatsapp') {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $recipient);
+            $msg = "Hello {$patientName}, here are your radiology requisition details from {$clinicName}:\n\n";
+            $msg .= "• Requisition #: #" . str_pad($xrayRequest->id, 5, '0', STR_PAD_LEFT) . "\n";
+            $msg .= "• Scan Type: " . ($xrayRequest->xray_type ?: 'Dental Imaging') . "\n";
+            $msg .= "• Facility: " . $xrayRequest->facility . "\n";
+            if ($xrayRequest->tooth_region) {
+                $msg .= "• Region: " . $xrayRequest->tooth_region . "\n";
+            }
+            if (!empty($customMessage)) {
+                $msg .= "\nNote: {$customMessage}\n";
+            }
+            if (!empty($links)) {
+                $msg .= "\nAttached Files:\n";
+                foreach ($links as $link) {
+                    $msg .= "- {$link['name']}: {$link['url']}\n";
+                }
+            }
+
+            try {
+                \App\Services\NotificationService::sendWhatsApp($cleanPhone, $msg);
+                foreach ($links as $link) {
+                    \App\Services\NotificationService::sendMediaWhatsApp($cleanPhone, $link['url'], $link['name']);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("WhatsApp send warning: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Requisition successfully sent via " . ucfirst($channel) . " to {$recipient}.",
+            'channel' => $channel,
+            'recipient' => $recipient,
+        ]);
+    }
 }

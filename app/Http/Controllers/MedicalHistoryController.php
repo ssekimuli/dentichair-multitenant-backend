@@ -20,7 +20,7 @@ class MedicalHistoryController extends Controller
     public function all(Request $request): JsonResponse
     {
         $query = MedicalHistory::with([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,branch_id',
+            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
             'patient.branch:id,name',
             'doctor:id,name'
         ]);

@@ -99,6 +99,11 @@ class Patient extends Model
         return $this->hasMany(RestorativeRecord::class);
     }
 
+    public function medicalHistories(): HasMany
+    {
+        return ->hasMany(MedicalHistory::class)->orderBy('date', 'desc')->orderBy('created_at', 'desc');
+    }
+
     public function orthodonticRecords(): HasMany
     {
         return $this->hasMany(OrthodonticRecord::class);

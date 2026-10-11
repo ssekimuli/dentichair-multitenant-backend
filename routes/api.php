@@ -160,6 +160,15 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'update']);
     Route::delete('/patients/{patient}/restorative-records/{restorativeRecord}', [App\Http\Controllers\RestorativeRecordController::class, 'destroy']);
 
+    // Medical / Dental History Records
+    Route::get('/patients/{patientId}/medical-histories', [\App\Http\Controllers\MedicalHistoryController::class, 'index']);
+    Route::post('/patients/{patientId}/medical-histories', [\App\Http\Controllers\MedicalHistoryController::class, 'store']);
+    Route::get('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'show']);
+    Route::get('/medical-histories/{medicalHistory}/print', [\App\Http\Controllers\MedicalHistoryController::class, 'print']);
+    Route::put('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'update']);
+    Route::delete('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'destroy']);
+
+
 
     // Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);

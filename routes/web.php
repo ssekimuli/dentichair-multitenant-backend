@@ -32,3 +32,7 @@ Route::post('/self-register', [PatientRegistrationController::class, 'store'])
 Route::get('/registration/{patient}/confirmation', [PatientRegistrationController::class, 'confirmation'])
     ->name('patient.registration.confirmation');
 
+
+// Medical History Printable Case Sheet
+Route::get('/medical-histories/{id}/print', [\App\Http\Controllers\MedicalHistoryController::class, 'print'])
+    ->name('medical-histories.print');

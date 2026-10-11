@@ -192,6 +192,7 @@ class PatientController extends Controller
                 'orthodonticRecords' => fn($q) => $q->latest(),
                 'endodonticRecords' => fn($q) => $q->latest(),
                 'restorativeRecords' => fn($q) => $q->latest(),
+                'medicalHistories' => fn($q) => $q->latest(),
                 'paidInvoices' => fn($q) => $q->latest(),
                 'unpaidInvoices' => fn($q) => $q->latest()
             ])->find($id);

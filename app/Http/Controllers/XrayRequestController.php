@@ -6,11 +6,14 @@ use App\Models\XrayRequest;
 use App\Models\Patient;
 use App\Models\Branch;
 use App\Models\Business;
+use App\Models\Invoice;
+use App\Models\InvoiceOtherCharge;
 use App\Models\GlobalSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Carbon\Carbon;
 
 class XrayRequestController extends Controller
 {
@@ -24,7 +27,8 @@ class XrayRequestController extends Controller
             'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
             'patient.branch:id,name',
             'branch:id,name',
-            'doctor:id,name'
+            'doctor:id,name',
+            'invoice:id,amount,paid_amount,status,issue_date'
         ]);
 
         // Branch filter
@@ -105,7 +109,7 @@ class XrayRequestController extends Controller
     }
 
     /**
-     * Store a newly created X-ray request in storage.
+     * Store a newly created X-ray request in storage & automatically generate an Invoice.
      * POST /api/xray-requests
      */
     public function store(Request $request): JsonResponse
@@ -134,22 +138,75 @@ class XrayRequestController extends Controller
         }
 
         // Auto-assign branch from patient if not supplied
+        $patient = Patient::find($validated['patient_id']);
         if (empty($validated['branch_id'])) {
-            $patient = Patient::find($validated['patient_id']);
-            $validated['branch_id'] = $patient?->branch_id;
+            $validated['branch_id'] = $patient?->branch_id ?: (Branch::first()?->id ?: 1);
         }
 
-        $xrayRequest = XrayRequest::create($validated);
-        $xrayRequest->load([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
-            'patient.branch:id,name',
-            'branch:id,name'
-        ]);
+        return DB::transaction(function () use ($validated, $patient) {
+            $xrayRequest = XrayRequest::create($validated);
 
-        return response()->json([
-            'message' => 'X-ray request created successfully',
-            'data' => $xrayRequest
-        ], 201);
+            // ── Automatically Generate Invoice for the Patient ──
+            $amount = (float) $xrayRequest->amount;
+            if ($amount > 0) {
+                $patientName = $patient ? trim($patient->first_name . ' ' . $patient->last_name) : 'Patient';
+                $branchId = $xrayRequest->branch_id ?: ($patient?->branch_id ?: (Branch::first()?->id ?: 1));
+                $issueDate = $xrayRequest->request_date ? Carbon::parse($xrayRequest->request_date)->toDateString() : now()->toDateString();
+                $dueDate = Carbon::parse($issueDate)->addDays(14)->toDateString();
+
+                $desc = 'Radiology / X-Ray Requisition: ' . ($xrayRequest->xray_type ?: 'Dental Imaging') .
+                        ' (' . $xrayRequest->facility . ')' .
+                        (!empty($xrayRequest->tooth_region) ? ' - ' . $xrayRequest->tooth_region : '');
+
+                // Check for existing open Pending invoice for same patient & date & branch
+                $existingInvoice = Invoice::where('patient_id', $xrayRequest->patient_id)
+                    ->whereDate('issue_date', $issueDate)
+                    ->where('branch_id', $branchId)
+                    ->whereIn('status', ['Pending', 'Overdue'])
+                    ->first();
+
+                if ($existingInvoice) {
+                    $existingInvoice->amount += $amount;
+                    $existingInvoice->save();
+                    $invoice = $existingInvoice;
+                } else {
+                    $invoice = Invoice::create([
+                        'patient_name' => $patientName,
+                        'patient_id' => $xrayRequest->patient_id,
+                        'amount' => $amount,
+                        'paid_amount' => 0.00,
+                        'status' => 'Pending',
+                        'issue_date' => $issueDate,
+                        'due_date' => $dueDate,
+                        'branch_id' => $branchId,
+                        'category' => 'procedure-income',
+                        'employee_id' => $xrayRequest->doctor_id ?: null,
+                    ]);
+                }
+
+                // Add item to other charges
+                $invoice->otherCharges()->create([
+                    'description' => $desc,
+                    'amount' => $amount,
+                ]);
+
+                // Link invoice to X-ray request
+                $xrayRequest->invoice_id = $invoice->id;
+                $xrayRequest->save();
+            }
+
+            $xrayRequest->load([
+                'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+                'patient.branch:id,name',
+                'branch:id,name',
+                'invoice:id,amount,paid_amount,status,issue_date'
+            ]);
+
+            return response()->json([
+                'message' => 'X-ray request and invoice created successfully',
+                'data' => $xrayRequest
+            ], 201);
+        });
     }
 
     /**
@@ -162,7 +219,8 @@ class XrayRequestController extends Controller
             'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
             'patient.branch:id,name',
             'branch:id,name',
-            'doctor:id,name'
+            'doctor:id,name',
+            'invoice:id,amount,paid_amount,status,issue_date'
         ])->findOrFail($id);
 
         return response()->json([
@@ -198,7 +256,8 @@ class XrayRequestController extends Controller
         $xrayRequest->load([
             'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
             'patient.branch:id,name',
-            'branch:id,name'
+            'branch:id,name',
+            'invoice:id,amount,paid_amount,status,issue_date'
         ]);
 
         return response()->json([
@@ -231,7 +290,8 @@ class XrayRequestController extends Controller
             'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
             'patient.branch:id,name',
             'branch:id,name',
-            'doctor:id,name'
+            'doctor:id,name',
+            'invoice:id,amount,paid_amount,status,issue_date'
         ])->findOrFail($id);
 
         $clinicName = config('app.name', 'DENTAL CLINIC');

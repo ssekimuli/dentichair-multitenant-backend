@@ -23,6 +23,7 @@ class XrayRequest extends Model
         'doctor_name',
         'doctor_id',
         'branch_id',
+        'invoice_id',
         'status',
         'request_date',
         'completed_date',
@@ -48,5 +49,10 @@ class XrayRequest extends Model
     public function doctor(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'doctor_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 }

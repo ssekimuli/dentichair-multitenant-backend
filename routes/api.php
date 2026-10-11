@@ -169,6 +169,23 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'update']);
     Route::delete('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'destroy']);
 
+    // X-Ray / Radiology Requisition Requests
+    Route::get('/xray-requests', [\App\Http\Controllers\XrayRequestController::class, 'index']);
+    Route::post('/xray-requests', [\App\Http\Controllers\XrayRequestController::class, 'store']);
+    Route::get('/xray-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'show']);
+    Route::put('/xray-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'update']);
+    Route::delete('/xray-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'destroy']);
+    Route::get('/xray-requests/{id}/print', [\App\Http\Controllers\XrayRequestController::class, 'print']);
+
+    // Alias for /radiology-requests
+    Route::get('/radiology-requests', [\App\Http\Controllers\XrayRequestController::class, 'index']);
+    Route::post('/radiology-requests', [\App\Http\Controllers\XrayRequestController::class, 'store']);
+    Route::get('/radiology-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'show']);
+    Route::put('/radiology-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'update']);
+    Route::delete('/radiology-requests/{id}', [\App\Http\Controllers\XrayRequestController::class, 'destroy']);
+    Route::get('/radiology-requests/{id}/print', [\App\Http\Controllers\XrayRequestController::class, 'print']);
+
+
 
 
     // Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);

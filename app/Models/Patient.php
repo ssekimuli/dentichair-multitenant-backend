@@ -203,4 +203,10 @@ class Patient extends Model
             ['patient_id' => $this->id, 'appointment_date' => $this->next_visit]
         );
     }
+
+    public function xrayRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(XrayRequest::class);
+    }
+
 }

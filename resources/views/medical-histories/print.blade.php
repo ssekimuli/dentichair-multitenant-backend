@@ -318,16 +318,29 @@
         <!-- CLINIC HEADER -->
         <div class="clinic-header">
             <div class="clinic-brand">
-                <h1>{{ $clinicName ?? 'Dental & Oral Healthcare Clinic' }}</h1>
-                <p>{{ $clinicAddress ?? 'Comprehensive Oral Surgery, Restorative & Preventive Care' }}</p>
-                @if(!empty($branch->phone))
-                    <p>Phone: {{ $branch->phone }} @if(!empty($branch->email))| Email: {{ $branch->email }}@endif</p>
+                <h1>{{ $clinicName }}</h1>
+                @if(!empty($clinicDetails))
+                    <p style="font-weight: 500; color: #334155; margin-top: 2px;">{{ $clinicDetails }}</p>
                 @endif
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                    @if(!empty($clinicAddress))
+                        <span>📍 {{ $clinicAddress }}</span>
+                    @endif
+                    @if(!empty($branchName) && strcasecmp($branchName, $clinicName) !== 0)
+                        <span>🏢 Branch: {{ $branchName }}</span>
+                    @endif
+                    @if(!empty($clinicPhone))
+                        <span>📞 Tel: {{ $clinicPhone }}</span>
+                    @endif
+                    @if(!empty($clinicEmail))
+                        <span>✉️ {{ $clinicEmail }}</span>
+                    @endif
+                </div>
             </div>
             <div class="record-badge-box">
                 <p class="record-ref">CASE RECORD #{{ $record->id }}</p>
                 <p class="record-date">
-                    Date: {{ $record->date ? CarbonCarbon::parse($record->date)->format('M d, Y') : CarbonCarbon::parse($record->created_at)->format('M d, Y') }}
+                    Date: {{ $record->date ? \Carbon\Carbon::parse($record->date)->format('M d, Y') : \Carbon\Carbon::parse($record->created_at)->format('M d, Y') }}
                 </p>
                 @if(!empty($record->doctor_name))
                     <p class="record-date">Clinician: <strong>{{ $record->doctor_name }}</strong></p>
@@ -352,7 +365,7 @@
                         @if(!empty($patient->age))
                             {{ $patient->age }} Yrs
                         @elseif(!empty($patient->date_of_birth))
-                            {{ CarbonCarbon::parse($patient->date_of_birth)->age }} Yrs
+                            {{ \Carbon\Carbon::parse($patient->date_of_birth)->age }} Yrs
                         @else
                             N/A
                         @endif

@@ -129,15 +129,71 @@ class MedicalHistoryController extends Controller
      */
     public function print(string|int $id)
     {
-        $record = MedicalHistory::with(['patient.branch', 'doctor'])->findOrFail($id);
+        $record = MedicalHistory::with(['patient.branch.setting', 'doctor'])->findOrFail($id);
         $patient = $record->patient;
-        $branch = $patient?->branch;
-
+        $branch = $patient?->branch ?? \App\Models\Branch::first();
+        $branchSetting = $branch?->setting;
+        $business = \App\Models\Business::first();
         $globalSetting = \App\Models\GlobalSetting::first();
-        $clinicName = $globalSetting?->clinic_name ?? $branch?->name ?? 'Dental Clinic';
-        $clinicAddress = $globalSetting?->address ?? $branch?->address ?? '';
 
-        return view('medical-histories.print', compact('record', 'patient', 'branch', 'clinicName', 'clinicAddress'));
+        // 1. Facility / Clinic Name (from Business, GlobalSetting, BranchSetting, Branch, env)
+        $clinicName = !empty($business?->name) ? $business->name : null;
+        if (!$clinicName && !empty($globalSetting?->clinic_name)) {
+            $clinicName = $globalSetting->clinic_name;
+        }
+        if (!$clinicName && !empty($branchSetting?->clinic_name)) {
+            $clinicName = $branchSetting->clinic_name;
+        }
+        if (!$clinicName && !empty($branch?->name)) {
+            $clinicName = $branch->name;
+        }
+        if (!$clinicName) {
+            $clinicName = env('CLINIC_NAME', env('BUSINESS_NAME', env('FACILITY_NAME', config('app.name') !== 'Laravel' ? config('app.name') : 'Dental & Oral Healthcare Clinic')));
+        }
+
+        // 2. Facility Subtitle / Tagline / Details
+        $clinicDetails = !empty($business?->details) ? $business->details : null;
+        if (!$clinicDetails) {
+            $clinicDetails = env('CLINIC_DETAILS', env('FACILITY_DETAILS', env('CLINIC_TAGLINE', 'Comprehensive Oral Healthcare, Dental Surgery & Preventive Care')));
+        }
+
+        // 3. Facility Address
+        $clinicAddress = !empty($branch?->address) ? $branch->address : null;
+        if (!$clinicAddress && !empty($globalSetting?->address)) {
+            $clinicAddress = $globalSetting->address;
+        }
+        if (!$clinicAddress) {
+            $clinicAddress = env('CLINIC_ADDRESS', env('FACILITY_ADDRESS', ''));
+        }
+
+        // 4. Facility Phone Contact
+        $clinicPhone = !empty($branch?->phone) ? $branch->phone : null;
+        if (!$clinicPhone) {
+            $clinicPhone = env('CLINIC_PHONE', env('FACILITY_PHONE', env('BUSINESS_PHONE', env('APP_PHONE', ''))));
+        }
+
+        // 5. Facility Email
+        $clinicEmail = !empty($business?->business_email) ? $business->business_email : null;
+        if (!$clinicEmail && !empty($branch?->email)) {
+            $clinicEmail = $branch->email;
+        }
+        if (!$clinicEmail) {
+            $clinicEmail = env('CLINIC_EMAIL', env('FACILITY_EMAIL', env('BUSINESS_EMAIL', config('mail.from.address', ''))));
+        }
+
+        $branchName = $branch?->name ?? '';
+
+        return view('medical-histories.print', compact(
+            'record',
+            'patient',
+            'branch',
+            'clinicName',
+            'clinicDetails',
+            'clinicAddress',
+            'clinicPhone',
+            'clinicEmail',
+            'branchName'
+        ));
     }
 
 }

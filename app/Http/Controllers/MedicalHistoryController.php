@@ -13,6 +13,104 @@ class MedicalHistoryController extends Controller
      * Display a listing of medical histories for a specific patient.
      * GET /api/patients/{patientId}/medical-histories
      */
+    /**
+     * Display a listing of all medical histories across all patients with search and filters.
+     * GET /api/medical-histories
+     */
+    public function all(Request $request): JsonResponse
+    {
+        $query = MedicalHistory::with([
+            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,branch_id',
+            'patient.branch:id,name',
+            'doctor:id,name'
+        ]);
+
+        // Branch filter
+        if ($request->filled('branch_id')) {
+            $query->whereHas('patient', function ($q) use ($request) {
+                $q->where('branch_id', $request->branch_id);
+            });
+        }
+
+        // Patient filter
+        if ($request->filled('patient_id')) {
+            $query->where('patient_id', $request->patient_id);
+        }
+
+        // Date filters
+        if ($request->filled('date')) {
+            $query->whereDate('date', $request->date);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+
+        // Clinician filter
+        if ($request->filled('doctor_name')) {
+            $query->where('doctor_name', 'like', "%{$request->doctor_name}%");
+        }
+        if ($request->filled('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        // Consent filter
+        if ($request->has('consent') && $request->consent !== null && $request->consent !== '') {
+            $query->where('consent', filter_var($request->consent, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        // Text search (patient name, phone, complaint, diagnosis, notes)
+        if ($request->filled('search')) {
+            $term = trim($request->search);
+            $query->where(function ($q) use ($term) {
+                $q->where('chief_complaint', 'like', "%{$term}%")
+                  ->orWhere('diagnosis', 'like', "%{$term}%")
+                  ->orWhere('history_complaint', 'like', "%{$term}%")
+                  ->orWhere('treatment_plan', 'like', "%{$term}%")
+                  ->orWhere('treatment_given', 'like', "%{$term}%")
+                  ->orWhere('treatment_note', 'like', "%{$term}%")
+                  ->orWhere('doctor_name', 'like', "%{$term}%")
+                  ->orWhereHas('patient', function ($pq) use ($term) {
+                      $pq->where('first_name', 'like', "%{$term}%")
+                         ->orWhere('last_name', 'like', "%{$term}%")
+                         ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$term}%"])
+                         ->orWhere('phone', 'like', "%{$term}%")
+                         ->orWhere('email', 'like', "%{$term}%");
+                  });
+            });
+        }
+
+        $query->orderBy('date', 'desc')->orderBy('created_at', 'desc');
+
+        if ($request->input('per_page') === 'all' || $request->boolean('all')) {
+            $items = $query->get();
+            return response()->json([
+                'success' => true,
+                'data' => $items,
+                'meta' => [
+                    'total' => $items->count(),
+                ]
+            ]);
+        }
+
+        $perPage = (int) $request->input('per_page', 20);
+        $paginated = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Clinical records retrieved successfully.',
+            'data' => $paginated->items(),
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ]
+        ]);
+    }
+
     public function index(string|int $patientId): JsonResponse
     {
         $histories = MedicalHistory::where('patient_id', $patientId)

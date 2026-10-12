@@ -254,7 +254,7 @@ class XrayRequestController extends Controller
                         'issue_date' => $issueDate,
                         'due_date' => $dueDate,
                         'branch_id' => $branchId,
-                        'category' => 'procedure-income',
+                        'category' => 'radiology-income',
                         'employee_id' => $xrayRequest->doctor_id ?: null,
                     ]);
                 }

@@ -1105,7 +1105,7 @@ class ManagementController extends Controller
         $netProfit = $totalIncome - $totalExpenses;
 
         // Calculate income by category
-        $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'other'];
+        $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'radiology-income', 'other'];
         $incomeByCategory = [];
         foreach ($allCategories as $category) {
             $categoryIncome = (clone $incomeQuery)

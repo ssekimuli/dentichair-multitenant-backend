@@ -183,7 +183,7 @@ class InvoiceController extends Controller
         $totalPaid = $invoices->sum('paid_amount');
 
         // Define all available categories
-        $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'other'];
+        $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'radiology-income', 'other'];
 
         // Group by category
         $groupedByCategory = $invoices->groupBy(function ($invoice) {
@@ -381,7 +381,7 @@ class InvoiceController extends Controller
             'issue_date' => 'required|date',
             'due_date' => 'required|date',
             'branch_id' => 'required|exists:branches,id',
-            'category' => 'nullable|string|in:lab-income,pharmacy-income,procedure-income',
+            'category' => 'nullable|string|in:lab-income,pharmacy-income,procedure-income,radiology-income,other',
             'discount' => 'nullable|numeric|min:0',
             'tax' => 'nullable|numeric|min:0',
             'insurance_coverage' => 'nullable|numeric|min:0',
@@ -641,6 +641,7 @@ class InvoiceController extends Controller
             'issue_date' => 'sometimes|date',
             'due_date' => 'sometimes|date',
             'branch_id' => 'sometimes|exists:branches,id',
+            'category' => 'sometimes|nullable|string|in:lab-income,pharmacy-income,procedure-income,radiology-income,other',
             'discount' => 'nullable|numeric|min:0',
             'tax' => 'nullable|numeric|min:0',
             'insurance_coverage' => 'nullable|numeric|min:0',

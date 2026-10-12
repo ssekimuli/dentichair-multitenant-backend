@@ -128,6 +128,12 @@ class Invoice extends Model
         return $this->hasOne(LaboratoryOrder::class);
     }
 
+    public function xrayRequest(): HasOne
+    {
+        return $this->hasOne(XrayRequest::class, 'invoice_id');
+    }
+
+
     public function getMedicinesAttribute($value)
     {
         $items = is_string($value) ? json_decode($value, true) : $value;

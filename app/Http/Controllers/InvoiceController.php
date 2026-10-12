@@ -164,6 +164,38 @@ class InvoiceController extends Controller
      */
     public function getIncomeRecords(Request $request)
     {
+        // Self-heal: ensure any existing invoices tied to X-ray requests or with Radiology other charges are categorized as radiology-income
+        try {
+            DB::table('invoices')
+                ->where(function ($q) {
+                    $q->whereNull('category')
+                      ->orWhere('category', '!=', 'radiology-income');
+                })
+                ->where(function ($q) {
+                    $q->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('xray_requests')
+                            ->whereColumn('xray_requests.invoice_id', 'invoices.id');
+                    })
+                    ->orWhereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('invoice_other_charges')
+                            ->whereColumn('invoice_other_charges.invoice_id', 'invoices.id')
+                            ->where(function ($oq) {
+                                $oq->where('description', 'LIKE', '%Radiology%')
+                                   ->orWhere('description', 'LIKE', '%X-Ray%');
+                            });
+                    });
+                })
+                ->update([
+                    'category' => 'radiology-income',
+                    'status' => 'Paid',
+                    'paid_amount' => DB::raw('CASE WHEN paid_amount <= 0 THEN amount ELSE paid_amount END'),
+                ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Radiology self-heal error in getIncomeRecords: ' . $e->getMessage());
+        }
+
         $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client']);
 
         $branch = null;

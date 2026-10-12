@@ -1101,8 +1101,6 @@ class ManagementController extends Controller
                 })
                 ->update([
                     'category' => 'radiology-income',
-                    'status' => 'Paid',
-                    'paid_amount' => DB::raw('CASE WHEN paid_amount <= 0 THEN amount ELSE paid_amount END'),
                 ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Radiology self-heal error in getFinancialSummary: ' . $e->getMessage());

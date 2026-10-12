@@ -242,6 +242,9 @@ class XrayRequestController extends Controller
 
                 if ($existingInvoice) {
                     $existingInvoice->amount += $amount;
+                    if ($existingInvoice->status === 'Paid' && $existingInvoice->paid_amount < $existingInvoice->amount) {
+                        $existingInvoice->status = 'Pending';
+                    }
                     $existingInvoice->save();
                     $invoice = $existingInvoice;
                 } else {
@@ -249,8 +252,8 @@ class XrayRequestController extends Controller
                         'patient_name' => $patientDisplayName,
                         'patient_id' => $xrayRequest->patient_id ?: null,
                         'amount' => $amount,
-                        'paid_amount' => $amount,
-                        'status' => 'Paid',
+                        'paid_amount' => 0,
+                        'status' => 'Pending',
                         'issue_date' => $issueDate,
                         'due_date' => $dueDate,
                         'branch_id' => $branchId,

@@ -524,13 +524,13 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Failed to send OTP email due to mail server authentication/configuration issue.',
                 'error' => $e->getMessage(),
-                'debug_otp' => $otp // return for testing convenience
+               
             ], 500);
         }
 
         return response()->json([
             'message' => 'OTP sent successfully.',
-            'debug_otp' => $otp // return for testing convenience
+            'debug_otp' => '' // return for testing convenience
         ]);
     }
 

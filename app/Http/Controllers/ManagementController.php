@@ -1077,6 +1077,7 @@ class ManagementController extends Controller
     public function getFinancialSummary(Request $request)
     {
         $branchId = $request->branch_id;
+        $hasBranch = $branchId && $branchId !== 'all';
         if ($request->filled('date_from') && $request->filled('date_to')) {
             $startDate = \Carbon\Carbon::parse($request->date_from)->startOfDay();
             $endDate = \Carbon\Carbon::parse($request->date_to)->endOfDay();
@@ -1088,17 +1089,17 @@ class ManagementController extends Controller
 
         $incomeQuery = Invoice::query()
             ->whereBetween('issue_date', [$startDate, $endDate])
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+            ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId));
 
         $expenseQuery = Expense::query()
             ->whereBetween('date', [$startDate, $endDate])
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+            ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId));
 
         $payrollQuery = Payroll::query()
             ->whereBetween('pay_date', [$startDate, $endDate])
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId));
+            ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId));
 
-        $totalIncome = $incomeQuery->sum('paid_amount');
+        $totalIncome = $incomeQuery->sum(DB::raw('CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END'));
         $totalOtherExpenses = $expenseQuery->sum('amount');
         $totalPayroll = $payrollQuery->sum('net_pay');
         $totalExpenses = $totalOtherExpenses + $totalPayroll;
@@ -1116,12 +1117,12 @@ class ManagementController extends Controller
                         $q->where('category', $category);
                     }
                 })
-                ->sum('paid_amount');
+                ->sum(DB::raw('CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END'));
             $incomeByCategory[$category] = number_format($categoryIncome, 2, '.', '');
         }
 
         $incomeByMonth = $incomeQuery
-            ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as month, SUM(paid_amount) as income")
+            ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as month, SUM(CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END) as income")
             ->groupBy('month')
             ->orderBy('month')
             ->get()

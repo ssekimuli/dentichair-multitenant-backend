@@ -167,7 +167,7 @@ class InvoiceController extends Controller
         $query = Invoice::with(['patient', 'branch', 'treatments', 'otherCharges', 'transactions', 'laboratoryOrder.client']);
 
         $branch = null;
-        if ($request->has('branch_id')) {
+        if ($request->filled('branch_id') && $request->branch_id !== 'all') {
             $query->where('branch_id', $request->branch_id);
             $branch = Branch::find($request->branch_id);
         }
@@ -180,7 +180,10 @@ class InvoiceController extends Controller
         }
 
         $invoices = $query->latest()->get();
-        $totalPaid = $invoices->sum('paid_amount');
+        $totalPaid = $invoices->sum(function ($inv) {
+            $paid = (float) $inv->paid_amount;
+            return $paid > 0 ? $paid : (float) $inv->amount;
+        });
 
         // Define all available categories
         $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'radiology-income', 'other'];
@@ -189,10 +192,14 @@ class InvoiceController extends Controller
         $groupedByCategory = $invoices->groupBy(function ($invoice) {
             return $invoice->category ?? 'other';
         })->map(function ($group) {
+            $catTotal = $group->sum(function ($inv) {
+                $paid = (float) $inv->paid_amount;
+                return $paid > 0 ? $paid : (float) $inv->amount;
+            });
             return [
                 'records' => $group->values(),
                 'count' => $group->count(),
-                'total' => number_format($group->sum('paid_amount'), 2, '.', ''),
+                'total' => number_format($catTotal, 2, '.', ''),
             ];
         });
 

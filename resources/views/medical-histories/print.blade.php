@@ -324,7 +324,7 @@
                 @endif
                 <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
                     @if(!empty($clinicAddress))
-                        <span>{{ $clinicAddress }}</span>
+                        <span>Address: {{ $clinicAddress }}</span>
                     @endif
                     @if(!empty($branchName) && strcasecmp($branchName, $clinicName) !== 0)
                         <span>Branch: {{ $branchName }}</span>

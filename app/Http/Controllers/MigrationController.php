@@ -39,7 +39,7 @@ class MigrationController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
-            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,lab_order,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment'
+            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,clients,lab_order,lab_orders,medical_history,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment'
         ]);
 
         $section = $request->input('section');
@@ -58,11 +58,19 @@ class MigrationController extends Controller
 
             $tempCsvPath = tempnam(sys_get_temp_dir(), 'xlsx_migrate_') . '.csv';
             $pythonScript = base_path('app/Utils/excel_to_csv.py');
-            $command = "python3 " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " 2>&1";
+            $pythonBin = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+            $command = "{$pythonBin} " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " 2>&1";
 
             $output = [];
             $resultCode = 0;
             exec($command, $output, $resultCode);
+
+            // If python3 failed on Linux, try python fallback or vice versa
+            if ($resultCode !== 0) {
+                $fallbackBin = $pythonBin === 'python3' ? 'python' : 'python3';
+                $command = "{$fallbackBin} " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " 2>&1";
+                exec($command, $output, $resultCode);
+            }
             unlink($tempXlsxPath);
 
             if ($resultCode === 0) {
@@ -213,8 +221,10 @@ class MigrationController extends Controller
             $this->processClaimChunk($chunk, $result, $now);
         } elseif ($section === 'client' || $section === 'clients') {
             $this->processClientChunk($chunk, $result, $now);
-        } elseif ($section === 'lab_order') {
+        } elseif ($section === 'lab_order' || $section === 'lab_orders') {
             $this->processLabOrderChunk($chunk, $result, $now);
+        } elseif ($section === 'medical_history') {
+            $this->processMedicalHistoryChunk($chunk, $result, $now);
         } elseif ($section === 'payroll') {
             $this->processPayrollChunk($chunk, $result, $now);
         } elseif ($section === 'leave_request') {
@@ -2923,6 +2933,83 @@ class MigrationController extends Controller
         }
     }
 
+    /**
+     * Import medical histories, resolving patient by email or phone.
+     */
+    private function processMedicalHistoryChunk($chunk, &$result, $now)
+    {
+        [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
+
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $found = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+            if (!$found['identifier']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => null,
+                    'reason' => 'Patient email or phone is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $patient = $found['patient'];
+            if (!$patient) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'patient_email/patient_phone',
+                    'value' => $found['identifier'],
+                    'reason' => "No existing patient found for {$found['identifier']}. Import the patient first."
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $rawDate = $this->getRecordValue($record, ['date', 'history_date', 'visit_date']);
+            $date = $this->parseDate($rawDate, $now->format('Y-m-d'));
+
+            $rawConsent = strtolower(trim($this->getRecordValue($record, ['consent']) ?? 'yes'));
+            $consent = in_array($rawConsent, ['1', 'true', 'yes', 'y']);
+
+            $doctorName = $this->getRecordValue($record, ['doctorname', 'doctor_name', 'doctor']) ?? 'Attending Doctor';
+            $chiefComplaint = $this->getRecordValue($record, ['chiefcomplaint', 'chief_complaint', 'complaint']) ?? 'Routine checkup';
+
+            try {
+                DB::table('medical_histories')->insert([
+                    'patient_id' => $patient->id,
+                    'date' => $date,
+                    'chief_complaint' => $chiefComplaint,
+                    'history_complaint' => $this->getRecordValue($record, ['historycomplaint', 'history_complaint', 'history_of_complaint']),
+                    'extra_oral_exam' => $this->getRecordValue($record, ['extraoralexam', 'extra_oral_exam']),
+                    'intra_oral_exam' => $this->getRecordValue($record, ['intraoralexam', 'intra_oral_exam']),
+                    'diagnosis' => $this->getRecordValue($record, ['diagnosis']),
+                    'treatment_plan' => $this->getRecordValue($record, ['treatmentplan', 'treatment_plan']),
+                    'treatment_given' => $this->getRecordValue($record, ['treatmentgiven', 'treatment_given']),
+                    'consent' => $consent ? 1 : 0,
+                    'consent_notes' => $this->getRecordValue($record, ['consentnotes', 'consent_notes']),
+                    'treatment_note' => $this->getRecordValue($record, ['treatmentnote', 'treatment_note']),
+                    'doctor_name' => $doctorName,
+                    'doctor_id' => null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                $result['imported']++;
+            } catch (\Throwable $e) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'medical_history',
+                    'value' => $chiefComplaint,
+                    'reason' => 'Failed to save medical history: ' . $e->getMessage()
+                ];
+                $result['failed']++;
+            }
+        }
+    }
+
     private function processPayrollChunk($chunk, &$result, $now)
     {
         $employeeEmails = [];
@@ -3383,11 +3470,19 @@ class MigrationController extends Controller
             // --merge-sheets: the combined template can split its rows across one
             // sheet per type (Employees, Patients, ...) instead of one wide sheet;
             // every sheet except "Instructions" is merged by column name.
-            $command = "python3 " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " --merge-sheets 2>&1";
+            $pythonBin = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+            $command = "{$pythonBin} " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " --merge-sheets 2>&1";
 
             $output = [];
             $resultCode = 0;
             exec($command, $output, $resultCode);
+
+            // If first attempt failed, try fallback binary
+            if ($resultCode !== 0) {
+                $fallbackBin = $pythonBin === 'python3' ? 'python' : 'python3';
+                $command = "{$fallbackBin} " . escapeshellarg($pythonScript) . " " . escapeshellarg($tempXlsxPath) . " " . escapeshellarg($tempCsvPath) . " --merge-sheets 2>&1";
+                exec($command, $output, $resultCode);
+            }
             unlink($tempXlsxPath);
 
             if ($resultCode === 0) {
@@ -3452,6 +3547,7 @@ class MigrationController extends Controller
             'insurance_policy' => [],
             'insurance' => [],
             'claim' => [],
+            'medical_history' => [],
             'payment' => []
         ];
 
@@ -3475,33 +3571,55 @@ class MigrationController extends Controller
             $recordData = array_combine($headers, array_slice($row, 0, count($headers)));
             $rawType = strtolower(trim($recordData['type'] ?? ''));
 
-            // The 'type' column uses singular values (employee, patient, appointment,
-            // clinical, financial); $groupedData is keyed by table name (plural for
-            // employees/patients/appointments, singular for clinical/financial).
+            // Normalize raw type string (strip underscores, hyphens, and spaces for matching)
+            $normType = str_replace(['_', '-', ' '], '', $rawType);
+
             $typeMap = [
                 'employee' => 'employees',
+                'employees' => 'employees',
                 'client' => 'clients',
+                'clients' => 'clients',
                 'patient' => 'patients',
+                'patients' => 'patients',
                 'appointment' => 'appointments',
+                'appointments' => 'appointments',
                 'clinical' => 'clinical',
                 'financial' => 'financial',
-                'lab_order' => 'lab_order',
+                'invoice' => 'financial',
+                'invoices' => 'financial',
+                'laborder' => 'lab_order',
+                'laborders' => 'lab_order',
                 'payroll' => 'payroll',
-                'leave_request' => 'leave_request',
-                'staff_advance' => 'staff_advance',
+                'payrolls' => 'payroll',
+                'leaverequest' => 'leave_request',
+                'leaverequests' => 'leave_request',
+                'staffadvance' => 'staff_advance',
+                'staffadvances' => 'staff_advance',
                 'odontogram' => 'odontogram',
                 'periodontal' => 'periodontal',
+                'periodontalchart' => 'periodontal',
                 'orthodontic' => 'orthodontic',
+                'orthodonticchart' => 'orthodontic',
                 'endodontic' => 'endodontic',
-                'insurance_company' => 'insurance_company',
-                'insurance_package' => 'insurance_package',
-                'insurance_coverage' => 'insurance_coverage',
-                'insurance_policy' => 'insurance_policy',
+                'endodonticchart' => 'endodontic',
+                'insurancecompany' => 'insurance_company',
+                'insurancecompanies' => 'insurance_company',
+                'insurancepackage' => 'insurance_package',
+                'insurancepackages' => 'insurance_package',
+                'insurancecoverage' => 'insurance_coverage',
+                'insurancepolicy' => 'insurance_policy',
+                'insurancepolicies' => 'insurance_policy',
                 'insurance' => 'insurance',
+                'insuranceenrollment' => 'insurance',
                 'claim' => 'claim',
+                'claims' => 'claim',
+                'medicalhistory' => 'medical_history',
+                'medicalhistories' => 'medical_history',
+                'medical_history' => 'medical_history',
                 'payment' => 'payment',
+                'payments' => 'payment',
             ];
-            $type = $typeMap[$rawType] ?? null;
+            $type = $typeMap[$normType] ?? null;
 
             if ($type === null) {
                 $allWarnings[] = "Row {$rowNumber}: Unrecognized type \"{$rawType}\" (skipped)";
@@ -3533,6 +3651,7 @@ class MigrationController extends Controller
         // then insurance enrollment, then claims (which need the enrollment to exist)
         $processingOrder = [
             'employees', 'clients', 'patients',
+            'medical_history',
             'odontogram', 'periodontal', 'orthodontic', 'endodontic',
             'appointments', 'clinical', 'financial',
             'lab_order', 'payroll', 'leave_request', 'staff_advance',

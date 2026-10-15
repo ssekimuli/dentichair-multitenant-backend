@@ -1,0 +1,7 @@
+item_name,supplier,stock_quantity,reorder_level,unit_price,status
+Latex Examination Gloves (Box),MedSupply Uganda,150,20,35000.00,Active
+Dental Composite Syringe A2,3M Dental Health,45,10,120000.00,Active
+Dental Needles 27G Long (100pcs),Septodont Africa,80,15,45000.00,Active
+Articaine Anesthetic 4% (50 Cartridges),Dentsply Sirona,25,5,180000.00,Active
+Disposable Dental Bibs (500pcs),Crown Dental Care,60,10,50000.00,Active
+Prophy Paste Mint (200g),Kerr Dental,30,8,75000.00,Active

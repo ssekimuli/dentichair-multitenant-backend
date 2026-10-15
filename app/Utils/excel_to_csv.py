@@ -68,17 +68,54 @@ def excel_to_csv(xlsx_path, csv_path, merge_sheets=False):
         union_header_lower = set()
         all_records = []
 
+        # Map worksheet titles to normalized type names
+        sheet_to_type = {
+            'employee': 'employee', 'employees': 'employee',
+            'client': 'client', 'clients': 'client',
+            'patient': 'patient', 'patients': 'patient',
+            'odontogram': 'odontogram',
+            'periodontal': 'periodontal', 'periodontal chart': 'periodontal',
+            'orthodontic': 'orthodontic', 'orthodontic chart': 'orthodontic',
+            'endodontic': 'endodontic', 'endodontic chart': 'endodontic',
+            'appointment': 'appointment', 'appointments': 'appointment',
+            'clinical': 'clinical',
+            'financial': 'financial', 'invoices': 'financial',
+            'lab order': 'lab_order', 'lab orders': 'lab_order', 'lab_order': 'lab_order', 'lab_orders': 'lab_order',
+            'payroll': 'payroll',
+            'leave request': 'leave_request', 'leave requests': 'leave_request', 'leave_request': 'leave_request',
+            'staff advance': 'staff_advance', 'staff advances': 'staff_advance', 'staff_advance': 'staff_advance',
+            'insurance company': 'insurance_company', 'insurance companies': 'insurance_company', 'insurance_company': 'insurance_company',
+            'insurance package': 'insurance_package', 'insurance packages': 'insurance_package', 'insurance_package': 'insurance_package',
+            'insurance coverage': 'insurance_coverage', 'insurance_coverage': 'insurance_coverage',
+            'insurance policy': 'insurance_policy', 'insurance policies': 'insurance_policy', 'insurance_policy': 'insurance_policy',
+            'insurance enrollment': 'insurance', 'insurance': 'insurance',
+            'claim': 'claim', 'claims': 'claim',
+            'payment': 'payment', 'payments': 'payment',
+        }
+
         for ws in sheets:
             header_row, records = _read_sheet(ws)
             if not header_row:
                 continue
+
+            sheet_title_key = ws.title.strip().lower()
+            inferred_type = sheet_to_type.get(sheet_title_key)
+
+            # Ensure 'type' is present in the union header
+            if 'type' not in union_header_lower:
+                union_header.insert(0, 'type')
+                union_header_lower.add('type')
 
             for h in header_row:
                 if h and h.lower() not in union_header_lower:
                     union_header.append(h)
                     union_header_lower.add(h.lower())
 
-            all_records.extend(records)
+            # If sheet records lack 'type' or have it empty, auto-populate from sheet name
+            for rec in records:
+                if inferred_type and (not rec.get('type') or str(rec.get('type')).strip() == ''):
+                    rec['type'] = inferred_type
+                all_records.append(rec)
 
         if not union_header:
             return False

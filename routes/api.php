@@ -18,6 +18,7 @@ use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\LabServiceController;
 use App\Http\Controllers\LabServicePriceController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\ExportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -69,13 +70,18 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/business', [AuthController::class, 'getBusinessInfo']);
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
 
-    // Imports
+    // Imports & Exports
     Route::post('/migrate', [MigrationController::class, 'migrate']);
     Route::post('/migrate/combined', [MigrationController::class, 'migrateCombined']);
     Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);
     Route::post('/import/start', [ImportController::class, 'startImport']);
     Route::get('/import/progress/{id}', [ImportController::class, 'getProgress']);
     Route::get('/import/templates', [ImportController::class, 'listTemplates']);
+
+    // Data Exports (CSV & Excel)
+    Route::get('/export', [ExportController::class, 'export']);
+    Route::get('/export/database', [ExportController::class, 'exportDatabase']);
+    Route::post('/import/database', [ExportController::class, 'importDatabase']);
     Route::post('/branches', [ManagementController::class, 'createBranch']);
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);

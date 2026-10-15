@@ -327,6 +327,18 @@ class ImportController extends Controller
             ['name' => 'employees_sample.xlsx', 'type' => 'employees', 'format' => 'xlsx'],
             ['name' => 'treatments_sample.csv', 'type' => 'treatments', 'format' => 'csv'],
             ['name' => 'treatments_sample.xlsx', 'type' => 'treatments', 'format' => 'xlsx'],
+            ['name' => 'appointments_sample.csv', 'type' => 'appointments', 'format' => 'csv'],
+            ['name' => 'appointments_sample.xlsx', 'type' => 'appointments', 'format' => 'xlsx'],
+            ['name' => 'financial_sample.csv', 'type' => 'financial', 'format' => 'csv'],
+            ['name' => 'financial_sample.xlsx', 'type' => 'financial', 'format' => 'xlsx'],
+            ['name' => 'inventory_sample.csv', 'type' => 'inventory', 'format' => 'csv'],
+            ['name' => 'inventory_sample.xlsx', 'type' => 'inventory', 'format' => 'xlsx'],
+            ['name' => 'medicines_sample.csv', 'type' => 'medicines', 'format' => 'csv'],
+            ['name' => 'medicines_sample.xlsx', 'type' => 'medicines', 'format' => 'xlsx'],
+            ['name' => 'medical_history_sample.csv', 'type' => 'medical_history', 'format' => 'csv'],
+            ['name' => 'medical_history_sample.xlsx', 'type' => 'medical_history', 'format' => 'xlsx'],
+            ['name' => 'lab_orders_sample.csv', 'type' => 'lab_orders', 'format' => 'csv'],
+            ['name' => 'lab_orders_sample.xlsx', 'type' => 'lab_orders', 'format' => 'xlsx'],
         ];
 
         $templates = array_map(function ($file) {

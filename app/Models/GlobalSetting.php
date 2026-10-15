@@ -9,7 +9,21 @@ class GlobalSetting extends Model
 {
 use HasFactory;
 
-    protected $fillable = ['clinic_name', 'address', 'sms_balance', 'whatsapp_balance', 'notifications', 'whatsapp_expires_at', 'activity_log_enabled'];
+    protected $fillable = [
+        'clinic_name',
+        'address',
+        'phone',
+        'email',
+        'subtitle',
+        'receipt_prefix',
+        'currency',
+        'receipt_footer',
+        'sms_balance',
+        'whatsapp_balance',
+        'notifications',
+        'whatsapp_expires_at',
+        'activity_log_enabled'
+    ];
 
     protected $casts = [
         'notifications' => 'array',
@@ -23,6 +37,13 @@ use HasFactory;
             ['id' => 1],
             [
                 'clinic_name' => null,
+                'address' => null,
+                'phone' => null,
+                'email' => null,
+                'subtitle' => null,
+                'receipt_prefix' => 'REC-',
+                'currency' => 'USD',
+                'receipt_footer' => 'Thank you for choosing our facility for your healthcare needs.',
                 'activity_log_enabled' => false,
                 'notifications' => [
                     'appointments_created' => ['email' => true, 'sms' => false, 'whatsapp' => false],

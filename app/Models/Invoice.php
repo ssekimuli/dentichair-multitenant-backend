@@ -49,7 +49,14 @@ class Invoice extends Model
     {
         static::creating(function ($invoice) {
             if (empty($invoice->receipt_number)) {
-                $invoice->receipt_number = 'REC-' . strtoupper(\Illuminate\Support\Str::random(8));
+                $prefix = 'REC-';
+                try {
+                    $setting = \App\Models\GlobalSetting::getSettings();
+                    if (!empty($setting->receipt_prefix)) {
+                        $prefix = rtrim($setting->receipt_prefix, '-') . '-';
+                    }
+                } catch (\Throwable $e) {}
+                $invoice->receipt_number = $prefix . strtoupper(\Illuminate\Support\Str::random(8));
             }
         });
     }

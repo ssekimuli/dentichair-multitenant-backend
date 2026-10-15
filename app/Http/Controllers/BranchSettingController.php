@@ -93,4 +93,77 @@ class BranchSettingController extends Controller
 
         return response()->json($globalSetting);
     }
+
+    /**
+     * Get Facility Receipt Configuration
+     * GET /api/settings/receipt
+     */
+    public function getReceiptSettings()
+    {
+        $globalSetting = GlobalSetting::getSettings();
+
+        return response()->json([
+            'clinic_name' => $globalSetting->clinic_name,
+            'subtitle' => $globalSetting->subtitle,
+            'address' => $globalSetting->address,
+            'phone' => $globalSetting->phone,
+            'email' => $globalSetting->email,
+            'receipt_prefix' => $globalSetting->receipt_prefix ?? 'REC-',
+            'currency' => $globalSetting->currency ?? 'USD',
+            'receipt_footer' => $globalSetting->receipt_footer,
+            'updated_at' => $globalSetting->updated_at,
+        ]);
+    }
+
+    /**
+     * Update Facility Receipt Configuration
+     * PUT/POST /api/settings/receipt
+     */
+    public function updateReceiptSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'clinic_name' => 'nullable|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:100',
+            'receipt_prefix' => 'nullable|string|max:20',
+            'currency' => 'nullable|string|max:10',
+            'receipt_footer' => 'nullable|string|max:1000',
+        ]);
+
+        $globalSetting = GlobalSetting::getSettings();
+
+        foreach ([
+            'clinic_name',
+            'subtitle',
+            'address',
+            'phone',
+            'email',
+            'receipt_prefix',
+            'currency',
+            'receipt_footer'
+        ] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $globalSetting->{$field} = $validated[$field];
+            }
+        }
+
+        $globalSetting->save();
+
+        return response()->json([
+            'message' => 'Facility receipt settings updated successfully',
+            'data' => [
+                'clinic_name' => $globalSetting->clinic_name,
+                'subtitle' => $globalSetting->subtitle,
+                'address' => $globalSetting->address,
+                'phone' => $globalSetting->phone,
+                'email' => $globalSetting->email,
+                'receipt_prefix' => $globalSetting->receipt_prefix ?? 'REC-',
+                'currency' => $globalSetting->currency ?? 'USD',
+                'receipt_footer' => $globalSetting->receipt_footer,
+                'updated_at' => $globalSetting->updated_at,
+            ]
+        ]);
+    }
 }

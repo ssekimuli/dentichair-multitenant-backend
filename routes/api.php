@@ -287,6 +287,10 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/settings/branch', [\App\Http\Controllers\BranchSettingController::class, 'updateSettings']);
     Route::post('/settings/branch/top-up', [\App\Http\Controllers\BranchSettingController::class, 'topUpCredits']);
 
+    // Facility Receipt Settings
+    Route::get('/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'getReceiptSettings']);
+    Route::match(['put', 'post'], '/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'updateReceiptSettings']);
+
     // Get all roles with permissions (Super Admin only)
     Route::get('/settings/roles', [RolePermissionController::class, 'getAllRolesWithPermissions']);
     Route::post('/settings/roles', [RolePermissionController::class, 'createRole']);

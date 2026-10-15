@@ -232,12 +232,12 @@ class MedicalHistoryController extends Controller
         $branch = $patient?->branch ?? \App\Models\Branch::first();
         $branchSetting = $branch?->setting;
         $business = \App\Models\Business::first();
-        $globalSetting = \App\Models\GlobalSetting::first();
+        $globalSetting = \App\Models\GlobalSetting::getSettings();
 
-        // 1. Facility / Clinic Name (from Business, GlobalSetting, BranchSetting, Branch, env)
-        $clinicName = !empty($business?->name) ? $business->name : null;
-        if (!$clinicName && !empty($globalSetting?->clinic_name)) {
-            $clinicName = $globalSetting->clinic_name;
+        // 1. Facility / Clinic Name (from GlobalSetting, Business, BranchSetting, Branch, env)
+        $clinicName = !empty($globalSetting?->clinic_name) ? $globalSetting->clinic_name : null;
+        if (!$clinicName && !empty($business?->name)) {
+            $clinicName = $business->name;
         }
         if (!$clinicName && !empty($branchSetting?->clinic_name)) {
             $clinicName = $branchSetting->clinic_name;
@@ -250,34 +250,45 @@ class MedicalHistoryController extends Controller
         }
 
         // 2. Facility Subtitle / Tagline / Details
-        $clinicDetails = !empty($business?->details) ? $business->details : null;
+        $clinicDetails = !empty($globalSetting?->subtitle) ? $globalSetting->subtitle : null;
+        if (!$clinicDetails && !empty($business?->details)) {
+            $clinicDetails = $business->details;
+        }
         if (!$clinicDetails) {
             $clinicDetails = env('CLINIC_DETAILS', env('FACILITY_DETAILS', env('CLINIC_TAGLINE', 'Comprehensive Oral Healthcare, Dental Surgery & Preventive Care')));
         }
 
         // 3. Facility Address
-        $clinicAddress = !empty($branch?->address) ? $branch->address : null;
-        if (!$clinicAddress && !empty($globalSetting?->address)) {
-            $clinicAddress = $globalSetting->address;
+        $clinicAddress = !empty($globalSetting?->address) ? $globalSetting->address : null;
+        if (!$clinicAddress && !empty($branch?->address)) {
+            $clinicAddress = $branch->address;
         }
         if (!$clinicAddress) {
             $clinicAddress = env('CLINIC_ADDRESS', env('FACILITY_ADDRESS', ''));
         }
 
         // 4. Facility Phone Contact
-        $clinicPhone = !empty($branch?->phone) ? $branch->phone : null;
+        $clinicPhone = !empty($globalSetting?->phone) ? $globalSetting->phone : null;
+        if (!$clinicPhone && !empty($branch?->phone)) {
+            $clinicPhone = $branch->phone;
+        }
         if (!$clinicPhone) {
             $clinicPhone = env('CLINIC_PHONE', env('FACILITY_PHONE', env('BUSINESS_PHONE', env('APP_PHONE', ''))));
         }
 
         // 5. Facility Email
-        $clinicEmail = !empty($business?->business_email) ? $business->business_email : null;
+        $clinicEmail = !empty($globalSetting?->email) ? $globalSetting->email : null;
+        if (!$clinicEmail && !empty($business?->business_email)) {
+            $clinicEmail = $business->business_email;
+        }
         if (!$clinicEmail && !empty($branch?->email)) {
             $clinicEmail = $branch->email;
         }
         if (!$clinicEmail) {
             $clinicEmail = env('CLINIC_EMAIL', env('FACILITY_EMAIL', env('BUSINESS_EMAIL', config('mail.from.address', ''))));
         }
+
+        $receiptFooter = !empty($globalSetting?->receipt_footer) ? $globalSetting->receipt_footer : null;
 
         $branchName = $branch?->name ?? '';
 
@@ -290,6 +301,7 @@ class MedicalHistoryController extends Controller
             'clinicAddress',
             'clinicPhone',
             'clinicEmail',
+            'receiptFooter',
             'branchName'
         ));
     }

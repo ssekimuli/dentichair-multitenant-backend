@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dental Clinical Record - {{ $patient->first_name ?? 'Patient' }} {{ $patient->last_name ?? '' }} (Record #{{ $record->id }})</title>
+    <title>Medical Form - {{ $patient->first_name ?? 'Patient' }} {{ $patient->last_name ?? '' }} (Record #{{ $record->id }})</title>
     <style>
         * {
             box-sizing: border-box;
@@ -378,8 +378,8 @@
                     <span class="field-dashed-line">{{ $patient->phone ?? $patient->email ?? 'N/A' }}</span>
                 </div>
                 <div class="field-group flex-1">
-                    <span class="field-label">Attending Doctor:</span>
-                    <span class="field-dashed-line">{{ $record->doctor_name ?: 'Authorized Dental Surgeon' }}</span>
+                    <span class="field-label">Attending Clinician:</span>
+                    <span class="field-dashed-line">{{ $record->doctor_name ?: 'Authorized Clinician' }}</span>
                 </div>
             </div>
         </div>
@@ -498,7 +498,10 @@
         </div>
 
         <div class="footer-note">
-            Confidential Dental Medical Record &bull; Generated from Dental EMR System &bull; {{ date('Y-m-d H:i') }}
+            @if(!empty($receiptFooter))
+                <div style="margin-bottom: 6px; font-weight: 500; color: #475569;">{{ $receiptFooter }}</div>
+            @endif
+            Confidential Medical Form &bull; Generated from Dental EMR System &bull; {{ date('Y-m-d H:i') }}
         </div>
     </div>
 

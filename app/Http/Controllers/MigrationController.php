@@ -41,7 +41,7 @@ class MigrationController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
-            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,insurance,claim,client,clients,lab_order,lab_orders,medical_history,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment'
+            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,invoice,invoices,insurance,claim,client,clients,lab_order,lab_orders,medical_history,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment'
         ]);
 
         $section = $request->input('section');
@@ -233,7 +233,7 @@ class MigrationController extends Controller
             $this->processAppointmentChunk($chunk, $result, $now);
         } elseif ($section === 'clinical') {
             $this->processClinicalChunk($chunk, $result, $now);
-        } elseif ($section === 'financial') {
+        } elseif ($section === 'financial' || $section === 'invoice' || $section === 'invoices') {
             $this->processFinancialChunk($chunk, $result, $now);
         } elseif ($section === 'insurance') {
             $this->processInsuranceChunk($chunk, $result, $now);
@@ -388,9 +388,9 @@ class MigrationController extends Controller
         $phones = [];
 
         foreach ($chunk as $item) {
-            $pEmail = $this->getRecordValue($item['data'], ['patientemail', 'patient_email']);
+            $pEmail = $this->getRecordValue($item['data'], ['patientemail', 'patient_email', 'email']);
             if ($pEmail) $emails[] = strtolower(trim($pEmail));
-            $pPhone = $this->getRecordValue($item['data'], ['patientphone', 'patient_phone']);
+            $pPhone = $this->getRecordValue($item['data'], ['patientphone', 'patient_phone', 'phone', 'phone_number', 'phonenumber']);
             if ($pPhone) $phones[] = $this->normalizePhone($pPhone);
         }
 
@@ -423,7 +423,7 @@ class MigrationController extends Controller
      */
     private function findPatientForRow($record, $byEmail, $byPhone)
     {
-        $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
+        $pEmail = $this->getRecordValue($record, ['patientemail', 'patient_email', 'email']);
         if (!empty($pEmail)) {
             return [
                 'patient' => $byEmail->get(strtolower(trim($pEmail))),
@@ -431,12 +431,36 @@ class MigrationController extends Controller
             ];
         }
 
-        $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone']);
+        $pPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone', 'phone', 'phone_number', 'phonenumber']);
         if (!empty($pPhone)) {
             return [
                 'patient' => $byPhone->get($this->normalizePhone($pPhone)),
                 'identifier' => "phone {$pPhone}",
             ];
+        }
+
+        $pId = $this->getRecordValue($record, ['patientid', 'patient_id']);
+        if (!empty($pId) && is_numeric($pId)) {
+            $p = DB::table('patients')->where('id', (int)$pId)->first();
+            if ($p) {
+                return [
+                    'patient' => $p,
+                    'identifier' => "id {$pId}",
+                ];
+            }
+        }
+
+        $pName = $this->getRecordValue($record, ['patientname', 'patient_name', 'patient']);
+        if (!empty($pName)) {
+            $matched = DB::table('patients')
+                ->whereRaw("TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) LIKE ?", [trim($pName)])
+                ->get();
+            if ($matched->count() === 1) {
+                return [
+                    'patient' => $matched->first(),
+                    'identifier' => "name {$pName}",
+                ];
+            }
         }
 
         return ['patient' => null, 'identifier' => null];
@@ -1626,7 +1650,7 @@ class MigrationController extends Controller
                 continue;
             }
 
-            $amount = $this->getRecordValue($record, ['amount']) ?? 0;
+            $amount = $this->getRecordValue($record, ['amount', 'total', 'total_amount', 'invoice_amount']) ?? 0;
             if (!is_numeric($amount) || (float)$amount < 0) {
                 $result['errors'][] = [
                     'row' => $rowNumber,
@@ -1638,7 +1662,7 @@ class MigrationController extends Controller
                 continue;
             }
 
-            $status = $this->getRecordValue($record, ['status']) ?? 'Pending';
+            $status = $this->getRecordValue($record, ['status', 'payment_status', 'invoice_status']) ?? 'Pending';
             if (strcasecmp($status, 'Paid') === 0) {
                 $status = 'Paid';
             } elseif (strcasecmp($status, 'Overdue') === 0) {
@@ -1649,16 +1673,16 @@ class MigrationController extends Controller
 
             $paidAmount = ($status === 'Paid') ? (float)$amount : 0;
 
-            $rawDate = $this->getRecordValue($record, ['date', 'issuedate', 'issue_date']);
-            $issueDate = $rawDate ? date('Y-m-d', strtotime($rawDate)) : $now->format('Y-m-d');
+            $rawDate = $this->getRecordValue($record, ['date', 'issuedate', 'issue_date', 'invoice_date']);
+            $issueDate = $this->parseDate($rawDate, $now->format('Y-m-d'));
 
             $rawDueDate = $this->getRecordValue($record, ['duedate', 'due_date']);
-            $dueDate = $rawDueDate ? date('Y-m-d', strtotime($rawDueDate)) : date('Y-m-d', strtotime($issueDate . ' +14 days'));
+            $dueDate = $this->parseDate($rawDueDate, date('Y-m-d', strtotime($issueDate . ' +14 days')));
 
             $paymentMethod = ($status === 'Paid') ? 'Cash' : null;
 
             // Optional label for the fallback line item when no procedure_refs match.
-            $description = $this->getRecordValue($record, ['description', 'procedure', 'treatment']) ?? 'Migrated Treatment';
+            $description = $this->getRecordValue($record, ['description', 'procedure', 'treatment', 'item', 'notes']) ?? 'Migrated Treatment';
 
             // Optional comma/semicolon-separated list of clinical row 'ref' values
             // to attach as real invoice_treatments lines instead of a generic one.
@@ -1678,15 +1702,27 @@ class MigrationController extends Controller
                 'updated_at' => $now,
             ];
 
+            $receiptNumber = $this->getRecordValue($record, ['invoice_number', 'invoicenumber', 'receipt_number', 'receiptnumber', 'invoice_no', 'invoiceno', 'ref', 'reference']);
+            if (!empty($receiptNumber)) {
+                $invoiceRow['receipt_number'] = trim($receiptNumber);
+            }
+
             try {
-                // Match key: the app's own convention is one invoice per patient
-                // per branch per day (see TreatmentPlan::syncInvoiceForPatientAndDate),
-                // so re-importing the same patient+branch+date updates that invoice.
-                $existing = DB::table('invoices')
-                    ->where('patient_id', $p->id)
-                    ->where('branch_id', $branchId)
-                    ->whereDate('issue_date', $issueDate)
-                    ->first();
+                // Match key: match by receipt_number if present, else one invoice per patient per branch per day
+                $existing = null;
+                if (!empty($invoiceRow['receipt_number'])) {
+                    $existing = DB::table('invoices')
+                        ->where('patient_id', $p->id)
+                        ->where('receipt_number', $invoiceRow['receipt_number'])
+                        ->first();
+                }
+                if (!$existing) {
+                    $existing = DB::table('invoices')
+                        ->where('patient_id', $p->id)
+                        ->where('branch_id', $branchId)
+                        ->whereDate('issue_date', $issueDate)
+                        ->first();
+                }
 
                 // If real payments have already been recorded against this invoice
                 // (via the 'payment' type, this run or a prior one), they are the
@@ -1704,27 +1740,30 @@ class MigrationController extends Controller
                     $invoiceRow['insurance_balance'] = 0;
                 }
 
+                $invoiceCols = array_flip(\Illuminate\Support\Facades\Schema::getColumnListing('invoices'));
+                $safeInvoiceRow = array_intersect_key($invoiceRow, $invoiceCols);
+
                 if ($existing) {
-                    DB::table('invoices')->where('id', $existing->id)->update($invoiceRow);
+                    DB::table('invoices')->where('id', $existing->id)->update($safeInvoiceRow);
                     $invoiceId = $existing->id;
                     // Recreate treatment lines from scratch so re-importing the
                     // same invoice doesn't accumulate duplicate line items.
                     DB::table('invoice_treatments')->where('invoice_id', $invoiceId)->delete();
                 } else {
-                    $invoiceRow['paid_amount'] = $invoiceRow['paid_amount'] ?? $paidAmount;
-                    $invoiceRow['patient_paid_amount'] = $invoiceRow['patient_paid_amount'] ?? $paidAmount;
-                    $invoiceRow['insurance_paid_amount'] = $invoiceRow['insurance_paid_amount'] ?? 0;
-                    $invoiceRow['status'] = $invoiceRow['status'] ?? $status;
-                    $invoiceRow['payment_method'] = $invoiceRow['payment_method'] ?? $paymentMethod;
-                    $invoiceRow['patient_balance'] = $invoiceRow['patient_balance'] ?? $patientBalance;
-                    $invoiceRow['insurance_balance'] = $invoiceRow['insurance_balance'] ?? 0;
-                    $invoiceRow['created_at'] = $now;
-                    $invoiceId = DB::table('invoices')->insertGetId($invoiceRow);
+                    $safeInvoiceRow['paid_amount'] = $safeInvoiceRow['paid_amount'] ?? $paidAmount;
+                    $safeInvoiceRow['patient_paid_amount'] = $safeInvoiceRow['patient_paid_amount'] ?? $paidAmount;
+                    $safeInvoiceRow['insurance_paid_amount'] = $safeInvoiceRow['insurance_paid_amount'] ?? 0;
+                    $safeInvoiceRow['status'] = $safeInvoiceRow['status'] ?? $status;
+                    $safeInvoiceRow['payment_method'] = $safeInvoiceRow['payment_method'] ?? $paymentMethod;
+                    $safeInvoiceRow['patient_balance'] = $safeInvoiceRow['patient_balance'] ?? $patientBalance;
+                    $safeInvoiceRow['insurance_balance'] = $safeInvoiceRow['insurance_balance'] ?? 0;
+                    $safeInvoiceRow['created_at'] = $now;
+                    $invoiceId = DB::table('invoices')->insertGetId($safeInvoiceRow);
                 }
 
                 // Optional tag a later 'payment' row can reference via invoice_ref
                 // to attach a payment_transactions row to this specific invoice.
-                $invoiceRef = $this->getRecordValue($record, ['ref', 'reference', 'row_ref', 'external_id']);
+                $invoiceRef = $this->getRecordValue($record, ['ref', 'reference', 'row_ref', 'external_id', 'invoice_number', 'invoicenumber', 'receipt_number', 'invoice_no']);
                 if (!empty($invoiceRef)) {
                     $this->financialRefMap[trim($invoiceRef)] = [
                         'id' => $invoiceId,

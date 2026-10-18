@@ -329,6 +329,8 @@ class ImportController extends Controller
             ['name' => 'treatments_sample.xlsx', 'type' => 'treatments', 'format' => 'xlsx'],
             ['name' => 'appointments_sample.csv', 'type' => 'appointments', 'format' => 'csv'],
             ['name' => 'appointments_sample.xlsx', 'type' => 'appointments', 'format' => 'xlsx'],
+            ['name' => 'invoices_sample.csv', 'type' => 'invoices', 'format' => 'csv'],
+            ['name' => 'invoices_sample.xlsx', 'type' => 'invoices', 'format' => 'xlsx'],
             ['name' => 'financial_sample.csv', 'type' => 'financial', 'format' => 'csv'],
             ['name' => 'financial_sample.xlsx', 'type' => 'financial', 'format' => 'xlsx'],
             ['name' => 'inventory_sample.csv', 'type' => 'inventory', 'format' => 'csv'],

@@ -47,10 +47,12 @@ Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function ()
     
 });
 
-// Public template downloads (browser direct access)
+// Public template downloads & Public receipt settings (browser & desktop access)
 Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);
 Route::get('/downloads/printer-driver', [DownloadController::class, 'printerDriver']);
+Route::get('/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'getReceiptSettings']);
+Route::match(['put', 'post'], '/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'updateReceiptSettings']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
@@ -287,9 +289,6 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/settings/branch', [\App\Http\Controllers\BranchSettingController::class, 'updateSettings']);
     Route::post('/settings/branch/top-up', [\App\Http\Controllers\BranchSettingController::class, 'topUpCredits']);
 
-    // Facility Receipt Settings
-    Route::get('/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'getReceiptSettings']);
-    Route::match(['put', 'post'], '/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'updateReceiptSettings']);
 
     // Get all roles with permissions (Super Admin only)
     Route::get('/settings/roles', [RolePermissionController::class, 'getAllRolesWithPermissions']);

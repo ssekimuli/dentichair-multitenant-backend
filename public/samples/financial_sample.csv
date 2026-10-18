@@ -1,4 +1,4 @@
-invoice_number,patient_email,patient_phone,amount,date,due_date,status,description
-INV-1001,john.doe.sample@example.com,+256700111222,150000,2026-08-15,2026-08-29,Paid,Teeth Cleaning
-INV-1002,jane.smith.sample@example.com,+256700333444,850000,2026-08-16,2026-08-30,Pending,Root Canal Treatment
-INV-1003,mike.johnson.sample@example.com,+256700555666,1200000,2026-08-17,2026-08-31,Overdue,Dental Crown
+invoice_number,patient_email,patient_phone,amount,paid_amount,date,due_date,status,payment_method,description
+INV-1001,john.doe.sample@example.com,+256700111222,150000,150000,2026-08-15,2026-08-29,Paid,Cash,Routine Dental Cleaning
+INV-1002,jane.smith.sample@example.com,+256700333444,850000,500000,2026-08-16,2026-08-30,Pending,Mobile Money,Root Canal Treatment
+INV-1003,mike.johnson.sample@example.com,+256700555666,1200000,0,2026-08-17,2026-08-31,Overdue,Cash,Porcelain Fused to Metal Crown

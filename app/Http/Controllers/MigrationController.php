@@ -1662,16 +1662,43 @@ class MigrationController extends Controller
                 continue;
             }
 
-            $status = $this->getRecordValue($record, ['status', 'payment_status', 'invoice_status']) ?? 'Pending';
-            if (strcasecmp($status, 'Paid') === 0) {
-                $status = 'Paid';
-            } elseif (strcasecmp($status, 'Overdue') === 0) {
-                $status = 'Overdue';
+            $rawPaid = $this->getRecordValue($record, ['paid_amount', 'paidamount', 'paid', 'amount_paid', 'amountpaid']);
+            $userStatus = $this->getRecordValue($record, ['status', 'payment_status', 'invoice_status']);
+
+            if ($rawPaid !== null && is_numeric($rawPaid)) {
+                $paidAmount = max(0, (float)$rawPaid);
+            } elseif ($userStatus && strcasecmp($userStatus, 'Paid') === 0) {
+                $paidAmount = (float)$amount;
             } else {
-                $status = 'Pending';
+                $paidAmount = 0.0;
             }
 
-            $paidAmount = ($status === 'Paid') ? (float)$amount : 0;
+            if ($userStatus) {
+                if (strcasecmp($userStatus, 'Paid') === 0) {
+                    $status = 'Paid';
+                } elseif (strcasecmp($userStatus, 'Overdue') === 0) {
+                    $status = 'Overdue';
+                } elseif (strcasecmp($userStatus, 'Unpaid') === 0 || strcasecmp($userStatus, 'Pending') === 0) {
+                    $status = 'Pending';
+                } else {
+                    $status = ucfirst(strtolower($userStatus));
+                }
+            } else {
+                if ($paidAmount >= (float)$amount && (float)$amount > 0) {
+                    $status = 'Paid';
+                } else {
+                    $status = 'Pending';
+                }
+            }
+
+            if ($paidAmount >= (float)$amount && (float)$amount > 0 && (!$userStatus || strcasecmp($userStatus, 'Unpaid') !== 0)) {
+                $status = 'Paid';
+            }
+
+            $paymentMethod = $this->getRecordValue($record, ['payment_method', 'paymentmethod', 'method']);
+            if (empty($paymentMethod) && $paidAmount > 0) {
+                $paymentMethod = 'Cash';
+            }
 
             $rawDate = $this->getRecordValue($record, ['date', 'issuedate', 'issue_date', 'invoice_date']);
             $issueDate = $this->parseDate($rawDate, $now->format('Y-m-d'));
@@ -1679,7 +1706,10 @@ class MigrationController extends Controller
             $rawDueDate = $this->getRecordValue($record, ['duedate', 'due_date']);
             $dueDate = $this->parseDate($rawDueDate, date('Y-m-d', strtotime($issueDate . ' +14 days')));
 
-            $paymentMethod = ($status === 'Paid') ? 'Cash' : null;
+            $paymentDate = $this->parseDate(
+                $this->getRecordValue($record, ['payment_date', 'paymentdate', 'paid_date', 'paiddate']),
+                $issueDate
+            );
 
             // Optional label for the fallback line item when no procedure_refs match.
             $description = $this->getRecordValue($record, ['description', 'procedure', 'treatment', 'item', 'notes']) ?? 'Migrated Treatment';
@@ -1759,6 +1789,34 @@ class MigrationController extends Controller
                     $safeInvoiceRow['insurance_balance'] = $safeInvoiceRow['insurance_balance'] ?? 0;
                     $safeInvoiceRow['created_at'] = $now;
                     $invoiceId = DB::table('invoices')->insertGetId($safeInvoiceRow);
+                }
+
+                // If there is a paid amount, automatically record a payment_transactions row
+                if ($paidAmount > 0) {
+                    $ptCols = array_flip(\Illuminate\Support\Facades\Schema::getColumnListing('payment_transactions'));
+                    $existingTx = DB::table('payment_transactions')
+                        ->where('invoice_id', $invoiceId)
+                        ->first();
+
+                    $ptRow = [
+                        'invoice_id' => $invoiceId,
+                        'payer_type' => 'patient',
+                        'payer_id' => $p->id,
+                        'date' => $paymentDate,
+                        'amount' => (float)$paidAmount,
+                        'method' => $paymentMethod ?? 'Cash',
+                        'updated_at' => $now,
+                    ];
+                    $safePtRow = array_intersect_key($ptRow, $ptCols);
+
+                    if ($existingTx) {
+                        DB::table('payment_transactions')->where('id', $existingTx->id)->update($safePtRow);
+                    } else {
+                        $safePtRow['created_at'] = $now;
+                        DB::table('payment_transactions')->insert($safePtRow);
+                    }
+                } elseif ($existing && $paidAmount <= 0) {
+                    DB::table('payment_transactions')->where('invoice_id', $invoiceId)->delete();
                 }
 
                 // Optional tag a later 'payment' row can reference via invoice_ref

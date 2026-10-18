@@ -31,6 +31,7 @@ class MigrationController extends Controller
 
     public function migrate(Request $request)
     {
+        try {
         set_time_limit(0);
         $startTime = microtime(true);
         $importId = 'imp_' . uniqid();
@@ -174,6 +175,24 @@ class MigrationController extends Controller
             'warnings' => array_slice($allWarnings, 0, 50),
             'import_id' => $importId
         ], $success ? 200 : 400);
+        } catch (\Throwable $e) {
+            Log::error('Migration error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Migration failed: ' . $e->getMessage(),
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            ], 500);
+        }
     }
 
     private function errorResponse($importId, $imported, $failed, $errors, $startTime)
@@ -299,6 +318,33 @@ class MigrationController extends Controller
     private function normalizePhone($phone)
     {
         return preg_replace('/\D/', '', (string) $phone);
+    }
+
+    private function parseDate($date, $default = null)
+    {
+        if (empty($date)) {
+            return $default;
+        }
+
+        $dateStr = trim((string) $date);
+
+        // Check if numeric (Excel serial date)
+        if (is_numeric($dateStr) && (float) $dateStr > 20000 && (float) $dateStr < 70000) {
+            $timestamp = ((float) $dateStr - 25569) * 86400;
+            return gmdate('Y-m-d', (int) $timestamp);
+        }
+
+        $parsed = strtotime($dateStr);
+        if ($parsed === false) {
+            // Try DD/MM/YYYY format
+            $d = \DateTime::createFromFormat('d/m/Y', $dateStr);
+            if ($d !== false) {
+                return $d->format('Y-m-d');
+            }
+            return $default;
+        }
+
+        return date('Y-m-d', $parsed);
     }
 
     private function parseBool($value, $default = false)
@@ -2968,6 +3014,7 @@ class MigrationController extends Controller
                 continue;
             }
 
+            try {
             $rawDate = $this->getRecordValue($record, ['date', 'history_date', 'visit_date']);
             $date = $this->parseDate($rawDate, $now->format('Y-m-d'));
 
@@ -2977,7 +3024,6 @@ class MigrationController extends Controller
             $doctorName = $this->getRecordValue($record, ['doctorname', 'doctor_name', 'doctor']) ?? 'Attending Doctor';
             $chiefComplaint = $this->getRecordValue($record, ['chiefcomplaint', 'chief_complaint', 'complaint']) ?? 'Routine checkup';
 
-            try {
                 DB::table('medical_histories')->insert([
                     'patient_id' => $patient->id,
                     'date' => $date,
@@ -3002,7 +3048,7 @@ class MigrationController extends Controller
                 $result['errors'][] = [
                     'row' => $rowNumber,
                     'field' => 'medical_history',
-                    'value' => $chiefComplaint,
+                    'value' => $this->getRecordValue($record, ['chiefcomplaint', 'chief_complaint', 'complaint']) ?? 'Routine checkup',
                     'reason' => 'Failed to save medical history: ' . $e->getMessage()
                 ];
                 $result['failed']++;

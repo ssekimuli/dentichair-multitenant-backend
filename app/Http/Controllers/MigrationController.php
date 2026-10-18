@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * MigrationController - Phase 1: Enhanced Error Handling
@@ -2986,7 +2987,6 @@ class MigrationController extends Controller
                 $row = [
                     'client_id' => $clientId,
                     'doctor_name' => $doctorName,
-                    'employee_id' => $employeeId,
                     'item' => $itemName,
                     'tooth' => $tooth,
                     'status' => $status,
@@ -3002,21 +3002,34 @@ class MigrationController extends Controller
                     'updated_at' => $now,
                 ];
 
+                static $labOrderColumns = null;
+                if ($labOrderColumns === null) {
+                    $labOrderColumns = array_flip(Schema::getColumnListing('laboratory_orders'));
+                }
+                $row = array_intersect_key($row, $labOrderColumns);
+
                 // Deduplication query: match item + sent_date + client_id + tooth
                 $existingQuery = DB::table('laboratory_orders')
-                    ->where('item', $itemName)
-                    ->whereDate('sent_date', $sentDate);
+                    ->where('item', $itemName);
 
-                if ($clientId !== null) {
-                    $existingQuery->where('client_id', $clientId);
-                } else {
-                    $existingQuery->whereNull('client_id');
+                if (isset($labOrderColumns['sent_date'])) {
+                    $existingQuery->whereDate('sent_date', $sentDate);
                 }
 
-                if ($tooth !== null) {
-                    $existingQuery->where('tooth', $tooth);
-                } else {
-                    $existingQuery->whereNull('tooth');
+                if (isset($labOrderColumns['client_id'])) {
+                    if ($clientId !== null) {
+                        $existingQuery->where('client_id', $clientId);
+                    } else {
+                        $existingQuery->whereNull('client_id');
+                    }
+                }
+
+                if (isset($labOrderColumns['tooth'])) {
+                    if ($tooth !== null) {
+                        $existingQuery->where('tooth', $tooth);
+                    } else {
+                        $existingQuery->whereNull('tooth');
+                    }
                 }
 
                 $existing = $existingQuery->first();

@@ -2800,6 +2800,11 @@ class MigrationController extends Controller
      * Import lab orders, resolving client (by name) and doctor (by email)
      * references. Both client_id and doctor_id are optional/nullable.
      */
+    /**
+     * Import lab orders, resolving client (by name/lab) and doctor (by name/email).
+     * Automatically auto-creates client if not found so imports are never blocked.
+     * Patient info (name, email, phone) is preserved in instructions as metadata.
+     */
     private function processLabOrderChunk($chunk, &$result, $now)
     {
         [$patientsByEmail, $patientsByPhone] = $this->buildPatientLookupMaps($chunk);
@@ -2809,155 +2814,212 @@ class MigrationController extends Controller
         foreach ($chunk as $item) {
             $dEmail = $this->getRecordValue($item['data'], ['doctoremail', 'doctor_email']);
             if ($dEmail) $doctorEmails[] = strtolower(trim($dEmail));
-            $clientName = $this->getRecordValue($item['data'], ['client', 'clientname', 'client_name']);
+            $clientName = $this->getRecordValue($item['data'], ['clientname', 'client_name', 'client', 'labname', 'lab_name', 'lab', 'dental_lab', 'dentallab']);
             if ($clientName) $clientNames[] = trim($clientName);
         }
 
-        $doctors = DB::table('employees')->whereIn('email', $doctorEmails)->get()->keyBy(function ($item) {
-            return strtolower(trim($item->email));
-        });
-        $clients = DB::table('clients')->whereIn('name', $clientNames)->get()->keyBy(function ($item) {
-            return strtolower(trim($item->name));
-        });
+        $doctorsByEmail = empty($doctorEmails)
+            ? collect()
+            : DB::table('employees')->whereIn('email', $doctorEmails)->get()->keyBy(function ($item) {
+                return strtolower(trim($item->email));
+            });
 
-        $validStatuses = ['Sent', 'Received', 'Completed', 'Cancelled'];
+        $clients = empty($clientNames)
+            ? collect()
+            : DB::table('clients')->get()->keyBy(function ($item) {
+                return strtolower(trim($item->name));
+            });
 
         foreach ($chunk as $item) {
             $rowNumber = $item['rowNumber'];
             $record = $item['data'];
 
-            // A lab order is linked to a client (the lab/company), not a
-            // patient - patient info is optional metadata. If patient_email/
-            // patient_phone is given it must resolve to an existing patient
-            // (and fills patient_name unless patient_name overrides it);
-            // otherwise patient_name is used as free text, or left blank.
-            // laboratory_orders.patient_name is NOT NULL, so a blank patient
-            // is stored as an empty string rather than true SQL NULL.
-            $patientName = $this->getRecordValue($record, ['patientname', 'patient_name']);
-            $patientFound = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
-
-            if ($patientFound['identifier']) {
-                if (!$patientFound['patient']) {
-                    $result['errors'][] = [
-                        'row' => $rowNumber,
-                        'field' => 'patient_email/patient_phone',
-                        'value' => $patientFound['identifier'],
-                        'reason' => "No existing patient found for {$patientFound['identifier']}. Import the patient first."
-                    ];
-                    $result['failed']++;
-                    continue;
-                }
-                if (empty($patientName)) {
-                    $patientName = trim(($patientFound['patient']->first_name ?? '') . ' ' . ($patientFound['patient']->last_name ?? ''));
-                }
-            }
-            $patientName = $patientName ?? '';
-
-            $lab = $this->getRecordValue($record, ['lab']);
-            $itemName = $this->getRecordValue($record, ['item']);
-
-            if (empty($lab) || empty($itemName)) {
-                $result['errors'][] = [
-                    'row' => $rowNumber,
-                    'field' => 'lab/item',
-                    'value' => null,
-                    'reason' => 'Lab and item are required'
-                ];
-                $result['failed']++;
-                continue;
-            }
-
-            $clientId = null;
-            $clientName = $this->getRecordValue($record, ['client', 'clientname', 'client_name']);
-            if (!empty($clientName)) {
-                $client = $clients->get(strtolower(trim($clientName)));
-                if (!$client) {
-                    $result['errors'][] = [
-                        'row' => $rowNumber,
-                        'field' => 'client',
-                        'value' => $clientName,
-                        'reason' => "No existing client found named \"{$clientName}\". Import the client first."
-                    ];
-                    $result['failed']++;
-                    continue;
-                }
-                $clientId = $client->id;
-            }
-
-            $doctorId = null;
-            $dEmail = $this->getRecordValue($record, ['doctoremail', 'doctor_email']);
-            if (!empty($dEmail)) {
-                $doctor = $doctors->get(strtolower(trim($dEmail)));
-                if (!$doctor) {
-                    $result['errors'][] = [
-                        'row' => $rowNumber,
-                        'field' => 'doctor_email',
-                        'value' => $dEmail,
-                        'reason' => "No existing employee found for email {$dEmail}. Import the employee first."
-                    ];
-                    $result['failed']++;
-                    continue;
-                }
-                $doctorId = $doctor->id;
-            }
-
-            $rawTooth = $this->getRecordValue($record, ['tooth', 'tooth_number', 'toothnumber', 'tooth_no', 'toothno']);
-            $toothValidation = $this->validateTooth($rawTooth);
-            if (!$toothValidation['valid']) {
-                $result['warnings'][] = "Row {$rowNumber}: {$toothValidation['reason']} (tooth left blank)";
-            }
-
-            $status = $this->getRecordValue($record, ['status']) ?? 'Sent';
-            $matchedStatus = null;
-            foreach ($validStatuses as $validStatus) {
-                if (strcasecmp($status, $validStatus) === 0) {
-                    $matchedStatus = $validStatus;
-                    break;
-                }
-            }
-            $status = $matchedStatus ?? 'Sent';
-
-            $rawSentDate = $this->getRecordValue($record, ['sentdate', 'sent_date']);
-            $sentDate = $rawSentDate ? date('Y-m-d', strtotime($rawSentDate)) : $now->format('Y-m-d');
-
-            $rawDueDate = $this->getRecordValue($record, ['duedate', 'due_date']);
-            $dueDate = $rawDueDate ? date('Y-m-d', strtotime($rawDueDate)) : date('Y-m-d', strtotime($sentDate . ' +7 days'));
-
-            $rawReceivedDate = $this->getRecordValue($record, ['receiveddate', 'received_date']);
-            $receivedDate = $rawReceivedDate ? date('Y-m-d', strtotime($rawReceivedDate)) : null;
-
-            $cost = $this->getRecordValue($record, ['cost']);
-            $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
-
-            $row = [
-                'patient_name' => $patientName,
-                'lab' => $lab,
-                'item' => $itemName,
-                'tooth' => $toothValidation['value'],
-                'status' => $status,
-                'sent_date' => $sentDate,
-                'due_date' => $dueDate,
-                'branch_id' => $branchId,
-                'client_id' => $clientId,
-                'doctor_id' => $doctorId,
-                'received_date' => $receivedDate,
-                'shade' => $this->getRecordValue($record, ['shade']),
-                'material' => $this->getRecordValue($record, ['material']),
-                'instructions' => $this->getRecordValue($record, ['instructions']),
-                'cost' => is_numeric($cost) ? (float)$cost : null,
-                'invoice_number' => $this->getRecordValue($record, ['invoicenumber', 'invoice_number']),
-                'updated_at' => $now,
-            ];
-
-            // Match key: same patient_name + lab + item + sent_date is treated
-            // as the same lab order (updated in place).
             try {
-                $existing = DB::table('laboratory_orders')
-                    ->where('patient_name', $patientName)
-                    ->where('lab', $lab)
+                // 1. Client / Dental Lab Resolution
+                $clientName = $this->getRecordValue($record, ['clientname', 'client_name', 'client', 'labname', 'lab_name', 'lab', 'dental_lab', 'dentallab']);
+                $clientId = null;
+                if (!empty($clientName)) {
+                    $normClientName = strtolower(trim($clientName));
+                    $client = $clients->get($normClientName);
+                    if ($client) {
+                        $clientId = $client->id;
+                    } else {
+                        // Check DB directly in case added during this import batch
+                        $dbClient = DB::table('clients')->whereRaw('LOWER(name) = ?', [$normClientName])->first();
+                        if ($dbClient) {
+                            $clientId = $dbClient->id;
+                            $clients->put($normClientName, $dbClient);
+                        } else {
+                            // Auto-create client (dental lab)
+                            $clientId = DB::table('clients')->insertGetId([
+                                'name' => trim($clientName),
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ]);
+                            $newClientObj = (object)['id' => $clientId, 'name' => trim($clientName)];
+                            $clients->put($normClientName, $newClientObj);
+                        }
+                    }
+                }
+
+                // 2. Item / Procedure / Service
+                $itemName = $this->getRecordValue($record, ['item', 'itemname', 'item_name', 'service', 'servicename', 'service_name', 'procedure']);
+                if (empty($itemName)) {
+                    $result['errors'][] = [
+                        'row' => $rowNumber,
+                        'field' => 'item',
+                        'value' => null,
+                        'reason' => 'Item or service name is required'
+                    ];
+                    $result['failed']++;
+                    continue;
+                }
+
+                // 3. Doctor Name & Employee ID
+                $doctorName = $this->getRecordValue($record, ['doctorname', 'doctor_name', 'doctor', 'attending_doctor', 'clinician']);
+                $employeeId = null;
+                $dEmail = $this->getRecordValue($record, ['doctoremail', 'doctor_email']);
+                if (!empty($dEmail)) {
+                    $doc = $doctorsByEmail->get(strtolower(trim($dEmail)));
+                    if ($doc) {
+                        $employeeId = $doc->id;
+                        if (empty($doctorName)) {
+                            $doctorName = trim(($doc->first_name ?? '') . ' ' . ($doc->last_name ?? ''));
+                            if (empty($doctorName) && !empty($doc->name)) {
+                                $doctorName = $doc->name;
+                            }
+                        }
+                    }
+                }
+                if (empty($doctorName)) {
+                    $doctorName = 'Attending Doctor';
+                }
+
+                // 4. Patient Information (metadata preserved in instructions)
+                $patientName = $this->getRecordValue($record, ['patientname', 'patient_name']);
+                $patientEmail = $this->getRecordValue($record, ['patientemail', 'patient_email']);
+                $patientPhone = $this->getRecordValue($record, ['patientphone', 'patient_phone']);
+
+                $patientFound = $this->findPatientForRow($record, $patientsByEmail, $patientsByPhone);
+                if ($patientFound['patient']) {
+                    $resolvedPName = trim(($patientFound['patient']->first_name ?? '') . ' ' . ($patientFound['patient']->last_name ?? ''));
+                    if (empty($patientName) && !empty($resolvedPName)) {
+                        $patientName = $resolvedPName;
+                    }
+                }
+
+                $instructions = $this->getRecordValue($record, ['instructions', 'instruction', 'notes', 'note']);
+                $patientNote = '';
+                if (!empty($patientName)) {
+                    $contact = !empty($patientEmail) ? $patientEmail : (!empty($patientPhone) ? $patientPhone : '');
+                    $patientNote = "Patient: {$patientName}" . (!empty($contact) ? " ({$contact})" : "");
+                } elseif (!empty($patientEmail)) {
+                    $patientNote = "Patient: {$patientEmail}";
+                }
+
+                // 5. Tooth Validation
+                $rawTooth = $this->getRecordValue($record, ['tooth', 'tooth_number', 'toothnumber', 'tooth_no', 'toothno']);
+                $tooth = null;
+                if (!empty($rawTooth)) {
+                    $toothValidation = $this->validateTooth($rawTooth);
+                    if ($toothValidation['valid']) {
+                        $tooth = $toothValidation['value'];
+                    } else {
+                        // Extract first digit if range like '14-16'
+                        if (preg_match('/^(\d+)/', trim((string)$rawTooth), $m)) {
+                            $firstTooth = (int)$m[1];
+                            $firstVal = $this->validateTooth($firstTooth);
+                            if ($firstVal['valid']) {
+                                $tooth = $firstVal['value'];
+                            }
+                        }
+                        $rangeNote = "Teeth: {$rawTooth}";
+                        $instructions = empty($instructions) ? $rangeNote : ($instructions . " | " . $rangeNote);
+                        $result['warnings'][] = "Row {$rowNumber}: {$toothValidation['reason']} (stored tooth as " . ($tooth ?? 'blank') . ")";
+                    }
+                }
+
+                if (!empty($patientNote)) {
+                    if (empty($instructions)) {
+                        $instructions = $patientNote;
+                    } elseif (stripos($instructions, $patientName ?? $patientNote) === false) {
+                        $instructions = $patientNote . " | " . $instructions;
+                    }
+                }
+
+                // 6. Status Mapping to valid DB ENUM ('Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled')
+                $rawStatus = strtolower(trim((string)($this->getRecordValue($record, ['status']) ?? '')));
+                $status = 'Received';
+                if (in_array($rawStatus, ['draft'])) {
+                    $status = 'Draft';
+                } elseif (in_array($rawStatus, ['in progress', 'in_progress', 'in production', 'in_production', 'production', 'processing'])) {
+                    $status = 'In Production';
+                } elseif (in_array($rawStatus, ['ready', 'ready for delivery', 'ready_for_delivery'])) {
+                    $status = 'Ready for Delivery';
+                } elseif (in_array($rawStatus, ['completed', 'delivered', 'done'])) {
+                    $status = 'Delivered';
+                } elseif (in_array($rawStatus, ['cancelled', 'canceled'])) {
+                    $status = 'Cancelled';
+                } elseif (in_array($rawStatus, ['sent', 'received', 'pending'])) {
+                    $status = 'Received';
+                }
+
+                // 7. Dates
+                $rawSentDate = $this->getRecordValue($record, ['sentdate', 'sent_date', 'date']);
+                $sentDate = $this->parseDate($rawSentDate, $now->format('Y-m-d'));
+
+                $rawDueDate = $this->getRecordValue($record, ['duedate', 'due_date']);
+                $dueDate = $this->parseDate($rawDueDate, date('Y-m-d', strtotime($sentDate . ' +7 days')));
+
+                $rawReceivedDate = $this->getRecordValue($record, ['receiveddate', 'received_date']);
+                $receivedDate = $this->parseDate($rawReceivedDate, null);
+
+                // 8. Financial & Other fields
+                $rawPrice = $this->getRecordValue($record, ['appliedprice', 'applied_price', 'price', 'cost', 'amount']);
+                $appliedPrice = is_numeric($rawPrice) ? (float)$rawPrice : null;
+
+                $branchId = $this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1;
+                $shade = $this->getRecordValue($record, ['shade']);
+                $material = $this->getRecordValue($record, ['material']);
+                $invoiceNumber = $this->getRecordValue($record, ['invoicenumber', 'invoice_number']);
+
+                $row = [
+                    'client_id' => $clientId,
+                    'doctor_name' => $doctorName,
+                    'employee_id' => $employeeId,
+                    'item' => $itemName,
+                    'tooth' => $tooth,
+                    'status' => $status,
+                    'sent_date' => $sentDate,
+                    'due_date' => $dueDate,
+                    'received_date' => $receivedDate,
+                    'branch_id' => $branchId,
+                    'shade' => $shade,
+                    'material' => $material,
+                    'instructions' => $instructions,
+                    'applied_price' => $appliedPrice,
+                    'invoice_number' => $invoiceNumber,
+                    'updated_at' => $now,
+                ];
+
+                // Deduplication query: match item + sent_date + client_id + tooth
+                $existingQuery = DB::table('laboratory_orders')
                     ->where('item', $itemName)
-                    ->whereDate('sent_date', $sentDate)
-                    ->first();
+                    ->whereDate('sent_date', $sentDate);
+
+                if ($clientId !== null) {
+                    $existingQuery->where('client_id', $clientId);
+                } else {
+                    $existingQuery->whereNull('client_id');
+                }
+
+                if ($tooth !== null) {
+                    $existingQuery->where('tooth', $tooth);
+                } else {
+                    $existingQuery->whereNull('tooth');
+                }
+
+                $existing = $existingQuery->first();
 
                 if ($existing) {
                     DB::table('laboratory_orders')->where('id', $existing->id)->update($row);
@@ -2966,13 +3028,16 @@ class MigrationController extends Controller
                     DB::table('laboratory_orders')->insert($row);
                 }
                 $result['imported']++;
-            } catch (\Exception $e) {
-                Log::error('Lab order import error: ' . $e->getMessage());
+            } catch (\Throwable $e) {
+                Log::error('Lab order import error: ' . $e->getMessage(), [
+                    'row' => $rowNumber,
+                    'trace' => $e->getTraceAsString()
+                ]);
                 $result['errors'][] = [
                     'row' => $rowNumber,
                     'field' => 'item',
-                    'value' => $itemName,
-                    'reason' => 'Failed to save lab order'
+                    'value' => $this->getRecordValue($record, ['item', 'item_name']) ?? 'Lab order row',
+                    'reason' => 'Failed to save lab order: ' . $e->getMessage()
                 ];
                 $result['failed']++;
             }

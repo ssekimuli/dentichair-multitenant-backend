@@ -23,8 +23,60 @@
     <meta name="description" content="@yield('meta_description', 'Book your appointment with our clinic')" />
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* WATERMARK OF FACILITY NAME ON PRINT */
+        .print-watermark {
+            display: none;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .print-watermark {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                pointer-events: none !important;
+                z-index: 9999 !important;
+            }
+
+            .print-watermark-text {
+                font-size: clamp(34px, 5.5vw, 58px) !important;
+                font-weight: 900 !important;
+                color: #0f172a !important;
+                opacity: 0.075 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 6px !important;
+                transform: rotate(-32deg) !important;
+                text-align: center !important;
+                line-height: 1.25 !important;
+                max-width: 85% !important;
+                word-break: break-word !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
+    @php
+        $watermarkFacility = $clinicName ?? (class_exists(\App\Models\GlobalSetting::class) ? \App\Models\GlobalSetting::getSettings()?->clinic_name : null) ?? (class_exists(\App\Models\Business::class) ? \App\Models\Business::first()?->name : null) ?? config('app.name');
+    @endphp
+    @if(!empty($watermarkFacility))
+        <div class="print-watermark" aria-hidden="true">
+            <div class="print-watermark-text">{{ $watermarkFacility }}</div>
+        </div>
+    @endif
     <div class="min-h-screen">
         <nav class="bg-green-700 shadow">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

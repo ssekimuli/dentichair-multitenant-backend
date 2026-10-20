@@ -274,6 +274,40 @@
             padding-top: 10px;
         }
 
+        /* WATERMARK OF FACILITY NAME */
+        .print-watermark {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 9999;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .print-watermark-text {
+            font-size: clamp(30px, 4.5vw, 54px);
+            font-weight: 800;
+            color: #0f172a;
+            opacity: 0.05;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            transform: rotate(-32deg);
+            text-align: center;
+            line-height: 1.25;
+            max-width: 85%;
+            word-break: break-word;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
         /* PRINT MEDIA STYLES */
         @media print {
             body {
@@ -298,10 +332,48 @@
             .signatures-area {
                 page-break-inside: avoid;
             }
+
+            .print-watermark {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                pointer-events: none !important;
+                z-index: 9999 !important;
+            }
+
+            .print-watermark-text {
+                font-size: clamp(34px, 5.5vw, 58px) !important;
+                font-weight: 900 !important;
+                color: #0f172a !important;
+                opacity: 0.075 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 6px !important;
+                transform: rotate(-32deg) !important;
+                text-align: center !important;
+                line-height: 1.25 !important;
+                max-width: 85% !important;
+                word-break: break-word !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>
 <body>
+
+    <!-- FACILITY NAME WATERMARK -->
+    @if(!empty($clinicName))
+        <div class="print-watermark" aria-hidden="true">
+            <div class="print-watermark-text">{{ $clinicName }}</div>
+        </div>
+    @endif
 
     <!-- ACTIONS (Hidden on print) -->
     <div class="actions-bar">

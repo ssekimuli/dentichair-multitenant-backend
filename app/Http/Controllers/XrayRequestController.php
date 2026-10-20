@@ -434,27 +434,32 @@ class XrayRequestController extends Controller
             'invoice:id,amount,paid_amount,status,issue_date'
         ])->findOrFail($id);
 
-        $clinicName = config('app.name', 'DENTAL CLINIC');
-        $clinicDetails = 'Oral & Maxillofacial Diagnostic Center';
-        $clinicAddress = '';
-        $clinicPhone = '';
-        $clinicEmail = '';
+        $globalSetting = class_exists(\App\Models\GlobalSetting::class) ? \App\Models\GlobalSetting::getSettings() : null;
+        $clinicName = !empty($globalSetting?->clinic_name) ? $globalSetting->clinic_name : null;
+        $clinicDetails = !empty($globalSetting?->subtitle) ? $globalSetting->subtitle : 'Oral & Maxillofacial Diagnostic Center';
+        $clinicAddress = !empty($globalSetting?->address) ? $globalSetting->address : '';
+        $clinicPhone = !empty($globalSetting?->phone) ? $globalSetting->phone : '';
+        $clinicEmail = !empty($globalSetting?->email) ? $globalSetting->email : '';
 
         if (Schema::hasTable('businesses')) {
             $business = Business::first();
             if ($business) {
-                $clinicName = $business->name ?: $clinicName;
-                $clinicDetails = $business->tagline ?: $clinicDetails;
-                $clinicAddress = $business->address ?: $clinicAddress;
-                $clinicPhone = $business->phone ?: $clinicPhone;
-                $clinicEmail = $business->email ?: $clinicEmail;
+                $clinicName = $clinicName ?: ($business->name ?: null);
+                $clinicDetails = ($clinicDetails !== 'Oral & Maxillofacial Diagnostic Center') ? $clinicDetails : ($business->tagline ?: $clinicDetails);
+                $clinicAddress = $clinicAddress ?: ($business->address ?: '');
+                $clinicPhone = $clinicPhone ?: ($business->phone ?: '');
+                $clinicEmail = $clinicEmail ?: ($business->email ?: '');
             }
         }
 
-        if ($xrayRequest->branch) {
-            $clinicName = $xrayRequest->branch->name ?: $clinicName;
-            $clinicAddress = $xrayRequest->branch->address ?: $clinicAddress;
-            $clinicPhone = $xrayRequest->branch->phone ?: $clinicPhone;
+        if (!$clinicName && $xrayRequest->branch) {
+            $clinicName = $xrayRequest->branch->name ?: null;
+            $clinicAddress = $clinicAddress ?: ($xrayRequest->branch->address ?: '');
+            $clinicPhone = $clinicPhone ?: ($xrayRequest->branch->phone ?: '');
+        }
+
+        if (!$clinicName) {
+            $clinicName = env('CLINIC_NAME', env('BUSINESS_NAME', env('FACILITY_NAME', config('app.name') !== 'Laravel' ? config('app.name') : 'Dental Clinic')));
         }
 
         return view('xray-requests.print', compact(

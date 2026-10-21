@@ -16,10 +16,10 @@ class DatabaseSeeder extends Seeder
             // OdontogramSeeder::class,
             // AppointmentSeeder::class,
             // InvoiceSeeder::class,
-            ManagementSeeder::class,
-            MedicineSeeder::class,
-            LabServiceSeeder::class,
-            LabServicePriceSeeder::class,
+            // ManagementSeeder::class,
+            // MedicineSeeder::class,
+            // LabServiceSeeder::class,
+            // LabServicePriceSeeder::class,
         ]);
     }
 }

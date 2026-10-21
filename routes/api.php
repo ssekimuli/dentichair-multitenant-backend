@@ -72,7 +72,19 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/business', [AuthController::class, 'getBusinessInfo']);
     Route::get('/all-branch', [AuthController::class, 'allBranch']);
 
-    // Imports & Exports
+    // Universal Dynamic Import REST API
+    Route::prefix('import')->group(function () {
+        Route::get('/tables', [\App\Http\Controllers\Api\UniversalImportController::class, 'tables']);
+        Route::get('/tables/{table}/columns', [\App\Http\Controllers\Api\UniversalImportController::class, 'columns']);
+        Route::post('/preview', [\App\Http\Controllers\Api\UniversalImportController::class, 'preview']);
+        Route::post('/execute', [\App\Http\Controllers\Api\UniversalImportController::class, 'execute']);
+        Route::get('/jobs/{id}', [\App\Http\Controllers\Api\UniversalImportController::class, 'jobStatus']);
+        Route::get('/jobs/{id}/errors', [\App\Http\Controllers\Api\UniversalImportController::class, 'jobErrors']);
+        Route::get('/jobs/{id}/errors/download', [\App\Http\Controllers\Api\UniversalImportController::class, 'downloadErrors']);
+        Route::get('/history', [\App\Http\Controllers\Api\UniversalImportController::class, 'history']);
+    });
+
+    // Imports & Exports (Legacy)
     Route::post('/migrate', [MigrationController::class, 'migrate']);
     Route::post('/migrate/combined', [MigrationController::class, 'migrateCombined']);
     Route::post('/import/parse-headers', [ImportController::class, 'parseHeaders']);

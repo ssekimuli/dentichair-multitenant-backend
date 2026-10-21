@@ -34,24 +34,19 @@ def _read_sheet(ws):
     return header_row, records
 
 
-def excel_to_csv(xlsx_path, csv_path, merge_sheets=False):
+def excel_to_csv(xlsx_path, csv_path, merge_sheets=False, target_sheet=None):
     """Convert XLSX file to CSV format.
 
-    Default mode converts only the first (active) sheet, unchanged from the
-    original behavior - other callers (e.g. the single-type dynamic-mapping
-    importer) depend on this staying exactly as-is.
-
-    merge_sheets=True instead reads every sheet except reserved ones (e.g.
-    "Instructions") and merges them into one CSV with a unified header (a
-    union of every sheet's columns, matched by name). This lets a workbook
-    split its rows across one sheet per row-type instead of one wide sheet,
-    while each sheet keeps its own explicit 'type' column values as before.
+    Default mode converts only the first (active) sheet, or target_sheet if specified.
     """
     try:
         wb = load_workbook(xlsx_path, data_only=True)
 
         if not merge_sheets:
-            ws = wb.active
+            if target_sheet and target_sheet in wb.sheetnames:
+                ws = wb[target_sheet]
+            else:
+                ws = wb.active
 
             with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
@@ -138,15 +133,19 @@ def excel_to_csv(xlsx_path, csv_path, merge_sheets=False):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) not in (3, 4):
-        print("Usage: python excel_to_csv.py <xlsx_path> <csv_path> [--merge-sheets]")
+    if len(sys.argv) < 3:
+        print("Usage: python excel_to_csv.py <xlsx_path> <csv_path> [--merge-sheets] [--sheet=SheetName]")
         sys.exit(1)
 
     xlsx_path = sys.argv[1]
     csv_path = sys.argv[2]
-    merge_sheets = len(sys.argv) == 4 and sys.argv[3] == '--merge-sheets'
+    merge_sheets = '--merge-sheets' in sys.argv[3:]
+    target_sheet = None
+    for arg in sys.argv[3:]:
+        if arg.startswith('--sheet='):
+            target_sheet = arg.split('=', 1)[1]
 
-    if excel_to_csv(xlsx_path, csv_path, merge_sheets=merge_sheets):
+    if excel_to_csv(xlsx_path, csv_path, merge_sheets=merge_sheets, target_sheet=target_sheet):
         print("OK", file=sys.stdout)
         sys.exit(0)
     else:

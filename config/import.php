@@ -20,8 +20,8 @@ return [
             'description' => 'Patient records, demographics, and contact information',
             'permission' => null, // accessible to authorized users
             'tenant_column' => 'branch_id',
-            'unique_by' => ['id', 'email', 'phone'],
-            'default_unique_by' => 'email',
+            'unique_by' => ['phone', 'email', 'id'],
+            'default_unique_by' => 'phone',
             'excluded_columns' => ['avatar'],
             'defaults' => [
                 'first_name' => 'Imported',
@@ -33,7 +33,7 @@ return [
             'aliases' => [
                 'last_visit' => ['date', 'visit date', 'last visit', 'last visit date', 'attendance date', 'seen on', 'date of visit', 'visit_date'],
                 'first_name' => ['name', 'patient name', 'full name'],
-                'phone' => ['contact', 'contact number', 'phone number', 'telephone', 'mobile', 'tel'],
+                'phone' => ['contact', 'contact number', 'phone number', 'telephone', 'mobile', 'tel', 'contacts', 'patient contact', 'phone_number'],
                 'history' => ['procedure', 'treatment', 'notes', 'medical history', 'procedure name'],
             ],
             'custom_rules' => [

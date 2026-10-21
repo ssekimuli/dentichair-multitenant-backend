@@ -13,23 +13,28 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+use App\Services\Import\ImportErrorHumanizer;
+
 class UniversalImportService
 {
     protected SpreadsheetReaderService $reader;
     protected ImportSchemaService $schemaService;
     protected ImportMappingService $mappingService;
     protected ImportValidationService $validationService;
+    protected ImportErrorHumanizer $errorHumanizer;
 
     public function __construct(
         SpreadsheetReaderService $reader,
         ImportSchemaService $schemaService,
         ImportMappingService $mappingService,
-        ImportValidationService $validationService
+        ImportValidationService $validationService,
+        ?ImportErrorHumanizer $errorHumanizer = null
     ) {
         $this->reader = $reader;
         $this->schemaService = $schemaService;
         $this->mappingService = $mappingService;
         $this->validationService = $validationService;
+        $this->errorHumanizer = $errorHumanizer ?? new ImportErrorHumanizer($schemaService);
     }
 
     /**
@@ -373,9 +378,10 @@ class UniversalImportService
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            $friendlySummary = $this->errorHumanizer->humanizeSummary($e);
             $job->update([
                 'status' => 'failed',
-                'error_summary' => 'Import execution failed: ' . $e->getMessage(),
+                'error_summary' => 'Import stopped: ' . $friendlySummary,
                 'completed_at' => now(),
             ]);
         } finally {
@@ -434,94 +440,301 @@ class UniversalImportService
                 $rawData = $item['raw'];
 
                 try {
-                    if ($mode === 'insert') {
-                        if ($hasTimestamps) {
-                            $data['created_at'] = $now;
-                            $data['updated_at'] = $now;
-                        }
-                        DB::table($table)->insert($data);
-                        $importedCount++;
-                        continue;
-                    }
-
-                    // Modes requiring unique key match: skip_duplicates, update_existing, upsert
-                    $keyValue = $data[$updateKey] ?? null;
-
-                    if ($keyValue === null || $keyValue === '') {
-                        // Cannot match without update key value
-                        if ($mode === 'skip_duplicates') {
-                            if ($hasTimestamps) {
-                                $data['created_at'] = $now;
-                                $data['updated_at'] = $now;
-                            }
-                            DB::table($table)->insert($data);
-                            $importedCount++;
-                        } else {
-                            ImportRowError::create([
-                                'import_job_id' => $jobId,
-                                'row_number' => $rowNumber,
-                                'source_column' => $fieldToHeaderMap[$updateKey] ?? $updateKey,
-                                'destination_field' => $updateKey,
-                                'error_code' => 'MISSING_UNIQUE_KEY',
-                                'error_message' => "Value for unique key '{$updateKey}' is required for mode '{$mode}'.",
-                                'raw_data' => $rawData,
-                            ]);
-                            $failedCount++;
-                        }
-                        continue;
-                    }
-
-                    $query = DB::table($table)->where($updateKey, $keyValue);
-                    if ($tenantColumn && $branchId !== null && Schema::hasColumn($table, $tenantColumn)) {
-                        $query->where($tenantColumn, $branchId);
-                    }
-
-                    $existing = $query->first();
+                    // Check if record already exists in database (by update_key, contact/phone, or email)
+                    $existing = $this->findExistingRecord(
+                        $table,
+                        $data,
+                        $updateKey,
+                        $tenantColumn,
+                        $branchId
+                    );
 
                     if ($existing) {
+                        // Record ALREADY EXISTS:
                         if ($mode === 'skip_duplicates') {
                             $skippedCount++;
-                        } elseif ($mode === 'update_existing' || $mode === 'upsert') {
-                            if ($hasTimestamps) {
-                                $data['updated_at'] = $now;
-                            }
-                            // Don't overwrite created_at on update
-                            unset($data['created_at']);
-                            $query->update($data);
-                            $updatedCount++;
+                            continue;
                         }
-                    } else {
-                        if ($mode === 'update_existing') {
-                            $skippedCount++;
-                        } else { // insert or upsert
+
+                        // For 'update_existing', 'upsert', OR 'insert' (when record already exists):
+                        // "If contact already exists, JUST UPDATE!"
+                        if ($hasTimestamps) {
+                            $data['updated_at'] = $now;
+                        }
+                        unset($data['created_at']);
+
+                        // Preserve existing values if incoming data is empty/null or if incoming was just populated by fallback table defaults
+                        $tableDefaults = (array) config("import.tables.{$table}.defaults", []);
+                        foreach (['email', 'phone', 'first_name', 'last_name', 'gender', 'date_of_birth', 'address', 'nationality'] as $preserveCol) {
+                            if (empty($existing->{$preserveCol})) {
+                                continue;
+                            }
+                            if (!array_key_exists($preserveCol, $data) || $data[$preserveCol] === null || $data[$preserveCol] === '') {
+                                unset($data[$preserveCol]);
+                                continue;
+                            }
+                            if (isset($tableDefaults[$preserveCol]) && $data[$preserveCol] === $tableDefaults[$preserveCol]) {
+                                $header = $fieldToHeaderMap[$preserveCol] ?? null;
+                                if ($header === null || !isset($rawData[$header]) || trim((string)$rawData[$header]) === '') {
+                                    unset($data[$preserveCol]);
+                                }
+                            }
+                        }
+
+                        DB::table($table)->where('id', $existing->id)->update($data);
+                        $updatedCount++;
+                        continue;
+                    }
+
+                    // Record DOES NOT EXIST:
+                    if ($mode === 'update_existing') {
+                        // Cannot update non-existent record
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    // For 'insert' or 'upsert': create new record
+                    if ($hasTimestamps) {
+                        $data['created_at'] = $now;
+                        $data['updated_at'] = $now;
+                    }
+
+                    DB::table($table)->insert($data);
+                    $importedCount++;
+                } catch (\Throwable $e) {
+                    // Auto-recovery for any duplicate constraint collision: locate existing record and update it!
+                    if ($this->errorHumanizer->isDuplicateEntryError($e->getMessage())) {
+                        $duplicateExisting = $this->findExistingRecordByDuplicateError(
+                            $e->getMessage(),
+                            $table,
+                            $data,
+                            $tenantColumn,
+                            $branchId
+                        );
+
+                        if ($duplicateExisting) {
                             if ($hasTimestamps) {
-                                $data['created_at'] = $now;
                                 $data['updated_at'] = $now;
                             }
-                            DB::table($table)->insert($data);
-                            $importedCount++;
+                            unset($data['created_at']);
+                            $tableDefaults = (array) config("import.tables.{$table}.defaults", []);
+                            foreach (['email', 'phone', 'first_name', 'last_name', 'gender', 'date_of_birth', 'address', 'nationality'] as $preserveCol) {
+                                if (empty($duplicateExisting->{$preserveCol})) {
+                                    continue;
+                                }
+                                if (!array_key_exists($preserveCol, $data) || $data[$preserveCol] === null || $data[$preserveCol] === '') {
+                                    unset($data[$preserveCol]);
+                                    continue;
+                                }
+                                if (isset($tableDefaults[$preserveCol]) && $data[$preserveCol] === $tableDefaults[$preserveCol]) {
+                                    $header = $fieldToHeaderMap[$preserveCol] ?? null;
+                                    if ($header === null || !isset($rawData[$header]) || trim((string)$rawData[$header]) === '') {
+                                        unset($data[$preserveCol]);
+                                    }
+                                }
+                            }
+                            DB::table($table)->where('id', $duplicateExisting->id)->update($data);
+                            $updatedCount++;
+                            continue; // Successfully updated existing record!
                         }
                     }
-                } catch (\Throwable $e) {
+
+                    $humanized = $this->errorHumanizer->humanize(
+                        $e,
+                        $table,
+                        $data,
+                        $fieldToHeaderMap
+                    );
+
                     if ($errorMode === 'atomic') {
                         $hasAtomicFailure = true;
-                        $atomicFailureMessage = "Row {$rowNumber} database error: " . $e->getMessage();
-                        throw $e;
+                        $atomicFailureMessage = "Import stopped at Row {$rowNumber}: " . $humanized['error_message'];
+                        throw new \RuntimeException($atomicFailureMessage, 0, $e);
                     }
 
                     ImportRowError::create([
                         'import_job_id' => $jobId,
                         'row_number' => $rowNumber,
-                        'source_column' => null,
-                        'destination_field' => null,
-                        'error_code' => 'DATABASE_ERROR',
-                        'error_message' => 'Database constraint violation or error: ' . $e->getMessage(),
+                        'source_column' => $humanized['source_column'],
+                        'destination_field' => $humanized['destination_field'],
+                        'error_code' => $humanized['error_code'],
+                        'error_message' => $humanized['error_message'],
                         'raw_data' => $rawData,
                     ]);
                     $failedCount++;
                 }
             }
         });
+    }
+
+    /**
+     * Locate existing record in database by explicit update key, contact/phone, or email.
+     */
+    protected function findExistingRecord(
+        string $table,
+        array $data,
+        ?string $updateKey,
+        ?string $tenantColumn,
+        ?int $branchId
+    ): ?object {
+        // 1. Explicit update_key match if configured and present in $data
+        if (!empty($updateKey) && !empty($data[$updateKey]) && Schema::hasColumn($table, $updateKey)) {
+            if (in_array($updateKey, ['phone', 'contact', 'telephone', 'mobile'], true)) {
+                $found = $this->findRecordByPhone($table, (string)$data[$updateKey], $updateKey, $tenantColumn, $branchId);
+                if ($found) {
+                    return $found;
+                }
+            } else {
+                $query = DB::table($table)->where($updateKey, $data[$updateKey]);
+                if ($tenantColumn && $branchId && Schema::hasColumn($table, $tenantColumn)) {
+                    $scoped = (clone $query)->where($tenantColumn, $branchId)->first();
+                    if ($scoped) {
+                        return $scoped;
+                    }
+                }
+                $record = $query->first();
+                if ($record) {
+                    return $record;
+                }
+            }
+        }
+
+        // 2. Contact / Phone match (the user's core requirement: check contact if already exists, just update)
+        $phoneCol = Schema::hasColumn($table, 'phone') ? 'phone' : (Schema::hasColumn($table, 'contact') ? 'contact' : null);
+        $phoneVal = null;
+        if ($phoneCol && !empty($data[$phoneCol])) {
+            $phoneVal = $data[$phoneCol];
+        } elseif (!empty($data['phone'])) {
+            $phoneVal = $data['phone'];
+            $phoneCol = Schema::hasColumn($table, 'phone') ? 'phone' : $phoneCol;
+        } elseif (!empty($data['contact'])) {
+            $phoneVal = $data['contact'];
+            $phoneCol = Schema::hasColumn($table, 'contact') ? 'contact' : (Schema::hasColumn($table, 'phone') ? 'phone' : null);
+        }
+
+        if ($phoneCol && !empty($phoneVal)) {
+            $found = $this->findRecordByPhone($table, (string)$phoneVal, $phoneCol, $tenantColumn, $branchId);
+            if ($found) {
+                return $found;
+            }
+        }
+
+        // 3. Email match (if present and table has email column)
+        if (Schema::hasColumn($table, 'email') && !empty($data['email'])) {
+            $query = DB::table($table)->where('email', $data['email']);
+            if ($tenantColumn && $branchId && Schema::hasColumn($table, $tenantColumn)) {
+                $scoped = (clone $query)->where($tenantColumn, $branchId)->first();
+                if ($scoped) {
+                    return $scoped;
+                }
+            }
+            $record = $query->first();
+            if ($record) {
+                return $record;
+            }
+        }
+
+        // 4. ID match (if id is explicitly provided in data)
+        if (Schema::hasColumn($table, 'id') && !empty($data['id'])) {
+            $record = DB::table($table)->where('id', $data['id'])->first();
+            if ($record) {
+                return $record;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find record by contact/phone with international & local format resilience.
+     */
+    protected function findRecordByPhone(
+        string $table,
+        string $phoneVal,
+        string $phoneCol,
+        ?string $tenantColumn,
+        ?int $branchId
+    ): ?object {
+        $raw = trim($phoneVal);
+        $digits = preg_replace('/\D+/', '', $raw);
+
+        // Avoid matching ultra-short or placeholder values
+        if (strlen($digits) < 6) {
+            return null;
+        }
+
+        // Build candidate representations for fast indexed lookup
+        $candidates = [$raw, $digits];
+
+        $last9 = null;
+        if (strlen($digits) >= 9) {
+            $last9 = substr($digits, -9);
+            $candidates[] = $last9;
+            $candidates[] = '0' . $last9;
+            $candidates[] = '+256' . $last9;
+            $candidates[] = '256' . $last9;
+            $candidates[] = '0' . substr($last9, 0, 3) . ' ' . substr($last9, 3, 3) . ' ' . substr($last9, 6);
+            $candidates[] = '+256 ' . substr($last9, 0, 3) . ' ' . substr($last9, 3);
+        }
+        $candidates = array_unique(array_filter($candidates));
+
+        $buildPhoneQuery = function () use ($table, $phoneCol, $candidates, $last9) {
+            return DB::table($table)->where(function ($q) use ($phoneCol, $candidates, $last9) {
+                $q->whereIn($phoneCol, $candidates);
+                if ($last9) {
+                    $q->orWhere($phoneCol, 'LIKE', '%' . $last9);
+                }
+            });
+        };
+
+        // Try within current branch first
+        if ($tenantColumn && $branchId && Schema::hasColumn($table, $tenantColumn)) {
+            $branchMatch = $buildPhoneQuery()->where($tenantColumn, $branchId)->first();
+            if ($branchMatch) {
+                return $branchMatch;
+            }
+        }
+
+        // Try globally across table
+        return $buildPhoneQuery()->first();
+    }
+
+    /**
+     * Find existing record when a unique database constraint violation occurs.
+     */
+    protected function findExistingRecordByDuplicateError(
+        string $errorMessage,
+        string $table,
+        array $data,
+        ?string $tenantColumn,
+        ?int $branchId
+    ): ?object {
+        $info = $this->errorHumanizer->extractDuplicateInfo($errorMessage, $table);
+        $field = $info['field'] ?? null;
+        $val = $info['value'] ?? null;
+
+        // 1. If both field and value were extracted from error message
+        if (!empty($field) && !empty($val) && Schema::hasColumn($table, $field)) {
+            $record = DB::table($table)->where($field, $val)->first();
+            if ($record) {
+                return $record;
+            }
+        }
+
+        // 2. If value was extracted, locate column in $data matching that value
+        if (!empty($val)) {
+            foreach ($data as $col => $colVal) {
+                if (is_scalar($colVal) && (string)$colVal === (string)$val && Schema::hasColumn($table, $col)) {
+                    $record = DB::table($table)->where($col, $val)->first();
+                    if ($record) {
+                        return $record;
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: resilient lookup by contact or email
+        return $this->findExistingRecord($table, $data, null, $tenantColumn, $branchId);
     }
 
     /**

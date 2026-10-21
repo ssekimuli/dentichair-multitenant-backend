@@ -48,9 +48,10 @@ class ProcessUniversalImportJob implements ShouldQueue
 
         $job = ImportJob::find($this->importJobId);
         if ($job) {
+            $humanizer = app(\App\Services\Import\ImportErrorHumanizer::class);
             $job->update([
                 'status' => 'failed',
-                'error_summary' => 'Queue worker failed: ' . $exception->getMessage(),
+                'error_summary' => 'Background import stopped: ' . $humanizer->humanizeSummary($exception),
                 'completed_at' => now(),
             ]);
         }

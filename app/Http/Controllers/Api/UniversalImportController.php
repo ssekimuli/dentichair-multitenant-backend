@@ -129,7 +129,19 @@ class UniversalImportController extends Controller
             $job = $this->importService->executeImport($params, $user, $file);
 
             $statusCode = ($job->status === 'queued' || $job->status === 'processing') ? 202 : 200;
-            $message = ($statusCode === 202) ? 'Import queued for processing.' : 'Import completed.';
+            if ($statusCode === 202) {
+                $message = 'Import task has been queued for background processing.';
+            } else {
+                if ($job->status === 'failed') {
+                    $message = $job->error_summary ?: 'Import could not be completed.';
+                } elseif ($job->failed_count > 0 && $job->imported_count > 0) {
+                    $message = "Import finished with partial success: {$job->imported_count} records imported, {$job->failed_count} rows had issues.";
+                } elseif ($job->failed_count > 0 && $job->imported_count === 0) {
+                    $message = "Import finished: No records were imported. {$job->failed_count} rows encountered duplicate or validation issues.";
+                } else {
+                    $message = "Import completed successfully! {$job->imported_count} records imported.";
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -162,9 +174,10 @@ class UniversalImportController extends Controller
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
+            $humanizer = app(\App\Services\Import\ImportErrorHumanizer::class);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to execute import: ' . $e->getMessage(),
+                'message' => 'Unable to complete import: ' . $humanizer->humanizeSummary($e),
             ], 500);
         }
     }

@@ -665,5 +665,93 @@ class UniversalImportTest extends TestCase
         $this->assertNull($patient3->phone);
         $this->assertEquals('2025-01-04', $patient3->last_visit->format('Y-m-d'));
     }
+
+    /** @test */
+    public function it_checks_contact_and_updates_patient_if_already_exists()
+    {
+        // 1. Pre-existing patient with existing phone and demographic details
+        $existingPatient = Patient::create([
+            'first_name' => 'Sarah',
+            'last_name' => 'Kintu',
+            'phone' => '+256701234567',
+            'email' => 'sarah.kintu@example.com',
+            'gender' => 'Female',
+            'date_of_birth' => '1992-04-18',
+            'last_visit' => '2024-01-01',
+            'history' => 'Previous root canal',
+            'branch_id' => $this->branch->id,
+            'status' => 'Active',
+        ]);
+
+        $this->assertDatabaseCount('patients', 1);
+
+        // 2. Incoming spreadsheet data:
+        // Row 1: Sarah with local phone format '0701234567' (matching existing '+256701234567'), new visit date and procedure
+        // Row 2: Brand new patient 'David Otim'
+        $csv = "NAME,CONTACT,DATE,PROCEDURE\n";
+        $csv .= "Sarah Kintu,0701234567,2026-10-21,Crown replacement\n";
+        $csv .= "David Otim,0788111222,2026-10-21,General Consultation\n";
+
+        $file = UploadedFile::fake()->createWithContent('patients_update_check.csv', $csv);
+
+        // Preview to test automatic alias mapping
+        $previewResponse = $this->actingAs($this->employee)
+            ->postJson('/api/import/preview', [
+                'file' => $file,
+                'table' => 'patients',
+            ]);
+
+        $previewResponse->assertStatus(200);
+        $mapping = $previewResponse->json('data.mapping');
+
+        $this->assertEquals('first_name', $mapping['NAME']);
+        $this->assertEquals('phone', $mapping['CONTACT']);
+        $this->assertEquals('last_visit', $mapping['DATE']);
+        $this->assertEquals('history', $mapping['PROCEDURE']);
+
+        // Execute import with default 'insert' mode
+        $executeResponse = $this->actingAs($this->employee)
+            ->postJson('/api/import/execute', [
+                'import_id' => $previewResponse->json('data.import_id'),
+                'table' => 'patients',
+                'mode' => 'insert',
+                'async' => false,
+                'mapping' => $mapping,
+            ]);
+
+        $executeResponse->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'status' => 'completed',
+                    'imported' => 1,
+                    'updated' => 1,
+                    'failed' => 0,
+                ],
+            ]);
+
+        // Total patients count should now be 2 (1 updated + 1 inserted)
+        $this->assertDatabaseCount('patients', 2);
+
+        // Verify Sarah was updated with new visit & procedure, and existing demographics were preserved
+        $updatedSarah = Patient::find($existingPatient->id);
+        $this->assertNotNull($updatedSarah);
+        $this->assertEquals($existingPatient->id, $updatedSarah->id);
+        $this->assertEquals('Sarah', $updatedSarah->first_name);
+        $this->assertEquals('Kintu', $updatedSarah->last_name);
+        $this->assertEquals('sarah.kintu@example.com', $updatedSarah->email);
+        $this->assertEquals('Female', $updatedSarah->gender);
+        $this->assertEquals('1992-04-18', $updatedSarah->date_of_birth->format('Y-m-d'));
+        $this->assertEquals('2026-10-21', $updatedSarah->last_visit->format('Y-m-d'));
+        $this->assertEquals('Crown replacement', $updatedSarah->history);
+
+        // Verify David was created as a new patient
+        $david = Patient::where('first_name', 'David')->first();
+        $this->assertNotNull($david);
+        $this->assertEquals('Otim', $david->last_name);
+        $this->assertEquals('0788111222', $david->phone);
+        $this->assertEquals('2026-10-21', $david->last_visit->format('Y-m-d'));
+        $this->assertEquals('General Consultation', $david->history);
+    }
 }
 

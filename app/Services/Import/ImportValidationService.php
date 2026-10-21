@@ -19,7 +19,7 @@ class ImportValidationService
     /**
      * Normalize raw row data according to destination column types and defaults.
      */
-    public function normalizeRow(array $mappedData, string $table, $user = null): array
+    public function normalizeRow(array $mappedData, string $table, $user = null, ?int $branchId = null): array
     {
         $columns = $this->schemaService->getImportableColumns($table);
         $tableConfig = $this->schemaService->getTableConfig($table) ?? [];
@@ -120,9 +120,15 @@ class ImportValidationService
             }
         }
 
-        // Multi-tenant isolation: always enforce tenant context (e.g. branch_id)
-        if ($tenantColumn && $user && isset($user->{$tenantColumn})) {
-            $normalized[$tenantColumn] = $user->{$tenantColumn};
+        // Multi-tenant isolation: enforce selected branch or fallback to user branch context
+        if ($tenantColumn) {
+            if ($branchId) {
+                $normalized[$tenantColumn] = $branchId;
+            } elseif (isset($mappedData[$tenantColumn]) && $mappedData[$tenantColumn] !== null && $mappedData[$tenantColumn] !== '') {
+                $normalized[$tenantColumn] = (int)$mappedData[$tenantColumn];
+            } elseif ($user && isset($user->{$tenantColumn})) {
+                $normalized[$tenantColumn] = $user->{$tenantColumn};
+            }
         }
 
         return $normalized;

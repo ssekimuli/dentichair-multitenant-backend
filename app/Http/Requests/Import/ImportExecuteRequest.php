@@ -40,6 +40,7 @@ class ImportExecuteRequest extends FormRequest
             'update_key' => 'nullable|string|max:100',
             'sheet' => 'nullable|string|max:100',
             'async' => 'nullable|boolean',
+            'branch_id' => 'nullable|integer|exists:branches,id',
             'options' => 'nullable|array',
         ];
     }

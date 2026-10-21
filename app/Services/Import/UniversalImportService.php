@@ -40,7 +40,13 @@ class UniversalImportService
     /**
      * Generate preview from uploaded spreadsheet.
      */
-    public function generatePreview(UploadedFile $file, string $table, ?string $sheet = null, $user = null): array
+    public function generatePreview(
+        UploadedFile $file,
+        string $table,
+        ?string $sheet = null,
+        $user = null,
+        ?int $branchId = null
+    ): array
     {
         if (!$this->schemaService->isTableAuthorized($table, $user)) {
             throw new \Illuminate\Auth\Access\AuthorizationException("You are not authorized to import into table '{$table}'.");
@@ -69,10 +75,12 @@ class UniversalImportService
         $sampleRows = $this->reader->getPreviewRows($fullPath, 5, $sheet);
         $analysis = $this->mappingService->proposeMapping($headers, $table);
 
+        $effectiveBranchId = $branchId ?: ($user?->branch_id ?? null);
+
         // Create pending import job record
         $job = ImportJob::create([
             'user_id' => $user?->id,
-            'branch_id' => $user?->branch_id,
+            'branch_id' => $effectiveBranchId,
             'table_name' => $table,
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $storedPath,
@@ -85,6 +93,7 @@ class UniversalImportService
 
         return [
             'import_id' => $job->id,
+            'branch_id' => $job->branch_id,
             'table' => $table,
             'headers' => $headers,
             'mapping' => $analysis['mapping'],
@@ -135,6 +144,7 @@ class UniversalImportService
 
         $tempDisk = Config::get('import.temp_disk', 'local');
         $importJob = null;
+        $targetBranchId = !empty($params['branch_id']) ? (int)$params['branch_id'] : null;
 
         // Either reuse preview job or create a new one from uploaded file
         if (!empty($params['import_id'])) {
@@ -145,6 +155,9 @@ class UniversalImportService
             if ($importJob->table_name !== $table) {
                 throw new \InvalidArgumentException("Import job table does not match provided table.");
             }
+            if ($targetBranchId) {
+                $importJob->update(['branch_id' => $targetBranchId]);
+            }
         } elseif ($file) {
             $tempDir = Config::get('import.temp_directory', 'imports');
             $storedPath = $file->store($tempDir, $tempDisk);
@@ -153,7 +166,7 @@ class UniversalImportService
 
             $importJob = ImportJob::create([
                 'user_id' => $user?->id,
-                'branch_id' => $user?->branch_id,
+                'branch_id' => $targetBranchId ?: ($user?->branch_id ?? null),
                 'table_name' => $table,
                 'file_name' => $file->getClientOriginalName(),
                 'file_path' => $storedPath,
@@ -280,8 +293,8 @@ class UniversalImportService
                             }
                         }
 
-                        // Normalize row
-                        $normalized = $this->validationService->normalizeRow($mappedData, $table, $user);
+                        // Normalize row with selected branch
+                        $normalized = $this->validationService->normalizeRow($mappedData, $table, $user, $branchId);
 
                         // Validate row
                         $rowErrors = $this->validationService->validateRow($normalized, $rowNumber, $table, $fieldToHeaderMap);

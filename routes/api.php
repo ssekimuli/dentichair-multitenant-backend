@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Universal Dynamic Import REST API
     Route::prefix('import')->group(function () {
         Route::get('/tables', [\App\Http\Controllers\Api\UniversalImportController::class, 'tables']);
+        Route::get('/branches', [\App\Http\Controllers\Api\UniversalImportController::class, 'branches']);
         Route::get('/tables/{table}/columns', [\App\Http\Controllers\Api\UniversalImportController::class, 'columns']);
         Route::post('/preview', [\App\Http\Controllers\Api\UniversalImportController::class, 'preview']);
         Route::post('/execute', [\App\Http\Controllers\Api\UniversalImportController::class, 'execute']);

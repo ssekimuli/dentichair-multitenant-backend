@@ -43,6 +43,22 @@ class UniversalImportController extends Controller
     }
 
     /**
+     * List all available clinic branches for branch selection.
+     *
+     * GET /api/import/branches
+     */
+    public function branches(Request $request): JsonResponse
+    {
+        $branches = \App\Models\Branch::select(['id', 'name', 'address'])->orderBy('name')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Clinic branches retrieved successfully.',
+            'data' => $branches,
+        ]);
+    }
+
+    /**
      * Get destination table schema and importable columns.
      *
      * GET /api/import/tables/{table}/columns
@@ -88,8 +104,15 @@ class UniversalImportController extends Controller
             $file = $request->file('file');
             $table = $request->input('table');
             $sheet = $request->input('sheet');
+            $branchId = $request->input('branch_id');
 
-            $previewData = $this->importService->generatePreview($file, $table, $sheet, $user);
+            $previewData = $this->importService->generatePreview(
+                $file,
+                $table,
+                $sheet,
+                $user,
+                $branchId ? (int)$branchId : null
+            );
 
             return response()->json([
                 'success' => true,

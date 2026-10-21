@@ -753,5 +753,71 @@ class UniversalImportTest extends TestCase
         $this->assertEquals('2026-10-21', $david->last_visit->format('Y-m-d'));
         $this->assertEquals('General Consultation', $david->history);
     }
+
+    /** @test */
+    public function it_allows_selecting_target_branch_on_import()
+    {
+        $branch2 = Branch::create([
+            'name' => 'Entebbe Branch',
+            'address' => 'Entebbe Road',
+        ]);
+
+        // 1. Verify branches list endpoint
+        $branchesRes = $this->actingAs($this->employee)
+            ->getJson('/api/import/branches');
+
+        $branchesRes->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ]);
+        $this->assertGreaterThanOrEqual(2, count($branchesRes->json('data')));
+
+        // 2. User belongs to Branch 1 ($this->branch->id), but selects Branch 2 ($branch2->id) for import
+        $csv = "First Name,Last Name,Phone\n";
+        $csv .= "EntebbePatient,Tester,0777123456\n";
+
+        $file = UploadedFile::fake()->createWithContent('branch_select.csv', $csv);
+
+        // Preview with selected branch_id
+        $previewResponse = $this->actingAs($this->employee)
+            ->postJson('/api/import/preview', [
+                'file' => $file,
+                'table' => 'patients',
+                'branch_id' => $branch2->id,
+            ]);
+
+        $previewResponse->assertStatus(200);
+        $this->assertEquals($branch2->id, $previewResponse->json('data.branch_id'));
+
+        // Execute import with selected branch_id
+        $executeResponse = $this->actingAs($this->employee)
+            ->postJson('/api/import/execute', [
+                'import_id' => $previewResponse->json('data.import_id'),
+                'table' => 'patients',
+                'mode' => 'insert',
+                'branch_id' => $branch2->id,
+                'async' => false,
+                'mapping' => [
+                    'First Name' => 'first_name',
+                    'Last Name' => 'last_name',
+                    'Phone' => 'phone',
+                ],
+            ]);
+
+        $executeResponse->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'imported' => 1,
+                    'failed' => 0,
+                ],
+            ]);
+
+        // Verify patient was saved under selected branch2, NOT the logged in user's branch1
+        $patient = Patient::where('first_name', 'EntebbePatient')->first();
+        $this->assertNotNull($patient);
+        $this->assertEquals($branch2->id, $patient->branch_id);
+        $this->assertNotEquals($this->branch->id, $patient->branch_id);
+    }
 }
 

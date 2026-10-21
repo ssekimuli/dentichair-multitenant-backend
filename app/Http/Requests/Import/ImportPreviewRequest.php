@@ -31,6 +31,7 @@ class ImportPreviewRequest extends FormRequest
             ],
             'table' => 'required|string|max:100',
             'sheet' => 'nullable|string|max:100',
+            'branch_id' => 'nullable|integer|exists:branches,id',
         ];
     }
 

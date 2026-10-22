@@ -32,12 +32,14 @@ class BranchSettingController extends Controller
             'logo' => $globalSetting->logo,
             'logo_url' => $globalSetting->logo,
             'address' => $globalSetting->address,
+            'qr_code_info_data' => $globalSetting->qr_code_info_data,
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'address' => $branch->address,
                 'currency' => $branch->currency,
                 'logo' => $branch->logo,
+                'qr_code_info_data' => $branch->qr_code_info_data,
             ] : null,
             'sms_balance' => $globalSetting->sms_balance,
             'whatsapp_balance' => $globalSetting->whatsapp_balance,
@@ -56,6 +58,7 @@ class BranchSettingController extends Controller
         $validated = $request->validate([
             'clinic_name' => 'nullable|string|max:255',
             'logo' => 'nullable|string|max:1000',
+            'qr_code_info_data' => 'nullable|string',
             'activity_log_enabled' => 'nullable|boolean',
             'notifications' => 'required|array',
             'notifications.*.email' => 'boolean',
@@ -70,6 +73,9 @@ class BranchSettingController extends Controller
         }
         if (array_key_exists('logo', $validated)) {
             $globalSetting->logo = $validated['logo'];
+        }
+        if (array_key_exists('qr_code_info_data', $validated)) {
+            $globalSetting->qr_code_info_data = $validated['qr_code_info_data'];
         }
         if (array_key_exists('activity_log_enabled', $validated)) {
             $globalSetting->activity_log_enabled = $validated['activity_log_enabled'];
@@ -138,6 +144,7 @@ class BranchSettingController extends Controller
             'receipt_prefix' => $globalSetting->receipt_prefix ?? 'REC-',
             'currency' => $globalSetting->currency ?? 'USD',
             'receipt_footer' => $globalSetting->receipt_footer,
+            'qr_code_info_data' => $globalSetting->qr_code_info_data,
             'updated_at' => $globalSetting->updated_at,
         ]);
     }
@@ -158,6 +165,7 @@ class BranchSettingController extends Controller
             'receipt_prefix' => 'nullable|string|max:20',
             'currency' => 'nullable|string|max:10',
             'receipt_footer' => 'nullable|string|max:1000',
+            'qr_code_info_data' => 'nullable|string',
         ]);
 
         $globalSetting = GlobalSetting::getSettings();
@@ -171,7 +179,8 @@ class BranchSettingController extends Controller
             'email',
             'receipt_prefix',
             'currency',
-            'receipt_footer'
+            'receipt_footer',
+            'qr_code_info_data',
         ] as $field) {
             if (array_key_exists($field, $validated)) {
                 $globalSetting->{$field} = $validated[$field];
@@ -193,6 +202,7 @@ class BranchSettingController extends Controller
                 'receipt_prefix' => $globalSetting->receipt_prefix ?? 'REC-',
                 'currency' => $globalSetting->currency ?? 'USD',
                 'receipt_footer' => $globalSetting->receipt_footer,
+                'qr_code_info_data' => $globalSetting->qr_code_info_data,
                 'updated_at' => $globalSetting->updated_at,
             ]
         ]);
@@ -417,6 +427,100 @@ class BranchSettingController extends Controller
             'branch_name' => $branch->name,
             'logo' => $branch->logo,
             'effective_logo' => $effectiveLogo,
+        ]);
+    }
+
+    /**
+     * Get QR Code Info Data
+     * GET /api/settings/qr-code-info-data or GET /api/qr-code-info-data
+     */
+    public function getQrCodeInfoData(Request $request)
+    {
+        $globalSetting = GlobalSetting::getSettings();
+        $user = $request->user() ?? auth('sanctum')->user();
+
+        $branch = null;
+        $branchId = $request->query('branch_id');
+        if ($branchId) {
+            $branch = Branch::find($branchId);
+        } elseif ($user && $user->branch_id) {
+            $branch = $user->branch;
+        }
+
+        // Branch-specific QR info can override or fallback to global
+        $qrData = ($branch && !empty($branch->qr_code_info_data))
+            ? $branch->qr_code_info_data
+            : $globalSetting->qr_code_info_data;
+
+        return response()->json([
+            'success' => true,
+            'qr_code_info_data' => $qrData,
+            'data' => [
+                'qr_code_info_data' => $qrData,
+                'clinic_name' => $globalSetting->clinic_name,
+                'address' => $globalSetting->address,
+                'phone' => $globalSetting->phone,
+                'email' => $globalSetting->email,
+                'branch' => $branch ? [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'qr_code_info_data' => $branch->qr_code_info_data,
+                ] : null,
+                'updated_at' => $globalSetting->updated_at,
+            ]
+        ]);
+    }
+
+    /**
+     * Update QR Code Info Data
+     * POST/PUT /api/settings/qr-code-info-data or POST/PUT /api/qr-code-info-data
+     */
+    public function updateQrCodeInfoData(Request $request)
+    {
+        $validated = $request->validate([
+            'qr_code_info_data' => 'nullable|string',
+            'data' => 'nullable|string',
+            'qr_code_data' => 'nullable|string',
+            'info' => 'nullable|string',
+            'branch_id' => 'nullable|integer|exists:branches,id',
+        ]);
+
+        $qrData = $validated['qr_code_info_data'] 
+            ?? $validated['data'] 
+            ?? $validated['qr_code_data'] 
+            ?? $validated['info'] 
+            ?? $request->getContent();
+
+        // If json-encoded object with qr_code_info_data key
+        if (is_string($qrData) && str_starts_with(trim($qrData), '{')) {
+            $decoded = json_decode($qrData, true);
+            if (is_array($decoded) && isset($decoded['qr_code_info_data'])) {
+                $qrData = $decoded['qr_code_info_data'];
+            }
+        }
+
+        $globalSetting = GlobalSetting::getSettings();
+        $globalSetting->qr_code_info_data = $qrData;
+        $globalSetting->save();
+
+        $branch = null;
+        if (!empty($validated['branch_id'])) {
+            $branch = Branch::find($validated['branch_id']);
+            if ($branch) {
+                $branch->qr_code_info_data = $qrData;
+                $branch->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'QR code info data updated successfully.',
+            'qr_code_info_data' => $qrData,
+            'data' => [
+                'qr_code_info_data' => $qrData,
+                'branch_id' => $branch ? $branch->id : null,
+                'updated_at' => $globalSetting->updated_at,
+            ]
         ]);
     }
 }

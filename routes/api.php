@@ -59,6 +59,12 @@ Route::get('/settings/logo', [BranchSettingController::class, 'getLogo']);
 Route::delete('/settings/logo', [BranchSettingController::class, 'deleteLogo']);
 Route::post('/upload/logo', [BranchSettingController::class, 'uploadLogo']);
 
+// QR Code Info Data (for Medical Form & Receipt QR Codes)
+Route::get('/settings/qr-code-info-data', [BranchSettingController::class, 'getQrCodeInfoData']);
+Route::match(['put', 'post'], '/settings/qr-code-info-data', [BranchSettingController::class, 'updateQrCodeInfoData']);
+Route::get('/qr-code-info-data', [BranchSettingController::class, 'getQrCodeInfoData']);
+Route::match(['put', 'post'], '/qr-code-info-data', [BranchSettingController::class, 'updateQrCodeInfoData']);
+
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 

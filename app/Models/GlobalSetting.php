@@ -19,6 +19,7 @@ use HasFactory;
         'receipt_prefix',
         'currency',
         'receipt_footer',
+        'qr_code_info_data',
         'sms_balance',
         'whatsapp_balance',
         'notifications',
@@ -45,6 +46,7 @@ use HasFactory;
                 'receipt_prefix' => 'REC-',
                 'currency' => 'USD',
                 'receipt_footer' => 'Thank you for choosing our facility for your healthcare needs.',
+                'qr_code_info_data' => null,
                 'activity_log_enabled' => false,
                 'notifications' => [
                     'appointments_created' => ['email' => true, 'sms' => false, 'whatsapp' => false],

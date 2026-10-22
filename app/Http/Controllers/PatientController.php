@@ -107,7 +107,7 @@ class PatientController extends Controller
 
     public function patientList(Request $request)
     {
-        $query = Patient::query();
+        $query = Patient::with('branch');
 
         // Optional filters
         if ($request->filled('branch_id')) {
@@ -194,7 +194,8 @@ class PatientController extends Controller
                 'restorativeRecords' => fn($q) => $q->latest(),
                 'medicalHistories' => fn($q) => $q->latest(),
                 'paidInvoices' => fn($q) => $q->latest(),
-                'unpaidInvoices' => fn($q) => $q->latest()
+                'unpaidInvoices' => fn($q) => $q->latest(),
+                'branch'
             ])->find($id);
 
             if (!$patient) {
@@ -498,7 +499,8 @@ class PatientController extends Controller
             'images',
             'softTissueRecords',
             'orthodonticRecords',
-            'endodonticRecords'
+            'endodonticRecords',
+            'branch'
         ]));
     }
 
@@ -540,6 +542,7 @@ class PatientController extends Controller
         }
 
         $patient->update($validated);
+        $patient->load('branch');
 
         return response()->json([
             'message' => 'Patient updated successfully.',

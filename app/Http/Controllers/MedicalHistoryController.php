@@ -292,6 +292,15 @@ class MedicalHistoryController extends Controller
 
         $branchName = $branch?->name ?? '';
 
+        // 6. Facility Logo
+        $clinicLogo = !empty($branch?->logo) ? $branch->logo : null;
+        if (!$clinicLogo && !empty($globalSetting?->logo)) {
+            $clinicLogo = $globalSetting->logo;
+        }
+        if (!$clinicLogo && !empty($business?->logo)) {
+            $clinicLogo = $business->logo;
+        }
+
         return view('medical-histories.print', compact(
             'record',
             'patient',
@@ -301,6 +310,7 @@ class MedicalHistoryController extends Controller
             'clinicAddress',
             'clinicPhone',
             'clinicEmail',
+            'clinicLogo',
             'receiptFooter',
             'branchName'
         ));

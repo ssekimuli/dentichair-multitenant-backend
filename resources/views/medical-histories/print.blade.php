@@ -68,10 +68,26 @@
         .clinic-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
             padding-bottom: 12px;
             border-bottom: 2px dashed #0f172a;
             margin-bottom: 20px;
+        }
+
+        .clinic-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+        }
+
+        .clinic-logo-img {
+            max-height: 58px;
+            max-width: 140px;
+            object-fit: contain;
+            display: block;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         .clinic-brand h1 {
@@ -274,7 +290,7 @@
             padding-top: 10px;
         }
 
-        /* WATERMARK OF FACILITY NAME */
+        /* WATERMARK OF FACILITY LOGO & NAME */
         .print-watermark {
             position: fixed;
             top: 0;
@@ -284,6 +300,7 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             pointer-events: none;
@@ -292,14 +309,33 @@
             -webkit-user-select: none;
         }
 
+        .print-watermark-logo-box {
+            opacity: 0.055;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .print-watermark-logo {
+            max-width: 280px;
+            max-height: 280px;
+            object-fit: contain;
+            filter: grayscale(100%);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
         .print-watermark-text {
-            font-size: clamp(30px, 4.5vw, 54px);
+            font-size: clamp(24px, 3.5vw, 42px);
             font-weight: 800;
             color: #0f172a;
             opacity: 0.05;
             text-transform: uppercase;
             letter-spacing: 6px;
-            transform: rotate(-32deg);
+            transform: rotate(-18deg);
             text-align: center;
             line-height: 1.25;
             max-width: 85%;
@@ -342,20 +378,40 @@
                 width: 100% !important;
                 height: 100% !important;
                 display: flex !important;
+                flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
                 pointer-events: none !important;
                 z-index: 9999 !important;
             }
 
+            .print-watermark-logo-box {
+                opacity: 0.06 !important;
+                margin-bottom: 14px !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .print-watermark-logo {
+                max-width: 280px !important;
+                max-height: 280px !important;
+                object-fit: contain !important;
+                filter: grayscale(100%) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             .print-watermark-text {
-                font-size: clamp(34px, 5.5vw, 58px) !important;
+                font-size: clamp(24px, 4vw, 46px) !important;
                 font-weight: 900 !important;
                 color: #0f172a !important;
-                opacity: 0.075 !important;
+                opacity: 0.05 !important;
                 text-transform: uppercase !important;
                 letter-spacing: 6px !important;
-                transform: rotate(-32deg) !important;
+                transform: rotate(-18deg) !important;
                 text-align: center !important;
                 line-height: 1.25 !important;
                 max-width: 85% !important;
@@ -368,12 +424,17 @@
 </head>
 <body>
 
-    <!-- FACILITY NAME WATERMARK -->
-    @if(!empty($clinicName))
-        <div class="print-watermark" aria-hidden="true">
+    <!-- FACILITY WATERMARK (LOGO + CLINIC NAME) -->
+    <div class="print-watermark" aria-hidden="true">
+        @if(!empty($clinicLogo))
+            <div class="print-watermark-logo-box">
+                <img src="{{ $clinicLogo }}" alt="" class="print-watermark-logo">
+            </div>
+        @endif
+        @if(!empty($clinicName))
             <div class="print-watermark-text">{{ $clinicName }}</div>
-        </div>
-    @endif
+        @endif
+    </div>
 
     <!-- ACTIONS (Hidden on print) -->
     <div class="actions-bar">
@@ -389,24 +450,31 @@
     <div class="paper">
         <!-- CLINIC HEADER -->
         <div class="clinic-header">
-            <div class="clinic-brand">
-                <h1>{{ $clinicName }}</h1>
-                @if(!empty($clinicDetails))
-                    <p style="font-weight: 500; color: #334155; margin-top: 2px;">{{ $clinicDetails }}</p>
+            <div class="clinic-header-left">
+                @if(!empty($clinicLogo))
+                    <div style="flex-shrink: 0;">
+                        <img src="{{ $clinicLogo }}" alt="{{ $clinicName }} Logo" class="clinic-logo-img">
+                    </div>
                 @endif
-                <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-                    @if(!empty($clinicAddress))
-                        <span>Address: {{ $clinicAddress }}</span>
+                <div class="clinic-brand">
+                    <h1>{{ $clinicName }}</h1>
+                    @if(!empty($clinicDetails))
+                        <p style="font-weight: 500; color: #334155; margin-top: 2px;">{{ $clinicDetails }}</p>
                     @endif
-                    @if(!empty($branchName) && strcasecmp($branchName, $clinicName) !== 0)
-                        <span>Branch: {{ $branchName }}</span>
-                    @endif
-                    @if(!empty($clinicPhone))
-                        <span>Tel: {{ $clinicPhone }}</span>
-                    @endif
-                    @if(!empty($clinicEmail))
-                        <span>Email: {{ $clinicEmail }}</span>
-                    @endif
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                        @if(!empty($clinicAddress))
+                            <span>Address: {{ $clinicAddress }}</span>
+                        @endif
+                        @if(!empty($branchName) && strcasecmp($branchName, $clinicName) !== 0)
+                            <span>Branch: {{ $branchName }}</span>
+                        @endif
+                        @if(!empty($clinicPhone))
+                            <span>Tel: {{ $clinicPhone }}</span>
+                        @endif
+                        @if(!empty($clinicEmail))
+                            <span>Email: {{ $clinicEmail }}</span>
+                        @endif
+                    </div>
                 </div>
             </div>
             <div class="record-badge-box">

@@ -2536,9 +2536,6 @@ class PatientController extends Controller
         if (!empty($procedures)) {
             $treatmentPlanText .= "\nPlanned Procedures: " . $procedures . '.';
         }
-        if ($amount > 0) {
-            $treatmentPlanText .= "\nTotal Estimated Treatment Fee: USh " . number_format($amount, 2);
-        }
 
         $treatmentGivenText = 'Initial orthodontic examination completed and appliance scheduled/fitted: ' . $appliance . ' (' . $location . ').';
         if (!empty($notes)) {

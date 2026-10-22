@@ -212,6 +212,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/xray-requests/{id}/attachments', [\App\Http\Controllers\XrayRequestController::class, 'uploadFiles']);
     Route::get('/xray-requests/{id}/print', [\App\Http\Controllers\XrayRequestController::class, 'print']);
     Route::post('/xray-requests/{id}/send', [\App\Http\Controllers\XrayRequestController::class, 'sendRequisition']);
+    Route::post('/xray-requests/{id}/generate-invoice', [\App\Http\Controllers\XrayRequestController::class, 'generateInvoiceForXrayRequest']);
 
     // Alias for /radiology-requests
     Route::get('/radiology-requests', [\App\Http\Controllers\XrayRequestController::class, 'index']);
@@ -222,6 +223,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/radiology-requests/{id}/attachments', [\App\Http\Controllers\XrayRequestController::class, 'uploadFiles']);
     Route::get('/radiology-requests/{id}/print', [\App\Http\Controllers\XrayRequestController::class, 'print']);
     Route::post('/radiology-requests/{id}/send', [\App\Http\Controllers\XrayRequestController::class, 'sendRequisition']);
+    Route::post('/radiology-requests/{id}/generate-invoice', [\App\Http\Controllers\XrayRequestController::class, 'generateInvoiceForXrayRequest']);
 
 
 

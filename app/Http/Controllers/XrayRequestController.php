@@ -218,66 +218,14 @@ class XrayRequestController extends Controller
         return DB::transaction(function () use ($validated, $patientModel) {
             $xrayRequest = XrayRequest::create($validated);
 
-            // ── Automatically Generate Invoice for the Patient ──
-            $amount = (float) $xrayRequest->amount;
-            if ($amount > 0) {
-                $patientDisplayName = $xrayRequest->patient ?: ($patientModel ? trim($patientModel->first_name . ' ' . $patientModel->last_name) : 'Patient');
-                $branchId = $xrayRequest->branch_id ?: ($patientModel?->branch_id ?: (Branch::first()?->id ?: 1));
-                $issueDate = $xrayRequest->request_date ? Carbon::parse($xrayRequest->request_date)->toDateString() : now()->toDateString();
-                $dueDate = Carbon::parse($issueDate)->addDays(14)->toDateString();
-
-                $desc = 'Radiology / X-Ray Requisition: ' . ($xrayRequest->xray_type ?: 'Dental Imaging') .
-                        ' (' . $xrayRequest->facility . ')' .
-                        (!empty($xrayRequest->tooth_region) ? ' - ' . $xrayRequest->tooth_region : '');
-
-                // Check for existing open Pending invoice for same patient on same date
-                $existingInvoice = null;
-                if ($xrayRequest->patient_id) {
-                    $existingInvoice = Invoice::where('patient_id', $xrayRequest->patient_id)
-                        ->whereDate('issue_date', $issueDate)
-                        ->where('branch_id', $branchId)
-                        ->whereIn('status', ['Pending', 'Overdue'])
-                        ->first();
-                }
-
-                if ($existingInvoice) {
-                    $existingInvoice->amount += $amount;
-                    if ($existingInvoice->status === 'Paid' && $existingInvoice->paid_amount < $existingInvoice->amount) {
-                        $existingInvoice->status = 'Pending';
-                    }
-                    $existingInvoice->save();
-                    $invoice = $existingInvoice;
-                } else {
-                    $invoice = Invoice::create([
-                        'patient_name' => $patientDisplayName,
-                        'patient_id' => $xrayRequest->patient_id ?: null,
-                        'amount' => $amount,
-                        'paid_amount' => 0,
-                        'status' => 'Pending',
-                        'issue_date' => $issueDate,
-                        'due_date' => $dueDate,
-                        'branch_id' => $branchId,
-                        'category' => 'radiology-income',
-                        'employee_id' => $xrayRequest->doctor_id ?: null,
-                    ]);
-                }
-
-                // Add item to other charges
-                $invoice->otherCharges()->create([
-                    'description' => $desc,
-                    'amount' => $amount,
-                ]);
-
-                // Link invoice to X-ray request
-                $xrayRequest->invoice_id = $invoice->id;
-                $xrayRequest->save();
-            }
+            // Automatically Generate / Sync Invoice for the Patient
+            $this->generateXrayInvoice($xrayRequest);
 
             $xrayRequest->load([
                 'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
                 'patientRecord.branch:id,name',
                 'branch:id,name',
-                'invoice:id,amount,paid_amount,status,issue_date'
+                'invoice:id,amount,paid_amount,status,issue_date,category,patient_responsibility,patient_balance'
             ]);
 
             return response()->json([
@@ -285,6 +233,139 @@ class XrayRequestController extends Controller
                 'data' => $xrayRequest
             ], 201);
         });
+    }
+
+    /**
+     * Generate or synchronize invoice for an X-ray request.
+     */
+    public function generateXrayInvoice(XrayRequest $xrayRequest): ?Invoice
+    {
+        $amount = (float) $xrayRequest->amount;
+        if ($amount <= 0) {
+            return null;
+        }
+
+        if (!$xrayRequest->relationLoaded('patientRecord')) {
+            $xrayRequest->load(['patientRecord', 'branch', 'doctor']);
+        }
+
+        $patientModel = $xrayRequest->patientRecord ?: ($xrayRequest->patient_id ? Patient::find($xrayRequest->patient_id) : null);
+        $patientDisplayName = $xrayRequest->patient ?: ($patientModel ? trim($patientModel->first_name . ' ' . $patientModel->last_name) : 'Patient');
+        $branchId = $xrayRequest->branch_id ?: ($patientModel?->branch_id ?: (Branch::first()?->id ?: 1));
+        $issueDate = $xrayRequest->request_date ? Carbon::parse($xrayRequest->request_date)->toDateString() : now()->toDateString();
+        $dueDate = Carbon::parse($issueDate)->addDays(14)->toDateString();
+
+        $desc = 'Radiology / X-Ray Requisition: ' . ($xrayRequest->xray_type ?: 'Dental Imaging') .
+                ' (' . $xrayRequest->facility . ')' .
+                (!empty($xrayRequest->tooth_region) ? ' - ' . $xrayRequest->tooth_region : '');
+
+        // If this request already has an invoice linked, update it
+        if ($xrayRequest->invoice_id) {
+            $existing = Invoice::find($xrayRequest->invoice_id);
+            if ($existing) {
+                if ($existing->patient_responsibility <= 0 && $existing->amount > 0) {
+                    $existing->patient_responsibility = $existing->amount;
+                    $existing->patient_balance = max(0, $existing->amount - $existing->paid_amount);
+                }
+                if ($existing->category !== 'radiology-income') {
+                    $existing->category = 'radiology-income';
+                }
+                if ($branchId && $existing->branch_id != $branchId) {
+                    $existing->branch_id = $branchId;
+                }
+                $existing->save();
+                return $existing;
+            }
+        }
+
+        // Check for existing open Pending invoice for same patient on same date and same branch
+        $existingInvoice = null;
+        if ($xrayRequest->patient_id) {
+            $existingInvoice = Invoice::where('patient_id', $xrayRequest->patient_id)
+                ->whereDate('issue_date', $issueDate)
+                ->where('branch_id', $branchId)
+                ->where('category', 'radiology-income')
+                ->whereIn('status', ['Pending', 'Overdue'])
+                ->first();
+        }
+
+        if ($existingInvoice) {
+            $existingInvoice->increment('amount', $amount);
+            $existingInvoice->increment('patient_responsibility', $amount);
+            $existingInvoice->increment('patient_balance', $amount);
+
+            if ($existingInvoice->status === 'Paid' && $existingInvoice->paid_amount < $existingInvoice->amount) {
+                $existingInvoice->status = 'Pending';
+            }
+            $existingInvoice->save();
+            $invoice = $existingInvoice;
+        } else {
+            $invoice = Invoice::create([
+                'patient_name'             => $patientDisplayName,
+                'patient_id'               => $xrayRequest->patient_id ?: null,
+                'amount'                   => $amount,
+                'patient_responsibility'   => $amount,
+                'patient_balance'          => $amount,
+                'insurance_responsibility' => 0,
+                'insurance_balance'        => 0,
+                'paid_amount'              => 0,
+                'status'                   => 'Pending',
+                'issue_date'               => $issueDate,
+                'due_date'                 => $dueDate,
+                'branch_id'                => $branchId,
+                'category'                 => 'radiology-income',
+                'employee_id'              => $xrayRequest->doctor_id ?: null,
+            ]);
+        }
+
+        // Add item to other charges
+        $invoice->otherCharges()->create([
+            'description' => $desc,
+            'amount'      => $amount,
+        ]);
+
+        // Link invoice to X-ray request
+        $xrayRequest->update(['invoice_id' => $invoice->id]);
+
+        return $invoice;
+    }
+
+    /**
+     * Cancel/void invoice for an X-ray request.
+     */
+    public function cancelXrayInvoice(XrayRequest $xrayRequest): void
+    {
+        if ($xrayRequest->invoice_id) {
+            $invoice = Invoice::find($xrayRequest->invoice_id);
+            if ($invoice) {
+                $invoice->update(['status' => 'Cancelled']);
+            }
+        }
+    }
+
+    /**
+     * Explicit API endpoint to generate invoice for a Radiology request.
+     * POST /api/xray-requests/{id}/generate-invoice
+     */
+    public function generateInvoiceForXrayRequest(Request $request, $id): JsonResponse
+    {
+        try {
+            $xrayRequest = XrayRequest::with(['patientRecord', 'branch', 'doctor'])->findOrFail($id);
+            if ((float) $xrayRequest->amount <= 0) {
+                return response()->json(['message' => 'Request amount must be greater than 0 to generate an invoice'], 422);
+            }
+
+            $invoice = $this->generateXrayInvoice($xrayRequest);
+
+            return response()->json([
+                'message' => 'Invoice generated and synced to Billing successfully',
+                'data'    => $xrayRequest->fresh(['patientRecord', 'branch', 'doctor', 'invoice']),
+                'invoice' => $invoice,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error generating invoice for xray request: ' . $e->getMessage());
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -360,12 +441,23 @@ class XrayRequestController extends Controller
             }
         }
 
+        $oldStatus = $xrayRequest->status;
         $xrayRequest->update($validated);
+
+        if ((float) $xrayRequest->amount > 0 && (!$xrayRequest->invoice_id || ($validated['status'] ?? '') !== 'cancelled')) {
+            $this->generateXrayInvoice($xrayRequest);
+        }
+
+        if (($validated['status'] ?? '') === 'cancelled' && $oldStatus !== 'cancelled') {
+            $this->cancelXrayInvoice($xrayRequest);
+        }
+
         $xrayRequest->load([
             'patientRecord:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
             'patientRecord.branch:id,name',
             'branch:id,name',
-            'invoice:id,amount,paid_amount,status,issue_date'
+            'doctor:id,name',
+            'invoice:id,amount,paid_amount,status,issue_date,category,patient_responsibility,patient_balance'
         ]);
 
         return response()->json([
@@ -413,6 +505,7 @@ class XrayRequestController extends Controller
     public function destroy($id): JsonResponse
     {
         $xrayRequest = XrayRequest::findOrFail($id);
+        $this->cancelXrayInvoice($xrayRequest);
         $xrayRequest->delete();
 
         return response()->json([

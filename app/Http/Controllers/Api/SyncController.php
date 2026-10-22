@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\LaboratoryOrder;
+use App\Models\XrayRequest;
 use App\Models\Patient;
 use App\Models\TreatmentPlan;
 use App\Models\DentalRecord;
@@ -84,12 +85,14 @@ class SyncController extends Controller
         $queryInvoices = Invoice::query();
         $queryClients = Client::query();
         $queryLabOrders = LaboratoryOrder::with(['client', 'branch', 'labService']);
+        $queryXrayRequests = XrayRequest::with(['patientRecord', 'branch', 'doctor', 'invoice']);
 
         if ($branchId) {
             $queryPatients->where('branch_id', $branchId);
             $queryAppointments->where('branch_id', $branchId);
             $queryInvoices->where('branch_id', $branchId);
             $queryLabOrders->where('branch_id', $branchId);
+            $queryXrayRequests->where('branch_id', $branchId);
         }
 
         if ($updatedSince) {
@@ -99,12 +102,14 @@ class SyncController extends Controller
             $queryInvoices->where('updated_at', '>=', $since);
             $queryClients->where('updated_at', '>=', $since);
             $queryLabOrders->where('updated_at', '>=', $since);
+            $queryXrayRequests->where('updated_at', '>=', $since);
         } else {
             $queryPatients->limit(100);
             $queryAppointments->limit(100);
             $queryInvoices->limit(100);
             $queryClients->limit(100);
             $queryLabOrders->limit(100);
+            $queryXrayRequests->limit(100);
         }
 
         return response()->json([
@@ -116,6 +121,7 @@ class SyncController extends Controller
                 'invoices' => $queryInvoices->orderBy('updated_at', 'desc')->get(),
                 'clients' => $queryClients->orderBy('updated_at', 'desc')->get(),
                 'laboratory_orders' => $queryLabOrders->orderBy('updated_at', 'desc')->get(),
+                'xray_requests' => $queryXrayRequests->orderBy('updated_at', 'desc')->get(),
             ],
         ]);
     }
@@ -143,6 +149,12 @@ class SyncController extends Controller
 
             case 'laboratory_orders_batch':
                 return $this->processLaboratoryOrdersBatch($data, $clientId);
+
+            case 'xray_request':
+            case 'xray_requests':
+            case 'radiology_request':
+            case 'radiology_requests':
+                return $this->processXrayRequest($operation, $data, $clientId);
 
             case 'expense':
             case 'expenses':
@@ -313,6 +325,50 @@ class SyncController extends Controller
         }
 
         return ['server_ids' => $createdIds, 'action' => 'batch_created'];
+    }
+
+    protected function processXrayRequest(string $operation, array $data, ?string $clientId): array
+    {
+        if ($operation === 'create') {
+            $req = XrayRequest::create($data);
+            if ((float)($req->amount ?? 0) > 0 && !$req->invoice_id) {
+                try {
+                    app(\App\Http\Controllers\XrayRequestController::class)->generateXrayInvoice($req);
+                } catch (\Throwable $e) {
+                    Log::error('[SyncController] Error generating invoice for xray request: ' . $e->getMessage());
+                }
+            }
+            return ['server_id' => $req->id, 'action' => 'created'];
+        } elseif ($operation === 'update') {
+            $id = $data['id'] ?? null;
+            if ($id && $req = XrayRequest::find($id)) {
+                $oldStatus = $req->status;
+                $req->update($data);
+                if (($req->status ?? '') === 'cancelled' && $oldStatus !== 'cancelled') {
+                    try {
+                        app(\App\Http\Controllers\XrayRequestController::class)->cancelXrayInvoice($req);
+                    } catch (\Throwable $e) {}
+                } elseif ((float)($req->amount ?? 0) > 0 && !$req->invoice_id) {
+                    try {
+                        app(\App\Http\Controllers\XrayRequestController::class)->generateXrayInvoice($req);
+                    } catch (\Throwable $e) {}
+                }
+                return ['server_id' => $req->id, 'action' => 'updated'];
+            }
+        } elseif ($operation === 'delete') {
+            $id = $data['id'] ?? null;
+            if ($id) {
+                if ($req = XrayRequest::find($id)) {
+                    try {
+                        app(\App\Http\Controllers\XrayRequestController::class)->cancelXrayInvoice($req);
+                    } catch (\Throwable $e) {}
+                }
+                XrayRequest::destroy($id);
+                return ['server_id' => $id, 'action' => 'deleted'];
+            }
+        }
+
+        return ['action' => 'skipped'];
     }
 
     protected function processExpense(string $operation, array $data, ?string $clientId): array

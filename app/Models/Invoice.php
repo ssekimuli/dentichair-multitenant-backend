@@ -43,7 +43,7 @@ class Invoice extends Model
         'medicines' => 'array',
     ];
 
-    protected $appends = ['lab_order_details'];
+    protected $appends = ['lab_order_details', 'xray_request_details'];
 
     protected static function booted()
     {
@@ -96,6 +96,26 @@ class Invoice extends Model
             'cost' => $order->cost,
             'doctor_id' => $order->doctor_id,
             'doctor_name' => $order->doctor->name ?? null,
+        ];
+    }
+
+    public function getXrayRequestDetailsAttribute()
+    {
+        $xray = $this->xrayRequest;
+        if (!$xray) {
+            return null;
+        }
+
+        return [
+            'id'           => $xray->id,
+            'patient'      => $xray->patient,
+            'facility'     => $xray->facility,
+            'xray_type'    => $xray->xray_type,
+            'tooth_region' => $xray->tooth_region,
+            'status'       => $xray->status,
+            'request_date' => $xray->request_date?->format('Y-m-d'),
+            'amount'       => $xray->amount,
+            'doctor_name'  => $xray->doctor_name,
         ];
     }
 

@@ -2,11 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Models\Business;
 use App\Models\GlobalSetting;
+use App\Models\TopUp;
+use App\Services\CloudflareR2Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class BranchSettingController extends Controller
 {
+    /**
+     * Get Branch and Global Settings
+     * GET /api/settings/branch
+     */
     public function getSettings(Request $request)
     {
         $globalSetting = GlobalSetting::getSettings();
@@ -19,12 +29,15 @@ class BranchSettingController extends Controller
 
         return response()->json([
             'clinic_name' => $globalSetting->clinic_name,
+            'logo' => $globalSetting->logo,
+            'logo_url' => $globalSetting->logo,
             'address' => $globalSetting->address,
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'address' => $branch->address,
                 'currency' => $branch->currency,
+                'logo' => $branch->logo,
             ] : null,
             'sms_balance' => $globalSetting->sms_balance,
             'whatsapp_balance' => $globalSetting->whatsapp_balance,
@@ -34,10 +47,15 @@ class BranchSettingController extends Controller
         ]);
     }
 
+    /**
+     * Update Global Settings
+     * POST /api/settings/branch
+     */
     public function updateSettings(Request $request)
     {
         $validated = $request->validate([
             'clinic_name' => 'nullable|string|max:255',
+            'logo' => 'nullable|string|max:1000',
             'activity_log_enabled' => 'nullable|boolean',
             'notifications' => 'required|array',
             'notifications.*.email' => 'boolean',
@@ -50,6 +68,9 @@ class BranchSettingController extends Controller
         if (array_key_exists('clinic_name', $validated)) {
             $globalSetting->clinic_name = $validated['clinic_name'];
         }
+        if (array_key_exists('logo', $validated)) {
+            $globalSetting->logo = $validated['logo'];
+        }
         if (array_key_exists('activity_log_enabled', $validated)) {
             $globalSetting->activity_log_enabled = $validated['activity_log_enabled'];
         }
@@ -60,6 +81,10 @@ class BranchSettingController extends Controller
         return response()->json($globalSetting);
     }
 
+    /**
+     * Top Up SMS or WhatsApp Credits
+     * POST /api/settings/branch/top-up
+     */
     public function topUpCredits(Request $request)
     {
         $request->validate([
@@ -70,7 +95,7 @@ class BranchSettingController extends Controller
         $globalSetting = GlobalSetting::getSettings();
 
         // Log the top-up
-        \App\Models\TopUp::create([
+        TopUp::create([
             'type' => $request->type,
             'amount' => $request->amount,
             'date_paid' => now(),
@@ -104,6 +129,8 @@ class BranchSettingController extends Controller
 
         return response()->json([
             'clinic_name' => $globalSetting->clinic_name,
+            'logo' => $globalSetting->logo,
+            'logo_url' => $globalSetting->logo,
             'subtitle' => $globalSetting->subtitle,
             'address' => $globalSetting->address,
             'phone' => $globalSetting->phone,
@@ -123,6 +150,7 @@ class BranchSettingController extends Controller
     {
         $validated = $request->validate([
             'clinic_name' => 'nullable|string|max:255',
+            'logo' => 'nullable|string|max:1000',
             'subtitle' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
@@ -136,6 +164,7 @@ class BranchSettingController extends Controller
 
         foreach ([
             'clinic_name',
+            'logo',
             'subtitle',
             'address',
             'phone',
@@ -155,6 +184,8 @@ class BranchSettingController extends Controller
             'message' => 'Facility receipt settings updated successfully',
             'data' => [
                 'clinic_name' => $globalSetting->clinic_name,
+                'logo' => $globalSetting->logo,
+                'logo_url' => $globalSetting->logo,
                 'subtitle' => $globalSetting->subtitle,
                 'address' => $globalSetting->address,
                 'phone' => $globalSetting->phone,
@@ -164,6 +195,228 @@ class BranchSettingController extends Controller
                 'receipt_footer' => $globalSetting->receipt_footer,
                 'updated_at' => $globalSetting->updated_at,
             ]
+        ]);
+    }
+
+    /**
+     * Upload Clinic/Facility Logo Image
+     * POST /api/settings/logo or POST /api/upload/logo
+     *
+     * Accepts multipart file with name 'logo', 'image', or 'file' (max 10MB)
+     * Optional 'branch_id' to also update a specific branch's logo.
+     */
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'logo' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
+            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
+            'file' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
+            'branch_id' => 'nullable|integer|exists:branches,id',
+        ]);
+
+        $file = $request->file('logo') ?? $request->file('image') ?? $request->file('file');
+
+        if (!$file) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide an image file using field name "logo", "image", or "file".'
+            ], 422);
+        }
+
+        // Upload using Cloudflare R2 with automatic fallback to public disk
+        $url = null;
+        try {
+            $r2Service = app(CloudflareR2Service::class);
+            $url = $r2Service->upload($file, 'logos');
+        } catch (\Throwable $e) {
+            Log::warning('R2 logo upload failed, falling back to local public storage: ' . $e->getMessage());
+            $path = $file->store('logos', 'public');
+            $url = asset('storage/' . $path);
+        }
+
+        // 1. Update GlobalSetting logo
+        $globalSetting = GlobalSetting::getSettings();
+        $globalSetting->logo = $url;
+        $globalSetting->save();
+
+        // 2. Update Business record logo if exists
+        try {
+            $business = Business::first();
+            if ($business) {
+                $business->logo = $url;
+                $business->save();
+            }
+        } catch (\Throwable $e) {
+            // Ignore if business table is not present
+        }
+
+        // 3. Update Branch logo if branch_id is provided or authenticated user belongs to branch
+        $branchId = $request->input('branch_id');
+        if (!$branchId && $request->user() && $request->user()->branch_id) {
+            $branchId = $request->user()->branch_id;
+        }
+
+        $branch = null;
+        if ($branchId) {
+            $branch = Branch::find($branchId);
+            if ($branch) {
+                $branch->logo = $url;
+                $branch->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logo image uploaded successfully.',
+            'logo' => $url,
+            'logo_url' => $url,
+            'data' => [
+                'logo' => $url,
+                'logo_url' => $url,
+                'clinic_name' => $globalSetting->clinic_name,
+                'branch' => $branch ? [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'logo' => $branch->logo,
+                ] : null,
+                'updated_at' => $globalSetting->updated_at,
+            ]
+        ], 200);
+    }
+
+    /**
+     * Get Current Clinic Logo
+     * GET /api/settings/logo
+     */
+    public function getLogo(Request $request)
+    {
+        $globalSetting = GlobalSetting::getSettings();
+        $branchId = $request->query('branch_id');
+        $branchLogo = null;
+        if ($branchId) {
+            $branch = Branch::find($branchId);
+            $branchLogo = $branch?->logo;
+        }
+
+        $logoUrl = $branchLogo ?: $globalSetting->logo;
+
+        return response()->json([
+            'success' => true,
+            'logo' => $logoUrl,
+            'logo_url' => $logoUrl,
+            'clinic_name' => $globalSetting->clinic_name,
+            'data' => [
+                'logo' => $logoUrl,
+                'logo_url' => $logoUrl,
+                'global_logo' => $globalSetting->logo,
+                'branch_logo' => $branchLogo,
+                'clinic_name' => $globalSetting->clinic_name,
+            ]
+        ]);
+    }
+
+    /**
+     * Delete Clinic Logo
+     * DELETE /api/settings/logo
+     */
+    public function deleteLogo(Request $request)
+    {
+        $globalSetting = GlobalSetting::getSettings();
+        $oldLogo = $globalSetting->logo;
+
+        if ($oldLogo) {
+            try {
+                $r2Service = app(CloudflareR2Service::class);
+                $r2Service->delete($oldLogo);
+            } catch (\Throwable $e) {
+                // Ignore cleanup error
+            }
+        }
+
+        $globalSetting->logo = null;
+        $globalSetting->save();
+
+        if ($request->input('branch_id')) {
+            $branch = Branch::find($request->input('branch_id'));
+            if ($branch) {
+                $branch->logo = null;
+                $branch->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logo removed successfully.',
+            'logo' => null,
+            'logo_url' => null,
+        ]);
+    }
+
+    /**
+     * Upload Branch-Specific Logo
+     * POST /api/branches/{id}/logo
+     */
+    public function uploadBranchLogo(Request $request, $id)
+    {
+        $branch = Branch::findOrFail($id);
+
+        $request->validate([
+            'logo' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
+            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
+            'file' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
+        ]);
+
+        $file = $request->file('logo') ?? $request->file('image') ?? $request->file('file');
+
+        if (!$file) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide an image file using field name "logo", "image", or "file".'
+            ], 422);
+        }
+
+        try {
+            $r2Service = app(CloudflareR2Service::class);
+            $url = $r2Service->upload($file, 'logos/branches');
+        } catch (\Throwable $e) {
+            Log::warning('R2 branch logo upload failed, falling back to local public storage: ' . $e->getMessage());
+            $path = $file->store('logos/branches', 'public');
+            $url = asset('storage/' . $path);
+        }
+
+        $branch->logo = $url;
+        $branch->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Branch logo uploaded successfully.',
+            'logo' => $url,
+            'logo_url' => $url,
+            'data' => [
+                'branch_id' => $branch->id,
+                'branch_name' => $branch->name,
+                'logo' => $url,
+                'logo_url' => $url,
+            ]
+        ]);
+    }
+
+    /**
+     * Get Branch-Specific Logo
+     * GET /api/branches/{id}/logo
+     */
+    public function getBranchLogo($id)
+    {
+        $branch = Branch::findOrFail($id);
+        $globalSetting = GlobalSetting::getSettings();
+        $effectiveLogo = $branch->logo ?: $globalSetting->logo;
+
+        return response()->json([
+            'success' => true,
+            'branch_id' => $branch->id,
+            'branch_name' => $branch->name,
+            'logo' => $branch->logo,
+            'effective_logo' => $effectiveLogo,
         ]);
     }
 }

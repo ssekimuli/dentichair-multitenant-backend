@@ -14,7 +14,7 @@ use HasFactory, SoftDeletes;
     // protected $keyType = 'string';
     // public $incrementing = false;
 
-    protected $fillable = ['id', 'name', 'address', 'currency'];
+    protected $fillable = ['id', 'name', 'address', 'currency', 'logo'];
 
     public function patients(): HasMany
     {

@@ -19,6 +19,7 @@ use App\Http\Controllers\LabServiceController;
 use App\Http\Controllers\LabServicePriceController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\BranchSettingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -47,12 +48,16 @@ Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function ()
     
 });
 
-// Public template downloads & Public receipt settings (browser & desktop access)
+// Public template downloads & Public receipt settings & Logo uploads (browser, desktop & receipt access)
 Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);
 Route::get('/downloads/printer-driver', [DownloadController::class, 'printerDriver']);
-Route::get('/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'getReceiptSettings']);
-Route::match(['put', 'post'], '/settings/receipt', [\App\Http\Controllers\BranchSettingController::class, 'updateReceiptSettings']);
+Route::get('/settings/receipt', [BranchSettingController::class, 'getReceiptSettings']);
+Route::match(['put', 'post'], '/settings/receipt', [BranchSettingController::class, 'updateReceiptSettings']);
+Route::post('/settings/logo', [BranchSettingController::class, 'uploadLogo']);
+Route::get('/settings/logo', [BranchSettingController::class, 'getLogo']);
+Route::delete('/settings/logo', [BranchSettingController::class, 'deleteLogo']);
+Route::post('/upload/logo', [BranchSettingController::class, 'uploadLogo']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
@@ -100,6 +105,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/branches', [ManagementController::class, 'createBranch']);
     Route::put('/branches/{id}', [ManagementController::class, 'updateBranch']);
     Route::delete('/branches/{id}', [ManagementController::class, 'deleteBranch']);
+    Route::post('/branches/{id}/logo', [BranchSettingController::class, 'uploadBranchLogo']);
+    Route::get('/branches/{id}/logo', [BranchSettingController::class, 'getBranchLogo']);
     Route::get('/currencies', [ManagementController::class, 'getCurrencies']);
 
     // Businesses

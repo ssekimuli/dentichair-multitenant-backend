@@ -392,20 +392,23 @@ class AuthController extends Controller
     {
         $employee = $request->user();
         $business = Business::first();
+        $branch = ($employee && $employee->branch_id) ? $employee->branch : null;
 
-        $branch = null;
-        if ($employee && $employee->branch_id) {
-            $branch = $employee->branch;
-        }
+        $globalSetting = \App\Models\GlobalSetting::getSettings();
+        $clinicLogo = $globalSetting?->logo ?? $business?->logo;
+        $branchLogo = $branch?->logo ?? $clinicLogo;
 
         return response()->json([
-            'clinic_name' => $business?->name,
-            'clinic_address' => $business?->details ?? null,
+            'clinic_name' => $business?->name ?? $globalSetting->clinic_name,
+            'clinic_address' => $business?->details ?? $globalSetting->address,
+            'clinic_logo' => $clinicLogo,
+            'logo' => $branchLogo,
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'address' => $branch->address ?? null,
                 'currency' => $branch->currency ?? null,
+                'logo' => $branchLogo,
             ] : null,
         ]);
     }

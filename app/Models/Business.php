@@ -11,6 +11,7 @@ use HasFactory;
 
     protected $fillable = [
         'name',
+        'logo',
         'details',
         'business_status',
         'business_email',

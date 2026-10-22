@@ -251,11 +251,33 @@ class SyncController extends Controller
     {
         if ($operation === 'create') {
             $order = LaboratoryOrder::create($data);
+            if (($order->status ?? '') === 'In Production' && !$order->invoice_id) {
+                try {
+                    app(\App\Http\Controllers\ManagementController::class)->generateLabOrderInvoice($order);
+                } catch (\Throwable $e) {
+                    Log::error('[SyncController] Error generating invoice for lab order on create: ' . $e->getMessage());
+                }
+            }
             return ['server_id' => $order->id, 'action' => 'created'];
         } elseif ($operation === 'update') {
             $id = $data['id'] ?? null;
             if ($id && $order = LaboratoryOrder::find($id)) {
+                $oldStatus = $order->status;
                 $order->update($data);
+                $newStatus = $order->status;
+                if ($newStatus === 'In Production' && ($oldStatus !== 'In Production' || !$order->invoice_id)) {
+                    try {
+                        app(\App\Http\Controllers\ManagementController::class)->generateLabOrderInvoice($order);
+                    } catch (\Throwable $e) {
+                        Log::error('[SyncController] Error generating invoice for lab order on update: ' . $e->getMessage());
+                    }
+                } elseif ($newStatus === 'Cancelled' && $oldStatus !== 'Cancelled') {
+                    try {
+                        app(\App\Http\Controllers\ManagementController::class)->cancelLabOrderInvoice($order);
+                    } catch (\Throwable $e) {
+                        Log::error('[SyncController] Error cancelling invoice for lab order on update: ' . $e->getMessage());
+                    }
+                }
                 return ['server_id' => $order->id, 'action' => 'updated'];
             }
         } elseif ($operation === 'delete') {
@@ -279,6 +301,13 @@ class SyncController extends Controller
                 if (is_array($orderData)) {
                     $order = LaboratoryOrder::create($orderData);
                     $createdIds[] = $order->id;
+                    if (($order->status ?? '') === 'In Production' && !$order->invoice_id) {
+                        try {
+                            app(\App\Http\Controllers\ManagementController::class)->generateLabOrderInvoice($order);
+                        } catch (\Throwable $e) {
+                            Log::error('[SyncController] Error generating invoice for batch lab order: ' . $e->getMessage());
+                        }
+                    }
                 }
             }
         }

@@ -288,6 +288,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::delete('/lab-orders/{id}', [ManagementController::class, 'deleteLabOrder'])->whereNumber('id');
         Route::patch('/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus'])->whereNumber('id');
         Route::post('/lab-orders/{id}/send', [ManagementController::class, 'sendLabOrder'])->whereNumber('id');
+        Route::post('/lab-orders/{id}/generate-invoice', [ManagementController::class, 'generateInvoiceForLabOrder'])->whereNumber('id');
 
         // Leave Requests
         Route::post('/leave-requests', [ManagementController::class, 'createLeaveRequest']);

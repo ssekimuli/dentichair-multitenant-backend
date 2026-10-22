@@ -93,12 +93,24 @@ class InvoiceController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('category')) {
+            $cat = strtolower(str_replace(' ', '-', $request->category));
+            if ($cat === 'lab-income' || $cat === 'lab') {
+                $query->where(function ($q) {
+                    $q->where('category', 'lab-income')->orWhere('category', 'like', '%lab%');
+                });
+            } else {
+                $query->where('category', $request->category);
+            }
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('patient_name', 'like', "%{$search}%")
                   ->orWhere('receipt_number', 'like', "%{$search}%")
                   ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%")
                   ->orWhereHas('patient', function ($pq) use ($search) {
                       $pq->where('first_name', 'like', "%{$search}%")
                          ->orWhere('last_name', 'like', "%{$search}%")

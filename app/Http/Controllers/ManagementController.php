@@ -411,8 +411,8 @@ class ManagementController extends Controller
             $oldStatus = $order->status;
             $order->update($validated);
 
-            // Generate invoice when status changes to "In Production"
-            if ($validated['status'] === 'In Production' && $oldStatus !== 'In Production') {
+            // Generate invoice when status changes to "In Production" (or if invoice not yet generated)
+            if ($validated['status'] === 'In Production' && ($oldStatus !== 'In Production' || !$order->invoice_id)) {
                 $this->generateLabOrderInvoice($order);
             }
 
@@ -439,6 +439,50 @@ class ManagementController extends Controller
     }
 
     /**
+     * Explicit API endpoint to generate invoice for a Lab Order
+     * POST /management/lab-orders/{id}/generate-invoice
+     */
+    public function generateInvoiceForLabOrder(Request $request, $id)
+    {
+        try {
+            $order = LaboratoryOrder::with(['client', 'branch', 'labService'])->find($id);
+            if (!$order) {
+                return response()->json(['error' => 'Lab order not found'], 404);
+            }
+
+            if ($order->invoice_id) {
+                $existing = Invoice::find($order->invoice_id);
+                if ($existing) {
+                    return response()->json([
+                        'message' => 'Invoice already exists for this lab order',
+                        'order'   => $order->fresh(['client', 'branch', 'invoice']),
+                        'invoice' => $existing,
+                    ]);
+                }
+            }
+
+            if ($order->status !== 'In Production') {
+                $order->update(['status' => 'In Production']);
+            }
+
+            $invoice = $this->generateLabOrderInvoice($order);
+
+            return response()->json([
+                'message' => 'Invoice generated successfully for lab order',
+                'order'   => $order->fresh(['client', 'branch', 'invoice']),
+                'invoice' => $invoice,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error generating invoice for lab order', [
+                'lab_order_id' => $id,
+                'error'        => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Generate Invoice for Lab Order
      *
      * When status changes to "In Production", generate and send invoice to client.
@@ -446,13 +490,19 @@ class ManagementController extends Controller
      * same branch on the same day, the new order is merged into that invoice instead
      * of creating a duplicate.
      */
-    private function generateLabOrderInvoice(LaboratoryOrder $order)
+    public function generateLabOrderInvoice(LaboratoryOrder $order)
     {
         try {
             $invoiceAmount = ($order->applied_price && $order->applied_price > 0)
                 ? (float) $order->applied_price
                 : (float) ($order->labService?->getActivePrice($order->branch_id)?->base_price ?? 0);
-            $clientName    = $order->client->name ?? 'Lab Order';
+            if ($invoiceAmount <= 0 && !empty($order->cost)) {
+                $invoiceAmount = (float) $order->cost;
+            }
+            if (!$order->relationLoaded('client')) {
+                $order->load(['client', 'branch', 'labService']);
+            }
+            $clientName    = $order->client?->name ?? 'Lab Client';
             $today         = now()->format('Y-m-d');
 
             // ── Look for an existing same-client / same-day / same-branch invoice ──
@@ -467,6 +517,8 @@ class ManagementController extends Controller
             if ($existingInvoice) {
                 // ── Merge: add amount and point this order at the existing invoice ──
                 $existingInvoice->increment('amount', $invoiceAmount);
+                $existingInvoice->increment('patient_responsibility', $invoiceAmount);
+                $existingInvoice->increment('patient_balance', $invoiceAmount);
 
                 // Re-evaluate status after the new amount
                 $existingInvoice->refresh();
@@ -497,15 +549,19 @@ class ManagementController extends Controller
             } else {
                 // ── Create a brand-new invoice ──
                 $invoice = Invoice::create([
-                    'patient_name' => $clientName,
-                    'patient_id'   => null,
-                    'amount'       => $invoiceAmount,
-                    'paid_amount'  => 0,
-                    'issue_date'   => $today,
-                    'due_date'     => $order->due_date ?? now()->addDays(30)->format('Y-m-d'),
-                    'branch_id'    => $order->branch_id,
-                    'status'       => 'Pending',
-                    'category'     => 'lab-income',
+                    'patient_name'           => $clientName,
+                    'patient_id'             => null,
+                    'amount'                 => $invoiceAmount,
+                    'patient_responsibility' => $invoiceAmount,
+                    'patient_balance'        => $invoiceAmount,
+                    'insurance_responsibility' => 0,
+                    'insurance_balance'      => 0,
+                    'paid_amount'            => 0,
+                    'issue_date'             => $today,
+                    'due_date'               => $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('Y-m-d') : now()->addDays(30)->format('Y-m-d'),
+                    'branch_id'              => $order->branch_id ?? 1,
+                    'status'                 => 'Pending',
+                    'category'               => 'lab-income',
                 ]);
 
                 $order->update(['invoice_id' => $invoice->id]);
@@ -548,11 +604,13 @@ class ManagementController extends Controller
                     ]);
                 }
             }
+            return $invoice;
         } catch (\Exception $e) {
             Log::error('Error generating lab order invoice', [
                 'lab_order_id' => $order->id,
                 'error'        => $e->getMessage(),
             ]);
+            return null;
         }
     }
 
@@ -560,9 +618,15 @@ class ManagementController extends Controller
      * Cancel Invoice for Lab Order
      * When lab order is cancelled, void the associated invoice
      */
-    private function cancelLabOrderInvoice(LaboratoryOrder $order)
+    public function cancelLabOrderInvoice(LaboratoryOrder $order)
     {
         try {
+            if ($order->invoice_id) {
+                $invoice = $order->invoice ?? Invoice::find($order->invoice_id);
+                if ($invoice) {
+                    $invoice->update(['status' => 'Cancelled']);
+                }
+            }
             // Find invoice by lab_order_id stored in medicines field
             $invoices = Invoice::where('branch_id', $order->branch_id)
                 ->where('status', '!=', 'Cancelled')
@@ -2006,7 +2070,15 @@ class ManagementController extends Controller
                 'invoice_id' => $validated['invoiceId'] ?? $labOrder->invoice_id,
             ];
 
+            $oldStatus = $labOrder->status;
             $labOrder->update($updates);
+
+            if (($updates['status'] ?? $oldStatus) === 'In Production' && ($oldStatus !== 'In Production' || !$labOrder->invoice_id)) {
+                $this->generateLabOrderInvoice($labOrder);
+            }
+            if (($updates['status'] ?? $oldStatus) === 'Cancelled' && $oldStatus !== 'Cancelled') {
+                $this->cancelLabOrderInvoice($labOrder);
+            }
 
             \App\Models\ActivityLog::log(
                 'Lab Order Updated',

@@ -9,6 +9,9 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\LaboratoryOrder;
 use App\Models\Patient;
+use App\Models\TreatmentPlan;
+use App\Models\DentalRecord;
+use Illuminate\Support\Arr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -149,6 +152,14 @@ class SyncController extends Controller
             case 'invoice':
             case 'invoices':
                 return $this->processInvoice($operation, $data, $clientId);
+
+            case 'treatment':
+            case 'treatments':
+                return $this->processTreatment($operation, $data, $clientId);
+
+            case 'dental_record':
+            case 'dental_records':
+                return $this->processDentalRecord($operation, $data, $clientId);
 
             default:
                 return ['message' => "Entity {$entity} processed"];
@@ -299,5 +310,109 @@ class SyncController extends Controller
         }
 
         return ['action' => 'skipped'];
+    }
+
+    protected function processTreatment(string $operation, array $data, ?string $clientId): array
+    {
+        $patientId = $data['patient_id'] ?? $data['patientId'] ?? null;
+        if (!$patientId) {
+            return ['action' => 'skipped', 'reason' => 'missing_patient_id'];
+        }
+
+        $patient = Patient::find($patientId);
+        if (!$patient) {
+            return ['action' => 'skipped', 'reason' => 'patient_not_found'];
+        }
+
+        if ($operation === 'create') {
+            $treatmentData = Arr::only($data, [
+                'procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id', 'notes'
+            ]);
+            $treatmentData['status'] = in_array($treatmentData['status'] ?? '', ['Proposed', 'Completed'])
+                ? $treatmentData['status']
+                : 'Proposed';
+
+            if (empty($treatmentData['doctor_id']) && auth()->check() && auth()->user() instanceof \App\Models\Employee) {
+                $treatmentData['doctor_id'] = auth()->id();
+            }
+
+            $treatment = $patient->treatmentPlans()->create($treatmentData);
+
+            if (!empty($data['condition']) && !empty($data['tooth'])) {
+                $existingRecord = $patient->dentalRecords()
+                    ->where('tooth_id', $data['tooth'])
+                    ->first();
+
+                if ($existingRecord) {
+                    $existingRecord->update([
+                        'condition' => $data['condition'],
+                        'tooth_id'  => $data['tooth'],
+                        'notes'     => $data['notes'] ?? $existingRecord->notes,
+                    ]);
+                } else {
+                    $patient->dentalRecords()->create([
+                        'condition' => $data['condition'],
+                        'tooth_id'  => $data['tooth'],
+                        'notes'     => $data['notes'] ?? ($data['procedure'] ?? ''),
+                    ]);
+                }
+            }
+
+            return ['server_id' => $treatment->id, 'action' => 'created'];
+        } elseif ($operation === 'update') {
+            $id = $data['id'] ?? null;
+            if ($id && $treatment = TreatmentPlan::find($id)) {
+                $treatmentData = Arr::only($data, [
+                    'procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id', 'notes'
+                ]);
+                if (isset($treatmentData['status'])) {
+                    $treatmentData['status'] = in_array($treatmentData['status'], ['Proposed', 'Completed'])
+                        ? $treatmentData['status']
+                        : $treatment->status;
+                }
+                $treatment->update($treatmentData);
+                return ['server_id' => $treatment->id, 'action' => 'updated'];
+            }
+        } elseif ($operation === 'delete') {
+            $id = $data['id'] ?? null;
+            if ($id && $treatment = TreatmentPlan::find($id)) {
+                $treatment->delete();
+                return ['server_id' => $id, 'action' => 'deleted'];
+            }
+        }
+
+        return ['action' => 'skipped'];
+    }
+
+    protected function processDentalRecord(string $operation, array $data, ?string $clientId): array
+    {
+        $patientId = $data['patient_id'] ?? $data['patientId'] ?? null;
+        $toothId = $data['tooth_id'] ?? null;
+        if (!$patientId || !$toothId) {
+            return ['action' => 'skipped', 'reason' => 'missing_required_fields'];
+        }
+
+        $patient = Patient::find($patientId);
+        if (!$patient) {
+            return ['action' => 'skipped', 'reason' => 'patient_not_found'];
+        }
+
+        $existing = $patient->dentalRecords()->where('tooth_id', $toothId)->first();
+        if ($existing) {
+            $existing->update([
+                'condition' => $data['condition'] ?? $existing->condition,
+                'notes' => $data['notes'] ?? $existing->notes,
+                'bridge_group_id' => $data['bridge_group_id'] ?? $existing->bridge_group_id,
+            ]);
+            return ['server_id' => $existing->id, 'action' => 'updated'];
+        } else {
+            $record = $patient->dentalRecords()->create([
+                'tooth_id' => $toothId,
+                'condition' => $data['condition'] ?? 'Healthy',
+                'notes' => $data['notes'] ?? null,
+                'bridge_group_id' => $data['bridge_group_id'] ?? null,
+            ]);
+            return ['server_id' => $record->id, 'action' => 'created'];
+        }
     }
 }

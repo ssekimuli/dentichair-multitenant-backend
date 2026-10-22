@@ -1788,7 +1788,7 @@ class PatientController extends Controller
             return response()->json([
                 'message' => 'Treatment created successfully',
                 'data' => count($created) === 1 ? $created[0] : $created,
-                'patient' => $patient->load(['treatmentPlans.doctor'])
+                'patient' => $patient->load(['treatmentPlans.doctor', 'medicalHistories'])
             ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to add treatment: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
@@ -1868,7 +1868,7 @@ class PatientController extends Controller
             return response()->json([
                 'message' => 'Treatments saved successfully.',
                 'data' => $created,
-                'patient' => $patient->load(['treatmentPlans.doctor'])
+                'patient' => $patient->load(['treatmentPlans.doctor', 'medicalHistories'])
             ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to batch add treatments: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
@@ -1939,9 +1939,14 @@ class PatientController extends Controller
 
         $treatment->update($validated);
 
+        $medicalHistory = \App\Models\MedicalHistory::where('patient_id', $patient->id)
+            ->whereDate('date', $treatment->date)
+            ->first();
+
         return response()->json([
             'message' => 'Treatment plan updated successfully.',
-            'data' => $treatment->load('doctor')
+            'data' => $treatment->load('doctor'),
+            'medical_history' => $medicalHistory,
         ]);
     }
 
@@ -1977,9 +1982,14 @@ class PatientController extends Controller
 
         $treatment->update(['status' => $validated['status']]);
 
+        $medicalHistory = \App\Models\MedicalHistory::where('patient_id', $patient->id)
+            ->whereDate('date', $treatment->date)
+            ->first();
+
         return response()->json([
             'message' => 'Treatment plan status updated successfully.',
-            'data' => $treatment
+            'data' => $treatment,
+            'medical_history' => $medicalHistory,
         ]);
     }
 

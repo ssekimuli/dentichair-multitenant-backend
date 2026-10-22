@@ -59,14 +59,19 @@ class TreatmentPlan extends Model
             $oldDate = $treatmentPlan->getOriginal('date');
 
             self::syncInvoiceForTreatmentPlan($treatmentPlan);
+            self::syncMedicalHistoryForTreatmentPlan($treatmentPlan);
 
             /*
              * If the patient or treatment date changed, recalculate
-             * the invoice belonging to the previous patient/date.
+             * the invoice and medical history belonging to the previous patient/date.
              */
             if ($treatmentPlan->wasChanged(['patient_id', 'date'])) {
                 if ($oldPatientId && $oldDate) {
                     self::syncInvoiceForPatientAndDate(
+                        $oldPatientId,
+                        $oldDate
+                    );
+                    self::syncMedicalHistoryForPatientAndDate(
                         $oldPatientId,
                         $oldDate
                     );
@@ -76,6 +81,10 @@ class TreatmentPlan extends Model
 
         static::deleted(function (TreatmentPlan $treatmentPlan) {
             self::syncInvoiceForPatientAndDate(
+                $treatmentPlan->patient_id,
+                $treatmentPlan->date
+            );
+            self::syncMedicalHistoryForPatientAndDate(
                 $treatmentPlan->patient_id,
                 $treatmentPlan->date
             );
@@ -623,5 +632,200 @@ class TreatmentPlan extends Model
             'insurance_balance' => 0,
             'status' => $status,
         ]);
+    }
+
+    /**
+     * Synchronize medical history for a treatment plan.
+     */
+    public static function syncMedicalHistoryForTreatmentPlan(
+        TreatmentPlan $treatmentPlan
+    ): void {
+        self::syncMedicalHistoryForPatientAndDate(
+            $treatmentPlan->patient_id,
+            $treatmentPlan->date
+        );
+    }
+
+    /**
+     * Synchronize medical history for a patient and specific date.
+     * All treatment plans marked Completed on the same date for the patient
+     * are consolidated into ONE single MedicalHistory record.
+     */
+    public static function syncMedicalHistoryForPatientAndDate(
+        $patientId,
+        $date
+    ): void {
+        if (!$patientId || !$date) {
+            return;
+        }
+
+        DB::transaction(function () use ($patientId, $date) {
+            $formattedDate = Carbon::parse($date)->format('Y-m-d');
+
+            $patient = Patient::find($patientId);
+            if (!$patient) {
+                return;
+            }
+
+            // Find all treatment plans for this patient on this date that are marked Completed
+            $completedTreatments = self::query()
+                ->where('patient_id', $patientId)
+                ->whereDate('date', $formattedDate)
+                ->where('status', 'Completed')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            // Find existing MedicalHistory for this patient on this date
+            $medHistory = MedicalHistory::where('patient_id', $patientId)
+                ->whereDate('date', $formattedDate)
+                ->first();
+
+            // Case A: No completed treatments on this date
+            if ($completedTreatments->isEmpty()) {
+                if ($medHistory) {
+                    $isAutoCreated = ($medHistory->chief_complaint === 'Dental Treatment / Procedure Completion');
+                    $hasOtherClinicalData = !empty($medHistory->extra_oral_exam) ||
+                                           !empty($medHistory->intra_oral_exam) ||
+                                           !empty($medHistory->consent_notes);
+
+                    if ($isAutoCreated && !$hasOtherClinicalData) {
+                        $medHistory->delete();
+                    } else {
+                        $lines = array_filter(
+                            preg_split('/\r\n|\r|\n/', (string) $medHistory->treatment_given),
+                            fn($l) => !str_starts_with(trim($l), '-')
+                        );
+                        $medHistory->treatment_given = !empty($lines) ? implode("\n", $lines) : null;
+                        $medHistory->saveQuietly();
+                    }
+                }
+                return;
+            }
+
+            // Build consolidated procedure lines from all completed treatments
+            $allGivenLines = [];
+            $allPlanLines = [];
+            $allNotes = [];
+            $doctorName = null;
+            $doctorId = null;
+
+            foreach ($completedTreatments as $tp) {
+                $procName = trim($tp->procedure ?? '');
+                $toothStr = !empty($tp->tooth) ? " (Tooth #{$tp->tooth})" : "";
+                $notesStr = !empty(trim($tp->notes ?? '')) ? ": " . trim($tp->notes) : "";
+
+                $lineGiven = "- {$procName}{$toothStr}{$notesStr}";
+                $linePlan = "- {$procName}{$toothStr}";
+
+                $allGivenLines[] = $lineGiven;
+                $allPlanLines[] = $linePlan;
+
+                if (!empty(trim($tp->notes ?? ''))) {
+                    $allNotes[] = trim($tp->notes);
+                }
+
+                if (!empty($tp->doctor?->name)) {
+                    $doctorName = $tp->doctor->name;
+                } elseif (!empty($tp->doctor_name)) {
+                    $doctorName = $tp->doctor_name;
+                }
+
+                if (!empty($tp->doctor_id)) {
+                    $doctorId = $tp->doctor_id;
+                }
+            }
+
+            // Clinician attribution fallback
+            if (!$doctorName && auth()->check()) {
+                $doctorName = auth()->user()->name;
+            }
+            if (!$doctorId && auth()->check()) {
+                $doctorId = auth()->id();
+            }
+            $doctorName = $doctorName ?: 'Attending Clinician';
+
+            $uniquePlanLines = array_values(array_unique($allPlanLines));
+            $uniqueGivenLines = array_values(array_unique($allGivenLines));
+            $uniqueNotes = array_values(array_unique($allNotes));
+
+            // Case B: No MedicalHistory exists yet for this patient on this date -> Create ONE record
+            if (!$medHistory) {
+                MedicalHistory::create([
+                    'patient_id'        => $patientId,
+                    'date'              => $formattedDate,
+                    'chief_complaint'   => 'Dental Treatment / Procedure Completion',
+                    'history_complaint' => 'Patient attended for scheduled clinical dental treatment.',
+                    'diagnosis'         => 'Clinical dental treatment performed per treatment plan.',
+                    'treatment_plan'    => implode("\n", $uniquePlanLines),
+                    'treatment_given'   => implode("\n", $uniqueGivenLines),
+                    'treatment_note'    => !empty($uniqueNotes) ? implode("\n", $uniqueNotes) : 'Completed clinical dental treatment.',
+                    'doctor_name'       => $doctorName,
+                    'doctor_id'         => $doctorId,
+                    'consent'           => true,
+                ]);
+            } else {
+                // Case C: MedicalHistory ALREADY exists for this patient on this date -> Consolidate into ONE record!
+                $isAutoCreated = ($medHistory->chief_complaint === 'Dental Treatment / Procedure Completion');
+
+                if ($isAutoCreated) {
+                    $medHistory->treatment_given = implode("\n", $uniqueGivenLines);
+                    $medHistory->treatment_plan = implode("\n", $uniquePlanLines);
+                    if (!empty($uniqueNotes)) {
+                        $medHistory->treatment_note = implode("\n", $uniqueNotes);
+                    }
+                    if (!empty($doctorName) && empty($medHistory->doctor_name)) {
+                        $medHistory->doctor_name = $doctorName;
+                    }
+                    if (!empty($doctorId) && empty($medHistory->doctor_id)) {
+                        $medHistory->doctor_id = $doctorId;
+                    }
+                    $medHistory->saveQuietly();
+                } else {
+                    $existingGiven = trim($medHistory->treatment_given ?? '');
+                    $existingLines = !empty($existingGiven) ? preg_split('/\r\n|\r|\n/', $existingGiven) : [];
+
+                    $retainedLines = [];
+                    foreach ($existingLines as $el) {
+                        $trimmedEl = trim($el);
+                        $matchesCompleted = false;
+                        foreach ($completedTreatments as $tp) {
+                            $prefix = "- " . trim($tp->procedure) . (!empty($tp->tooth) ? " (Tooth #{$tp->tooth})" : "");
+                            if (str_starts_with($trimmedEl, $prefix)) {
+                                $matchesCompleted = true;
+                                break;
+                            }
+                        }
+                        if (!$matchesCompleted) {
+                            $retainedLines[] = $el;
+                        }
+                    }
+
+                    $mergedGiven = array_merge($retainedLines, $uniqueGivenLines);
+                    $medHistory->treatment_given = implode("\n", array_filter($mergedGiven, fn($l) => trim($l) !== ''));
+
+                    $existingPlan = trim($medHistory->treatment_plan ?? '');
+                    if (empty($existingPlan)) {
+                        $medHistory->treatment_plan = implode("\n", $uniquePlanLines);
+                    } else {
+                        $planLines = preg_split('/\r\n|\r|\n/', $existingPlan);
+                        foreach ($uniquePlanLines as $upl) {
+                            if (!in_array($upl, $planLines)) {
+                                $planLines[] = $upl;
+                            }
+                        }
+                        $medHistory->treatment_plan = implode("\n", $planLines);
+                    }
+
+                    if (empty($medHistory->doctor_name) && !empty($doctorName)) {
+                        $medHistory->doctor_name = $doctorName;
+                    }
+                    if (empty($medHistory->doctor_id) && !empty($doctorId)) {
+                        $medHistory->doctor_id = $doctorId;
+                    }
+
+                    $medHistory->saveQuietly();
+                }
+            }
+        });
     }
 }

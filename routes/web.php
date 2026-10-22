@@ -36,3 +36,8 @@ Route::get('/registration/{patient}/confirmation', [PatientRegistrationControlle
 // Medical History Printable Case Sheet
 Route::get('/medical-histories/{id}/print', [\App\Http\Controllers\MedicalHistoryController::class, 'print'])
     ->name('medical-histories.print');
+
+// Invoice Printable A4 & Receipt
+Route::get('/invoices/{id}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])
+    ->name('invoices.print');
+

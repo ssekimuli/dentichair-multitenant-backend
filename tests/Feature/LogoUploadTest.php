@@ -203,4 +203,56 @@ class LogoUploadTest extends TestCase
         $setting->refresh();
         $this->assertNull($setting->logo);
     }
+
+    #[Test]
+    public function it_renders_invoice_print_view_with_logo_and_watermark()
+    {
+        $setting = GlobalSetting::getSettings();
+        $setting->clinic_name = 'Dental Excellence Clinic';
+        $setting->logo = 'https://cdn.example.com/clinic-logo.png';
+        $setting->save();
+
+        $patient = \App\Models\Patient::create([
+            'first_name' => 'Sarah',
+            'last_name' => 'Connor',
+            'email' => 'sarah@example.com',
+            'date_of_birth' => '1985-05-12',
+            'branch_id' => $this->branch->id,
+            'status' => 'Active',
+        ]);
+
+        $invoice = \App\Models\Invoice::create([
+            'patient_id' => $patient->id,
+            'patient_name' => 'Sarah Connor',
+            'branch_id' => $this->branch->id,
+            'amount' => 250000.00,
+            'paid_amount' => 150000.00,
+            'status' => 'Pending',
+            'issue_date' => now(),
+            'due_date' => now()->addDays(30),
+            'payment_method' => 'Insurance',
+            'category' => 'General Dentistry',
+        ]);
+
+        \App\Models\InvoiceTreatment::create([
+            'invoice_id' => $invoice->id,
+            'procedure' => 'Root Canal Therapy #16',
+            'cost' => 250000.00,
+            'quantity' => 1,
+        ]);
+
+        $response = $this->get("/invoices/{$invoice->id}/print");
+
+        $response->assertStatus(200);
+        $response->assertSee('TAX INVOICE');
+        $response->assertSee('Dental Excellence Clinic');
+        $response->assertSee('https://cdn.example.com/clinic-logo.png');
+        $response->assertSee('print-watermark');
+        $response->assertSee('print-watermark-logo');
+        $response->assertSee('Root Canal Therapy #16');
+        $response->assertSee('250,000');
+        $response->assertSee('150,000');
+        $response->assertSee('100,000'); // Balance due
+    }
 }
+

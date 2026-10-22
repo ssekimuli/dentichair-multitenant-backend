@@ -482,9 +482,6 @@
                 <p class="record-date">
                     Date: {{ $record->date ? \Carbon\Carbon::parse($record->date)->format('M d, Y') : \Carbon\Carbon::parse($record->created_at)->format('M d, Y') }}
                 </p>
-                @if(!empty($record->doctor_name))
-                    <p class="record-date">Clinician: <strong>{{ $record->doctor_name }}</strong></p>
-                @endif
             </div>
         </div>
 
@@ -518,8 +515,8 @@
                     <span class="field-dashed-line">{{ $patient->phone ?? $patient->email ?? 'N/A' }}</span>
                 </div>
                 <div class="field-group flex-1">
-                    <span class="field-label">Attending Clinician:</span>
-                    <span class="field-dashed-line">{{ $record->doctor_name ?: 'Authorized Clinician' }}</span>
+                    <span class="field-label">Dental Officer / Dental Surgeon:</span>
+                    <span class="field-dashed-line"></span>
                 </div>
             </div>
         </div>
@@ -631,9 +628,9 @@
                 <p class="sig-sub">Date: ________________________________</p>
             </div>
             <div class="sig-col">
-                <p class="sig-label">Attending Dentist Signature & Stamp:</p>
+                <p class="sig-label">Dental Officer / Dental Surgeon Signature & Stamp:</p>
                 <div class="sig-line"></div>
-                <p class="sig-sub">{{ $record->doctor_name ?: 'Authorized Clinician' }}</p>
+                <p class="sig-sub">&nbsp;</p>
             </div>
         </div>
 

@@ -401,40 +401,65 @@ class ManagementController extends Controller
     public function updateLabOrderStatus(Request $request, $id)
     {
         try {
-            $order = LaboratoryOrder::find($id);
+            $numericId = intval(preg_replace('/\D/', '', (string) $id));
+            $order = LaboratoryOrder::where('id', $numericId)->orWhere('id', $id)->first();
             if (!$order) return response()->json(['error' => 'Lab order not found'], 404);
 
             $validated = $request->validate([
-                'status' => 'required|in:Draft,Received,In Production,Ready for Delivery,Delivered,Cancelled',
+                'status' => 'required|string',
             ]);
 
+            $rawStatus = trim($validated['status']);
+            $statusMap = [
+                'In Fabrication'    => 'In Production',
+                'Ready for Fitting' => 'Ready for Delivery',
+                'Order Sent'        => 'Received',
+            ];
+            $canonicalStatus = $statusMap[$rawStatus] ?? $rawStatus;
+
+            $validStatuses = ['Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled'];
+            if (!in_array($canonicalStatus, $validStatuses)) {
+                return response()->json([
+                    'message' => 'The selected status is invalid.',
+                    'errors'  => ['status' => ['The selected status is invalid. Valid statuses: ' . implode(', ', $validStatuses)]]
+                ], 422);
+            }
+
             $oldStatus = $order->status;
-            $order->update($validated);
+            $order->update(['status' => $canonicalStatus]);
 
             // Generate invoice when status changes to "In Production" (or if invoice not yet generated)
-            if ($validated['status'] === 'In Production' && ($oldStatus !== 'In Production' || !$order->invoice_id)) {
+            if ($canonicalStatus === 'In Production' && ($oldStatus !== 'In Production' || !$order->invoice_id)) {
                 $this->generateLabOrderInvoice($order);
             }
 
             // Cancel/void invoice when lab order is cancelled
-            if ($validated['status'] === 'Cancelled' && $oldStatus !== 'Cancelled') {
+            if ($canonicalStatus === 'Cancelled' && $oldStatus !== 'Cancelled') {
                 $this->cancelLabOrderInvoice($order);
             }
 
+            $order->refresh();
+
             \App\Models\ActivityLog::log(
                 'Lab Order Status Updated',
-                "Lab order #{$order->id} status updated to {$validated['status']}.",
-                ['lab_order_id' => $order->id, 'status' => $validated['status']]
+                "Lab order #{$order->id} status updated to {$canonicalStatus}.",
+                ['lab_order_id' => $order->id, 'status' => $canonicalStatus, 'invoice_id' => $order->invoice_id]
             );
 
-            return response()->json($order->load(['client', 'branch']));
+            $orderData = $order->load(['client', 'branch', 'invoice'])->toArray();
+            $orderData['invoice_id'] = $order->invoice_id;
+            $orderData['invoice'] = $order->invoice;
+
+            return response()->json($orderData);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return response()->json(['message' => 'Validation error', 'errors' => $ve->errors()], 422);
         } catch (\Exception $e) {
             Log::error('Error updating lab order status', [
                 'lab_order_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['message' => 'Server Error'], 500);
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
 
@@ -445,7 +470,8 @@ class ManagementController extends Controller
     public function generateInvoiceForLabOrder(Request $request, $id)
     {
         try {
-            $order = LaboratoryOrder::with(['client', 'branch', 'labService'])->find($id);
+            $numericId = intval(preg_replace('/\D/', '', (string) $id));
+            $order = LaboratoryOrder::with(['client', 'branch', 'labService'])->where('id', $numericId)->orWhere('id', $id)->first();
             if (!$order) {
                 return response()->json(['error' => 'Lab order not found'], 404);
             }
@@ -454,9 +480,10 @@ class ManagementController extends Controller
                 $existing = Invoice::find($order->invoice_id);
                 if ($existing) {
                     return response()->json([
-                        'message' => 'Invoice already exists for this lab order',
-                        'order'   => $order->fresh(['client', 'branch', 'invoice']),
-                        'invoice' => $existing,
+                        'message'    => 'Invoice already exists for this lab order',
+                        'order'      => $order->fresh(['client', 'branch', 'invoice']),
+                        'invoice'    => $existing,
+                        'invoice_id' => $existing->id,
                     ]);
                 }
             }
@@ -466,11 +493,13 @@ class ManagementController extends Controller
             }
 
             $invoice = $this->generateLabOrderInvoice($order);
+            $order->refresh();
 
             return response()->json([
-                'message' => 'Invoice generated successfully for lab order',
-                'order'   => $order->fresh(['client', 'branch', 'invoice']),
-                'invoice' => $invoice,
+                'message'    => 'Invoice generated successfully for lab order',
+                'order'      => $order->load(['client', 'branch', 'invoice']),
+                'invoice'    => $invoice,
+                'invoice_id' => $order->invoice_id,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error generating invoice for lab order', [
@@ -1937,6 +1966,16 @@ class ManagementController extends Controller
             }
         }
 
+        if ($request->has('status')) {
+            $rawStatus = trim($request->input('status'));
+            $statusMap = [
+                'In Fabrication'    => 'In Production',
+                'Ready for Fitting' => 'Ready for Delivery',
+                'Order Sent'        => 'Received',
+            ];
+            $request->merge(['status' => $statusMap[$rawStatus] ?? $rawStatus]);
+        }
+
         $validated = $request->validate([
             'clientId' => 'required|exists:clients,id',
             'doctorName' => 'nullable|string',
@@ -2012,9 +2051,20 @@ class ManagementController extends Controller
 
     public function updateLabOrder(Request $request, $id)
     {
-        $labOrder = LaboratoryOrder::find($id);
+        $numericId = intval(preg_replace('/\D/', '', (string) $id));
+        $labOrder = LaboratoryOrder::where('id', $numericId)->orWhere('id', $id)->first();
         if (!$labOrder) {
             return response()->json(['message' => 'Lab order not found'], 404);
+        }
+
+        if ($request->has('status')) {
+            $rawStatus = trim($request->input('status'));
+            $statusMap = [
+                'In Fabrication'    => 'In Production',
+                'Ready for Fitting' => 'Ready for Delivery',
+                'Order Sent'        => 'Received',
+            ];
+            $request->merge(['status' => $statusMap[$rawStatus] ?? $rawStatus]);
         }
 
         $validated = $request->validate([
@@ -2080,13 +2130,19 @@ class ManagementController extends Controller
                 $this->cancelLabOrderInvoice($labOrder);
             }
 
+            $labOrder->refresh();
+
             \App\Models\ActivityLog::log(
                 'Lab Order Updated',
                 "Lab order #{$labOrder->id} was updated.",
                 ['lab_order_id' => $labOrder->id]
             );
 
-            return response()->json($labOrder->load(['client', 'branch', 'labService']), 200);
+            $res = $labOrder->load(['client', 'branch', 'labService', 'invoice'])->toArray();
+            $res['invoice_id'] = $labOrder->invoice_id;
+            $res['invoice'] = $labOrder->invoice;
+
+            return response()->json($res, 200);
         } catch (\Throwable $e) {
             Log::error('Error updating lab order', [
                 'error' => $e->getMessage(),
@@ -2099,7 +2155,8 @@ class ManagementController extends Controller
     public function deleteLabOrder($id)
     {
         try {
-            $labOrder = LaboratoryOrder::find($id);
+            $numericId = intval(preg_replace('/\D/', '', (string) $id));
+            $labOrder = LaboratoryOrder::where('id', $numericId)->orWhere('id', $id)->first();
             if (!$labOrder) {
                 return response()->json(['message' => 'Lab order not found'], 404);
             }

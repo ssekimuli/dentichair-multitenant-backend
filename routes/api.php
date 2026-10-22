@@ -225,8 +225,13 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/radiology-requests/{id}/send', [\App\Http\Controllers\XrayRequestController::class, 'sendRequisition']);
     Route::post('/radiology-requests/{id}/generate-invoice', [\App\Http\Controllers\XrayRequestController::class, 'generateInvoiceForXrayRequest']);
 
-
-
+    // Laboratory Direct Route Aliases
+    Route::get('/lab-orders', [ManagementController::class, 'getLabOrders']);
+    Route::post('/lab-orders', [ManagementController::class, 'createLabOrder']);
+    Route::match(['patch', 'post', 'put'], '/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus']);
+    Route::match(['post', 'get'], '/lab-orders/{id}/generate-invoice', [ManagementController::class, 'generateInvoiceForLabOrder']);
+    Route::put('/lab-orders/{id}', [ManagementController::class, 'updateLabOrder']);
+    Route::delete('/lab-orders/{id}', [ManagementController::class, 'deleteLabOrder']);
 
     // Route::post('/patients/{patient}/treatments', [App\Http\Controllers\TreatmentController::class, 'store']);
     Route::patch('/appointments/{id}/status', [AppointmentController::class, 'updateStatus']);
@@ -286,11 +291,11 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::get('/lab-orders', [ManagementController::class, 'getLabOrders']);
         Route::post('/lab-orders', [ManagementController::class, 'createLabOrder']);
         Route::post('/lab-orders/batch', [ManagementController::class, 'createBatchLabOrders']);
-        Route::put('/lab-orders/{id}', [ManagementController::class, 'updateLabOrder'])->whereNumber('id');
-        Route::delete('/lab-orders/{id}', [ManagementController::class, 'deleteLabOrder'])->whereNumber('id');
-        Route::patch('/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus'])->whereNumber('id');
-        Route::post('/lab-orders/{id}/send', [ManagementController::class, 'sendLabOrder'])->whereNumber('id');
-        Route::post('/lab-orders/{id}/generate-invoice', [ManagementController::class, 'generateInvoiceForLabOrder'])->whereNumber('id');
+        Route::put('/lab-orders/{id}', [ManagementController::class, 'updateLabOrder']);
+        Route::delete('/lab-orders/{id}', [ManagementController::class, 'deleteLabOrder']);
+        Route::match(['patch', 'post', 'put'], '/lab-orders/{id}/status', [ManagementController::class, 'updateLabOrderStatus']);
+        Route::post('/lab-orders/{id}/send', [ManagementController::class, 'sendLabOrder']);
+        Route::match(['post', 'get'], '/lab-orders/{id}/generate-invoice', [ManagementController::class, 'generateInvoiceForLabOrder']);
 
         // Leave Requests
         Route::post('/leave-requests', [ManagementController::class, 'createLeaveRequest']);

@@ -1728,48 +1728,68 @@ class PatientController extends Controller
 
         $validated = $request->validate([
             'procedure' => 'required|string',
-            'tooth' => 'nullable|integer',
-            'status' => 'required|in:Proposed,Completed',
+            'tooth' => 'nullable',
+            'teeth' => 'nullable|array',
+            'teeth.*' => 'integer',
+            'status' => 'nullable|string',
             'cost' => 'required|numeric',
             'date' => 'required|date',
             'condition' => 'nullable|string',
+            'notes' => 'nullable|string',
             'treatment_id' => 'nullable|integer|exists:treatments,id',
             'doctor_id' => 'nullable|integer|exists:employees,id',
         ]);
 
         try {
-            $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id']);
-            if (empty($treatmentData['doctor_id']) && auth()->check() && auth()->user() instanceof \App\Models\Employee) {
-                $treatmentData['doctor_id'] = auth()->id();
+            $teeth = [];
+            if (!empty($validated['teeth']) && is_array($validated['teeth'])) {
+                $teeth = $validated['teeth'];
+            } elseif (isset($validated['tooth']) && $validated['tooth'] !== null && $validated['tooth'] !== '') {
+                $teeth = [(int)$validated['tooth']];
+            } else {
+                $teeth = [null];
             }
-            $patient->treatmentPlans()->create($treatmentData);
 
-            if (isset($request->condition) && !empty($validated['tooth'])) {
-                // Find existing record for this tooth
-                $existingRecord = $patient->dentalRecords()
-                    ->where('tooth_id', $validated['tooth']) // Changed from 'tooth_id' to 'tooth'
-                    ->first();
+            $created = [];
+            foreach ($teeth as $t) {
+                $treatmentData = \Illuminate\Support\Arr::only($validated, ['procedure', 'status', 'cost', 'date', 'treatment_id', 'doctor_id', 'notes']);
+                $treatmentData['tooth'] = $t;
+                $treatmentData['status'] = in_array($treatmentData['status'] ?? '', ['Proposed', 'Completed'])
+                    ? $treatmentData['status']
+                    : 'Proposed';
 
-                if ($existingRecord) {
-                    // Update existing record
-                    $existingRecord->update([
-                        'condition' => $request->condition,
-                        'tooth_id' => $validated['tooth'], // Changed from 'tooth_id' to 'tooth'
-                        'notes' => $validated['notes'] ?? $existingRecord->notes
-                    ]);
-                    $record = $existingRecord;
-                } else {
-                    // Create new record - you need to map 'tooth' to 'tooth_id'
-                    $recordData = [
-                        'condition' => $request->condition,
-                        'tooth_id' => $validated['tooth'],
-                        'notes' => $validated['notes'] ?? null
-                    ];
-                    $record = $patient->dentalRecords()->create($recordData);
+                if (empty($treatmentData['doctor_id']) && auth()->check() && auth()->user() instanceof \App\Models\Employee) {
+                    $treatmentData['doctor_id'] = auth()->id();
+                }
+                $tp = $patient->treatmentPlans()->create($treatmentData);
+                $created[] = $tp;
+
+                if (!empty($validated['condition']) && !empty($t)) {
+                    $existingRecord = $patient->dentalRecords()
+                        ->where('tooth_id', $t)
+                        ->first();
+
+                    if ($existingRecord) {
+                        $existingRecord->update([
+                            'condition' => $validated['condition'],
+                            'tooth_id' => $t,
+                            'notes' => $validated['notes'] ?? $existingRecord->notes
+                        ]);
+                    } else {
+                        $patient->dentalRecords()->create([
+                            'condition' => $validated['condition'],
+                            'tooth_id' => $t,
+                            'notes' => $validated['notes'] ?? $validated['procedure']
+                        ]);
+                    }
                 }
             }
 
-            return response()->json($patient->load(['treatmentPlans.doctor']));
+            return response()->json([
+                'message' => 'Treatment created successfully',
+                'data' => count($created) === 1 ? $created[0] : $created,
+                'patient' => $patient->load(['treatmentPlans.doctor'])
+            ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to add treatment: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['message' => 'Failed to save treatment.', 'error' => $e->getMessage()], 500);
@@ -1797,24 +1817,31 @@ class PatientController extends Controller
             'treatments'                    => 'required|array|min:1',
             'treatments.*.procedure'        => 'required|string',
             'treatments.*.tooth'            => 'nullable|integer',
-            'treatments.*.status'           => 'required|in:Proposed,Completed',
+            'treatments.*.status'           => 'nullable|string',
             'treatments.*.cost'             => 'required|numeric',
             'treatments.*.date'             => 'required|date',
             'treatments.*.condition'        => 'nullable|string',
+            'treatments.*.notes'            => 'nullable|string',
             'treatments.*.treatment_id'     => 'nullable|integer|exists:treatments,id',
             'treatments.*.doctor_id'        => 'nullable|integer|exists:employees,id',
         ]);
 
         try {
+            $created = [];
             foreach ($validated['treatments'] as $item) {
                 $treatmentData = \Illuminate\Support\Arr::only(
                     $item,
-                    ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id']
+                    ['procedure', 'tooth', 'status', 'cost', 'date', 'treatment_id', 'doctor_id', 'notes']
                 );
+                $treatmentData['status'] = in_array($treatmentData['status'] ?? '', ['Proposed', 'Completed'])
+                    ? $treatmentData['status']
+                    : 'Proposed';
+
                 if (empty($treatmentData['doctor_id']) && auth()->check() && auth()->user() instanceof \App\Models\Employee) {
                     $treatmentData['doctor_id'] = auth()->id();
                 }
-                $patient->treatmentPlans()->create($treatmentData);
+                $tp = $patient->treatmentPlans()->create($treatmentData);
+                $created[] = $tp;
 
                 // Update dental condition if provided
                 if (!empty($item['condition']) && !empty($item['tooth'])) {
@@ -1826,18 +1853,23 @@ class PatientController extends Controller
                         $existingRecord->update([
                             'condition' => $item['condition'],
                             'tooth_id'  => $item['tooth'],
+                            'notes'     => $item['notes'] ?? $existingRecord->notes,
                         ]);
                     } else {
                         $patient->dentalRecords()->create([
                             'condition' => $item['condition'],
                             'tooth_id'  => $item['tooth'],
-                            'notes'     => $item['procedure'],
+                            'notes'     => $item['notes'] ?? $item['procedure'],
                         ]);
                     }
                 }
             }
 
-            return response()->json($patient->load(['treatmentPlans.doctor']), 201);
+            return response()->json([
+                'message' => 'Treatments saved successfully.',
+                'data' => $created,
+                'patient' => $patient->load(['treatmentPlans.doctor'])
+            ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to batch add treatments: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['message' => 'Failed to save treatments.', 'error' => $e->getMessage()], 500);

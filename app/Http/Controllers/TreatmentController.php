@@ -24,16 +24,36 @@ class TreatmentController extends Controller
             'date' => 'nullable|date',
             'time' => 'nullable|date_format:H:i',
             'token_number' => 'nullable|string',
-            'tooth' => 'nullable|string',
+            'tooth' => 'nullable',
+            'teeth' => 'nullable|array',
+            'teeth.*' => 'integer',
         ]);
 
         $validated['branch_id'] = $patient->branch_id;
+        $validated['status'] = in_array($validated['status'] ?? '', ['Proposed', 'Completed'])
+            ? $validated['status']
+            : 'Proposed';
 
-        $treatmentPlan = $patient->treatmentPlans()->create($validated);
+        $teeth = [];
+        if (!empty($validated['teeth']) && is_array($validated['teeth'])) {
+            $teeth = $validated['teeth'];
+        } elseif (isset($validated['tooth']) && $validated['tooth'] !== null && $validated['tooth'] !== '') {
+            $teeth = [(int)$validated['tooth']];
+        } else {
+            $teeth = [null];
+        }
+
+        $created = [];
+        foreach ($teeth as $t) {
+            $data = $validated;
+            unset($data['teeth']);
+            $data['tooth'] = $t;
+            $created[] = $patient->treatmentPlans()->create($data);
+        }
 
         return response()->json([
             'message' => 'Treatment created successfully',
-            'data' => $treatmentPlan
+            'data' => count($created) === 1 ? $created[0] : $created
         ], 201);
     }
 }

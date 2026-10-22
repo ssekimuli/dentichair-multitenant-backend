@@ -482,6 +482,11 @@
                 <p class="record-date">
                     Date: {{ $record->date ? \Carbon\Carbon::parse($record->date)->format('M d, Y') : \Carbon\Carbon::parse($record->created_at)->format('M d, Y') }}
                 </p>
+                @if(!empty($nextAppointmentDate))
+                    <p class="record-date" style="color: #0f766e; font-weight: 700;">
+                        Next Appt: {{ $nextAppointmentDate }}
+                    </p>
+                @endif
             </div>
         </div>
 
@@ -517,6 +522,12 @@
                 <div class="field-group flex-1">
                     <span class="field-label">Dental Officer / Dental Surgeon:</span>
                     <span class="field-dashed-line"></span>
+                </div>
+            </div>
+            <div class="demo-row">
+                <div class="field-group flex-1">
+                    <span class="field-label">Next Appointment Date:</span>
+                    <span class="field-dashed-line font-semibold">{{ $nextAppointmentDate ?: '________________________________' }}</span>
                 </div>
             </div>
         </div>
@@ -626,6 +637,9 @@
                 <p class="sig-label">Patient / Guardian Signature:</p>
                 <div class="sig-line"></div>
                 <p class="sig-sub">Date: ________________________________</p>
+                @if(!empty($nextAppointmentDate))
+                    <p class="sig-sub" style="margin-top: 4px; font-weight: 600; color: #0f766e;">Next Appointment Date: {{ $nextAppointmentDate }}</p>
+                @endif
             </div>
             <div class="sig-col">
                 <p class="sig-label">Dental Officer / Dental Surgeon Signature & Stamp:</p>

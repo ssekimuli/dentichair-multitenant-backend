@@ -254,5 +254,36 @@ class LogoUploadTest extends TestCase
         $response->assertSee('150,000');
         $response->assertSee('100,000'); // Balance due
     }
-}
 
+    #[Test]
+    public function it_renders_medical_history_print_view_with_next_appointment_date()
+    {
+        $patient = \App\Models\Patient::create([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john.doe@example.com',
+            'date_of_birth' => '1990-01-15',
+            'branch_id' => $this->branch->id,
+            'next_visit' => '2026-11-25',
+            'status' => 'Active',
+        ]);
+
+        $record = \App\Models\MedicalHistory::create([
+            'patient_id' => $patient->id,
+            'date' => now()->toDateString(),
+            'chief_complaint' => 'Tooth ache on upper left molar',
+            'diagnosis' => 'Irreversible pulpitis #26',
+            'treatment_plan' => 'Root canal treatment and porcelain crown',
+            'treatment_given' => 'Pulpectomy and sedative dressing',
+            'doctor_name' => 'Alice Walker',
+        ]);
+
+        $response = $this->get("/medical-histories/{$record->id}/print");
+
+        $response->assertStatus(200);
+        $response->assertSee('Next Appointment Date:');
+        $response->assertSee('Nov 25, 2026');
+        $response->assertSee('Dental Officer / Dental Surgeon Signature & Stamp:', false);
+        $response->assertDontSee('Dr. Alice Walker');
+    }
+}

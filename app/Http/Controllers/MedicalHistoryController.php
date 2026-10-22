@@ -20,7 +20,7 @@ class MedicalHistoryController extends Controller
     public function all(Request $request): JsonResponse
     {
         $query = MedicalHistory::with([
-            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id',
+            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit',
             'patient.branch:id,name',
             'doctor:id,name'
         ]);
@@ -301,6 +301,29 @@ class MedicalHistoryController extends Controller
             $clinicLogo = $business->logo;
         }
 
+        // 7. Next Visit / Appointment Date
+        $nextAppointmentDate = null;
+        if (!empty($patient?->next_visit)) {
+            try {
+                $nextAppointmentDate = \Carbon\Carbon::parse($patient->next_visit)->format('M d, Y');
+            } catch (\Throwable $e) {
+                $nextAppointmentDate = (string) $patient->next_visit;
+            }
+        }
+        if (!$nextAppointmentDate && $patient) {
+            try {
+                $upcoming = \App\Models\Appointment::where('patient_id', $patient->id)
+                    ->whereDate('date', '>=', now()->toDateString())
+                    ->where('status', '!=', 'Cancelled')
+                    ->orderBy('date', 'asc')
+                    ->orderBy('time', 'asc')
+                    ->first();
+                if ($upcoming && $upcoming->date) {
+                    $nextAppointmentDate = \Carbon\Carbon::parse($upcoming->date)->format('M d, Y');
+                }
+            } catch (\Throwable $e) {}
+        }
+
         return view('medical-histories.print', compact(
             'record',
             'patient',
@@ -312,7 +335,8 @@ class MedicalHistoryController extends Controller
             'clinicEmail',
             'clinicLogo',
             'receiptFooter',
-            'branchName'
+            'branchName',
+            'nextAppointmentDate'
         ));
     }
 

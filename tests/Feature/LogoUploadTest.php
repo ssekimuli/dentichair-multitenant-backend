@@ -286,4 +286,52 @@ class LogoUploadTest extends TestCase
         $response->assertSee('Dental Officer / Dental Surgeon Signature & Stamp:', false);
         $response->assertDontSee('Dr. Alice Walker');
     }
+
+    #[Test]
+    public function it_updates_patient_next_visit_when_editing_medical_history()
+    {
+        $patient = \App\Models\Patient::create([
+            'first_name' => 'Michael',
+            'last_name' => 'Scott',
+            'email' => 'michael.scott@dunder.com',
+            'date_of_birth' => '1975-03-15',
+            'branch_id' => $this->branch->id,
+            'next_visit' => '2026-11-01',
+            'history' => 'No known allergies',
+            'status' => 'Active',
+        ]);
+
+        $record = \App\Models\MedicalHistory::create([
+            'patient_id' => $patient->id,
+            'date' => '2026-10-22',
+            'chief_complaint' => 'Routine scaling and checkup',
+            'diagnosis' => 'Generalized plaque-induced gingivitis',
+            'treatment_plan' => 'Prophylaxis and fluoride varnish',
+            'treatment_given' => 'Full mouth ultrasonic scaling',
+            'doctor_name' => 'Dr. C. Foreman',
+        ]);
+
+        // Edit medical history with new next_visit date and updated medical history notes
+        $response = $this->actingAs($this->employee)->putJson("/api/medical-histories/{$record->id}", [
+            'chief_complaint' => 'Routine scaling and checkup - Followup',
+            'next_visit' => '2026-12-15',
+            'medical_history' => 'Penicillin allergy noted on review',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'id' => $record->id,
+                    'patient' => [
+                        'id' => $patient->id,
+                        'next_visit' => '2026-12-15T00:00:00.000000Z',
+                    ]
+                ]
+            ]);
+
+        $patient->refresh();
+        $this->assertEquals('2026-12-15', $patient->next_visit->format('Y-m-d'));
+        $this->assertEquals('Penicillin allergy noted on review', $patient->history);
+    }
 }

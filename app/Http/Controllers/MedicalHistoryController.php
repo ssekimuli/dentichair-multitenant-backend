@@ -144,13 +144,34 @@ class MedicalHistoryController extends Controller
             'treatment_note' => 'nullable|string',
             'doctor_name' => 'nullable|string|max:255',
             'doctor_id' => 'nullable|integer',
+            'next_visit' => 'nullable|date',
+            'medical_history' => 'nullable|string',
         ]);
+
+        $nextVisit = $request->input('next_visit');
+        $patientHistory = $request->input('medical_history');
+        unset($validated['next_visit'], $validated['medical_history']);
 
         $validated['patient_id'] = $patientId;
         $validated['date'] = $validated['date'] ?? now()->toDateString();
         $validated['consent'] = $request->has('consent') ? (bool)$request->input('consent') : true;
 
         $record = MedicalHistory::create($validated);
+
+        if ($request->has('next_visit') || $request->has('medical_history')) {
+            $patient = Patient::find($patientId);
+            if ($patient) {
+                if ($request->has('next_visit')) {
+                    $patient->next_visit = $nextVisit;
+                }
+                if ($request->has('medical_history') && $patientHistory !== null) {
+                    $patient->history = $patientHistory;
+                }
+                $patient->save();
+            }
+        }
+
+        $record->load(['patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit', 'patient.branch:id,name']);
 
         return response()->json([
             'success' => true,
@@ -165,7 +186,11 @@ class MedicalHistoryController extends Controller
      */
     public function show(string|int $id): JsonResponse
     {
-        $record = MedicalHistory::with('patient')->findOrFail($id);
+        $record = MedicalHistory::with([
+            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit',
+            'patient.branch:id,name',
+            'doctor:id,name'
+        ])->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -195,9 +220,30 @@ class MedicalHistoryController extends Controller
             'treatment_note' => 'nullable|string',
             'doctor_name' => 'nullable|string|max:255',
             'doctor_id' => 'nullable|integer',
+            'next_visit' => 'nullable|date',
+            'medical_history' => 'nullable|string',
         ]);
 
+        $nextVisit = $request->input('next_visit');
+        $patientHistory = $request->input('medical_history');
+        unset($validated['next_visit'], $validated['medical_history']);
+
         $record->update($validated);
+
+        if ($request->has('next_visit') || $request->has('medical_history')) {
+            $patient = $record->patient ?? Patient::find($record->patient_id);
+            if ($patient) {
+                if ($request->has('next_visit')) {
+                    $patient->next_visit = $nextVisit;
+                }
+                if ($request->has('medical_history') && $patientHistory !== null) {
+                    $patient->history = $patientHistory;
+                }
+                $patient->save();
+            }
+        }
+
+        $record->load(['patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit', 'patient.branch:id,name']);
 
         return response()->json([
             'success' => true,

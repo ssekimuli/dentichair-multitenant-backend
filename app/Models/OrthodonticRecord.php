@@ -15,6 +15,11 @@ class OrthodonticRecord extends Model
         'appliance',
         'appliance_location',
         'treatment_phase',
+        'amount',
+        'period',
+        'procedures',
+        'invoice_id',
+        'medical_history_id',
         'wire_size',
         'wire_size_upper',
         'wire_size_lower',
@@ -29,11 +34,27 @@ class OrthodonticRecord extends Model
     ];
 
     protected $casts = [
+        'amount' => 'decimal:2',
         'bracket_changes' => 'array',
         'broken_brackets' => 'array',
     ];
 
     protected $appends = ['months_in_treatment'];
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class, 'patient_id');
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function medicalHistory()
+    {
+        return $this->belongsTo(MedicalHistory::class, 'medical_history_id');
+    }
 
     public function getMonthsInTreatmentAttribute()
     {

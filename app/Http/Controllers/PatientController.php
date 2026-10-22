@@ -2299,6 +2299,26 @@ class PatientController extends Controller
      * @param string $patientId Patient ID
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * Add Orthodontic Record
+     *
+     * Add a new orthodontic treatment record for a patient.
+     * When treatment_phase is 'initial', it automatically generates an invoice in billing
+     * and logs a treatment plan entry in the patient's medical history.
+     *
+     * @authenticated
+     *
+     * @urlParam patientId string required The patient's ID. Example: 1
+     * @bodyParam appliance string required Orthodontic appliance used. Example: Braces
+     * @bodyParam treatment_phase string Treatment phase (Initial, Active, Finishing, Retention). Example: Initial
+     * @bodyParam amount number Total estimated treatment cost for the initial phase. Example: 1500000
+     * @bodyParam period string Estimated duration/period of treatment. Example: 18 Months
+     * @bodyParam procedures string Planned procedures across the treatment period.
+     *
+     * @param Request $request
+     * @param string $patientId Patient ID
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function addOrthodonticRecord(Request $request, $patientId)
     {
         $patient = Patient::find($patientId);
@@ -2312,6 +2332,9 @@ class PatientController extends Controller
             'appliance' => 'required|string',
             'appliance_location' => 'nullable|string',
             'treatment_phase' => 'nullable|string',
+            'amount' => 'nullable|numeric|min:0',
+            'period' => 'nullable|string',
+            'procedures' => 'nullable|string',
             'wire_size' => 'nullable|string',
             'wire_size_upper' => 'nullable|string',
             'wire_size_lower' => 'nullable|string',
@@ -2325,12 +2348,22 @@ class PatientController extends Controller
             'next_visit_goals' => 'nullable|string',
         ]);
 
-        $patient->orthodonticRecords()->create([
+        $record = $patient->orthodonticRecords()->create([
             ...$validated,
             'date' => $validated['date'] ?? now()->format('Y-m-d'),
         ]);
 
-        return response()->json($patient->load('orthodonticRecords'));
+        // Process Billing Invoice and Medical History when treatment phase is 'initial'
+        $this->processOrthodonticInitialPhase($patient, $record, $validated);
+
+        $patient->refresh()->load(['orthodonticRecords', 'medicalHistories']);
+
+        return response()->json([
+            'message' => 'Orthodontic record added successfully.',
+            'data' => $record->fresh(['invoice', 'medicalHistory']),
+            'orthodontic_records' => $patient->orthodonticRecords,
+            ...$patient->toArray(),
+        ]);
     }
 
     /**
@@ -2342,25 +2375,6 @@ class PatientController extends Controller
      *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @urlParam recordId string required The orthodontic record's ID. Example: 1
-     * @bodyParam appliance string Orthodontic appliance used. Example: Clear Aligners
-     * @bodyParam wire_size string Wire size used. Example: .018 Stainless Steel
-     * @bodyParam bracket_changes array Brackets that were changed. Example: ["15", "25"]
-     * @bodyParam notes string Treatment notes. Example: Excellent progress, teeth aligned
-     *
-     * @response 200 {
-     *   "message": "Orthodontic record updated successfully.",
-     *   "data": {
-     *     "id": 1,
-     *     "appliance": "Clear Aligners",
-     *     "wire_size": ".018 Stainless Steel",
-     *     "bracket_changes": ["15", "25"],
-     *     "notes": "Excellent progress, teeth aligned",
-     *     "date": "2024-07-15"
-     *   }
-     * }
-     * @response 404 {
-     *   "error": "Patient not found" or "Orthodontic record not found"
-     * }
      *
      * @param Request $request
      * @param string $patientId Patient ID
@@ -2386,6 +2400,9 @@ class PatientController extends Controller
             'appliance' => 'sometimes|string',
             'appliance_location' => 'nullable|string',
             'treatment_phase' => 'nullable|string',
+            'amount' => 'nullable|numeric|min:0',
+            'period' => 'nullable|string',
+            'procedures' => 'nullable|string',
             'wire_size' => 'nullable|string',
             'wire_size_upper' => 'nullable|string',
             'wire_size_lower' => 'nullable|string',
@@ -2401,10 +2418,172 @@ class PatientController extends Controller
 
         $record->update($validated);
 
+        // Process Billing Invoice and Medical History when treatment phase is 'initial'
+        $this->processOrthodonticInitialPhase($patient, $record, $validated);
+
         return response()->json([
             'message' => 'Orthodontic record updated successfully.',
-            'data' => $record
+            'data' => $record->fresh(['invoice', 'medicalHistory'])
         ]);
+    }
+
+    /**
+     * Process initial phase billing and medical history generation for orthodontic record
+     */
+    protected function processOrthodonticInitialPhase(Patient $patient, OrthodonticRecord $record, array $validated)
+    {
+        $phase = strtolower($validated['treatment_phase'] ?? $record->treatment_phase ?? '');
+        if ($phase !== 'initial') {
+            return;
+        }
+
+        $amount = floatval($validated['amount'] ?? $record->amount ?? 0);
+        $period = $validated['period'] ?? $record->period ?? '';
+        $procedures = $validated['procedures'] ?? $record->procedures ?? '';
+        $appliance = $validated['appliance'] ?? $record->appliance ?? 'Orthodontic Appliance';
+        $location = $validated['appliance_location'] ?? $record->appliance_location ?? 'Both';
+        $date = $validated['date'] ?? $record->date ?? now()->format('Y-m-d');
+        $notes = $validated['notes'] ?? $record->notes ?? '';
+        $nextGoals = $validated['next_visit_goals'] ?? $record->next_visit_goals ?? '';
+
+        // 1. BILLING INVOICE (generated when treatment phase is initial and amount > 0)
+        if ($amount > 0) {
+            $invoice = null;
+            if ($record->invoice_id) {
+                $invoice = \App\Models\Invoice::find($record->invoice_id);
+            }
+
+            $branchId = $patient->branch_id;
+            if (!$branchId && auth()->user() && auth()->user()->employee && auth()->user()->employee->branch_id) {
+                $branchId = auth()->user()->employee->branch_id;
+            }
+            if (!$branchId) {
+                $branchId = \App\Models\Branch::first()?->id ?? 1;
+            }
+
+            $patientName = trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''));
+            if (empty($patientName)) {
+                $patientName = 'Patient #' . $patient->id;
+            }
+
+            $procedureName = 'Comprehensive Orthodontic Treatment - ' . $appliance;
+            if (!empty($period)) {
+                $procedureName .= ' (' . $period . ')';
+            }
+
+            if (!$invoice) {
+                $invoice = \App\Models\Invoice::create([
+                    'patient_name'             => $patientName,
+                    'patient_id'               => $patient->id,
+                    'amount'                   => $amount,
+                    'paid_amount'              => 0,
+                    'patient_responsibility'   => $amount,
+                    'patient_balance'          => $amount,
+                    'insurance_responsibility' => 0,
+                    'insurance_paid_amount'    => 0,
+                    'insurance_balance'        => 0,
+                    'status'                   => 'Pending',
+                    'issue_date'               => $date,
+                    'due_date'                 => \Carbon\Carbon::parse($date)->addDays(30),
+                    'branch_id'                => $branchId,
+                    'category'                 => 'procedure-income',
+                ]);
+
+                $invoice->treatments()->create([
+                    'procedure' => $procedureName,
+                    'cost'      => $amount,
+                    'notes'     => !empty($procedures) ? $procedures : 'Initial phase orthodontic contract fee',
+                ]);
+
+                $record->invoice_id = $invoice->id;
+            } else {
+                // Update existing invoice if not already paid
+                if (in_array(strtolower($invoice->status), ['pending', 'overdue', 'draft'])) {
+                    $invoice->amount = $amount;
+                    $invoice->patient_responsibility = $amount;
+                    $invoice->patient_balance = max(0, $amount - floatval($invoice->paid_amount));
+                    $invoice->category = 'procedure-income';
+                    $invoice->save();
+
+                    $treatment = $invoice->treatments()->first();
+                    if ($treatment) {
+                        $treatment->cost = $amount;
+                        $treatment->procedure = $procedureName;
+                        if (!empty($procedures)) {
+                            $treatment->notes = $procedures;
+                        }
+                        $treatment->save();
+                    }
+                }
+            }
+        }
+
+        // 2. MEDICAL HISTORY RECORD (Record in medical history when treatment phase is initial)
+        $medicalHistory = null;
+        if ($record->medical_history_id) {
+            $medicalHistory = \App\Models\MedicalHistory::find($record->medical_history_id);
+        }
+
+        $chiefComplaint = 'Orthodontic Evaluation & Initial Treatment Planning - ' . $appliance;
+        $historyComplaint = 'Commenced comprehensive orthodontic therapy (' . ucfirst($phase) . ' Phase). ' . 
+            (!empty($period) ? 'Estimated treatment period: ' . $period . '. ' : '') .
+            'Appliance: ' . $appliance . ' (' . $location . ').';
+
+        $treatmentPlanText = 'Orthodontic Treatment Plan: ' . $appliance . ' (' . $location . ').';
+        if (!empty($period)) {
+            $treatmentPlanText .= "\nDuration: " . $period . '.';
+        }
+        if (!empty($procedures)) {
+            $treatmentPlanText .= "\nPlanned Procedures: " . $procedures . '.';
+        }
+        if ($amount > 0) {
+            $treatmentPlanText .= "\nTotal Estimated Treatment Fee: USh " . number_format($amount, 2);
+        }
+
+        $treatmentGivenText = 'Initial orthodontic examination completed and appliance scheduled/fitted: ' . $appliance . ' (' . $location . ').';
+        if (!empty($notes)) {
+            $treatmentGivenText .= "\nClinical Notes: " . $notes;
+        }
+
+        $treatmentNoteText = !empty($notes) ? $notes : 'Initial orthodontic assessment.';
+        if (!empty($nextGoals)) {
+            $treatmentNoteText .= "\nNext Visit Goals: " . $nextGoals;
+        }
+
+        $doctorName = auth()->user()?->name ?? 'Attending Clinician';
+        $doctorId = auth()->id();
+
+        if (!$medicalHistory) {
+            $medicalHistory = \App\Models\MedicalHistory::create([
+                'patient_id'        => $patient->id,
+                'date'              => $date,
+                'chief_complaint'   => $chiefComplaint,
+                'history_complaint' => $historyComplaint,
+                'extra_oral_exam'   => 'Facial symmetry, profile assessment, and TMJ evaluation recorded for orthodontic planning.',
+                'intra_oral_exam'   => 'Dentition examined for alignment, crowding/spacing, and occlusion in ' . $location . ' arch(es).',
+                'diagnosis'         => 'Malocclusion requiring comprehensive orthodontic therapy (' . $appliance . ').',
+                'treatment_plan'    => $treatmentPlanText,
+                'treatment_given'   => $treatmentGivenText,
+                'treatment_note'    => $treatmentNoteText,
+                'doctor_name'       => $doctorName,
+                'doctor_id'         => $doctorId,
+                'consent'           => true,
+                'consent_notes'     => 'Informed consent obtained for comprehensive orthodontic therapy.',
+            ]);
+
+            $record->medical_history_id = $medicalHistory->id;
+        } else {
+            $medicalHistory->update([
+                'date'              => $date,
+                'chief_complaint'   => $chiefComplaint,
+                'history_complaint' => $historyComplaint,
+                'treatment_plan'    => $treatmentPlanText,
+                'treatment_given'   => $treatmentGivenText,
+                'treatment_note'    => $treatmentNoteText,
+            ]);
+        }
+
+        $record->saveQuietly();
     }
 
     /**
@@ -2442,12 +2621,22 @@ class PatientController extends Controller
             return response()->json(['error' => 'Orthodontic record not found'], 404);
         }
 
+        // Void associated pending invoice if exists
+        if ($record->invoice_id) {
+            $invoice = \App\Models\Invoice::find($record->invoice_id);
+            if ($invoice && in_array(strtolower($invoice->status), ['pending', 'overdue', 'draft'])) {
+                $invoice->status = 'Cancelled';
+                $invoice->save();
+            }
+        }
+
         $record->delete();
 
         return response()->json([
             'message' => 'Orthodontic record deleted successfully.'
         ]);
     }
+
     public function getToothHistory($patientId, $toothId)
     {
         $patient = Patient::find($patientId);

@@ -43,7 +43,7 @@ class Invoice extends Model
         'medicines' => 'array',
     ];
 
-    protected $appends = ['lab_order_details', 'xray_request_details'];
+    protected $appends = ['lab_order_details', 'xray_request_details', 'orthodontic_record_details'];
 
     protected static function booted()
     {
@@ -158,6 +158,28 @@ class Invoice extends Model
     public function xrayRequest(): HasOne
     {
         return $this->hasOne(XrayRequest::class, 'invoice_id');
+    }
+
+    public function orthodonticRecord(): HasOne
+    {
+        return $this->hasOne(OrthodonticRecord::class, 'invoice_id');
+    }
+
+    public function getOrthodonticRecordDetailsAttribute()
+    {
+        $ortho = $this->orthodonticRecord;
+        if (!$ortho) {
+            return null;
+        }
+
+        return [
+            'id' => $ortho->id,
+            'appliance' => $ortho->appliance,
+            'treatment_phase' => $ortho->treatment_phase,
+            'period' => $ortho->period,
+            'amount' => $ortho->amount,
+            'procedures' => $ortho->procedures,
+        ];
     }
 
 

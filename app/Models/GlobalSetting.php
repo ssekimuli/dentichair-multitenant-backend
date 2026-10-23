@@ -47,7 +47,7 @@ use HasFactory;
                 'currency' => 'USD',
                 'receipt_footer' => 'Thank you for choosing our facility for your healthcare needs.',
                 'qr_code_info_data' => null,
-                'activity_log_enabled' => false,
+                'activity_log_enabled' => true,
                 'notifications' => [
                     'appointments_created' => ['email' => true, 'sms' => false, 'whatsapp' => false],
                     'appointments_upcoming' => ['email' => true, 'sms' => false, 'whatsapp' => false],

@@ -145,6 +145,11 @@ class Invoice extends Model
         return $this->hasMany(PaymentTransaction::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->transactions();
+    }
+
     public function insuranceClaims(): HasMany
     {
         return $this->hasMany(InsuranceClaim::class);

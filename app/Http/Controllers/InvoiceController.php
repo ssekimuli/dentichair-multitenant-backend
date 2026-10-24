@@ -882,19 +882,63 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric',
             'method' => 'required|string',
+            'client_uuid' => 'nullable|string',
+            'payment_date' => 'nullable|string',
         ]);
 
-        $transaction = $invoice->transactions()->create([
-            ...$validated,
-            'date' => now()->format('Y-m-d'),
-        ]);
+        $clientUuid = $validated['client_uuid'] ?? null;
 
-        $newPaidAmount = $invoice->paid_amount + $validated['amount'];
-        $invoice->update([
-            'paid_amount' => $newPaidAmount,
-            'status' => $newPaidAmount >= $invoice->amount ? 'Paid' : 'Pending',
-            'payment_method' => $validated['method'],
-        ]);
+        // Idempotency: if payment with this client_uuid was already saved, do not pay twice
+        if ($clientUuid && \App\Models\PaymentTransaction::where('client_uuid', $clientUuid)->exists()) {
+            $invoice->load(['treatments', 'otherCharges', 'transactions', 'patient', 'laboratoryOrder.client']);
+            return response()->json($invoice);
+        }
+
+        $paymentDate = isset($validated['payment_date'])
+            ? \Carbon\Carbon::parse($validated['payment_date'])->format('Y-m-d')
+            : now()->format('Y-m-d');
+
+        try {
+            $transaction = \Illuminate\Support\Facades\DB::transaction(function () use ($invoice, $validated, $clientUuid, $paymentDate) {
+                $locked = Invoice::lockForUpdate()->find($invoice->id);
+
+                if ($clientUuid && \App\Models\PaymentTransaction::where('client_uuid', $clientUuid)->exists()) {
+                    return null;
+                }
+
+                $tx = $locked->transactions()->create([
+                    'amount' => $validated['amount'],
+                    'method' => $validated['method'],
+                    'client_uuid' => $clientUuid,
+                    'date' => $paymentDate,
+                ]);
+
+                $newPaidAmount = $locked->paid_amount + $validated['amount'];
+                $locked->update([
+                    'paid_amount' => $newPaidAmount,
+                    'status' => $newPaidAmount >= $locked->amount ? 'Paid' : 'Pending',
+                    'payment_method' => $validated['method'],
+                ]);
+
+                return $tx;
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            $invoice->refresh()->load(['treatments', 'otherCharges', 'transactions', 'patient', 'laboratoryOrder.client']);
+            return response()->json($invoice);
+        } catch (\Exception $e) {
+            if ($clientUuid && \App\Models\PaymentTransaction::where('client_uuid', $clientUuid)->exists()) {
+                $invoice->refresh()->load(['treatments', 'otherCharges', 'transactions', 'patient', 'laboratoryOrder.client']);
+                return response()->json($invoice);
+            }
+            throw $e;
+        }
+
+        if (!$transaction) {
+            $invoice->refresh()->load(['treatments', 'otherCharges', 'transactions', 'patient', 'laboratoryOrder.client']);
+            return response()->json($invoice);
+        }
+
+        $invoice->refresh();
 
         \App\Models\ActivityLog::log('pay_invoice', "Payment of {$validated['amount']} added to Invoice #{$invoice->id}", ['invoice_id' => $invoice->id, 'amount' => $validated['amount'], 'method' => $validated['method']]);
 

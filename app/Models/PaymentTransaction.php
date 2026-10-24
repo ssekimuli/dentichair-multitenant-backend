@@ -9,5 +9,5 @@ use Illuminate\Database\Eloquent\Model;
 class PaymentTransaction extends Model
 {
     use LogsActivity;
-    protected $fillable = ['amount', 'method', 'date'];
+    protected $fillable = ['amount', 'method', 'date', 'client_uuid'];
 }

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class SyncController extends Controller
 {
@@ -72,6 +74,25 @@ class SyncController extends Controller
                 // Prevent overriding auto-increment ID with local offline ID
                 if (isset($data['id']) && !is_numeric($data['id'])) {
                     unset($data['id']); 
+                }
+
+                // Payments must go through addPayment: it is idempotent on
+                // client_uuid and updates the invoice's paid amount/status.
+                if ($change['entity'] === 'payment' && $operation === 'create') {
+                    try {
+                        $resp = app(InvoiceController::class)->addPayment(
+                            Request::create('/', 'POST', $data),
+                            $data['invoice_id'] ?? 0
+                        );
+                        if ($resp->getStatusCode() < 300) {
+                            $results[] = ['id' => $change['id'], 'status' => 'success', 'client_uuid' => $data['client_uuid'] ?? null];
+                        } else {
+                            $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => 'HTTP ' . $resp->getStatusCode()];
+                        }
+                    } catch (ValidationException $e) {
+                        $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => collect($e->errors())->flatten()->first()];
+                    }
+                    continue;
                 }
 
                 if ($operation === 'create') {

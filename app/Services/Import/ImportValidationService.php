@@ -78,8 +78,13 @@ class ImportValidationService
             if ($value !== null && $value !== '') {
                 switch ($colMeta['type']) {
                     case 'integer':
-                        $clean = preg_replace('/[^\d\-]/', '', (string)$value);
-                        $value = ($clean !== '') ? (int)$clean : null;
+                        // FIX: spreadsheet readers return "27.0"; stripping non-digits would give 270.
+                        if (is_numeric($value)) {
+                            $value = (int) round((float) $value);
+                        } else {
+                            $clean = preg_replace('/[^\d\-]/', '', (string)$value);
+                            $value = ($clean !== '') ? (int)$clean : null;
+                        }
                         break;
 
                     case 'decimal':
@@ -258,12 +263,14 @@ class ImportValidationService
             }
         }
 
-        // Normalize age to integer and compute date_of_birth
+        // FIX: parse age numerically ("27.0" -> 27) instead of stripping non-digits ("27.0" -> 270)
         if (!empty($demographics['age'])) {
-            $ageClean = preg_replace('/[^\d]/', '', $demographics['age']);
-            $demographics['age'] = !empty($ageClean) ? (int)$ageClean : null;
-            if ($demographics['age'] !== null && $demographics['age'] > 0 && $demographics['age'] <= 150) {
+            $demographics['age'] = $this->parseAge($demographics['age']);
+
+            if ($demographics['age'] !== null && $demographics['age'] > 0) {
                 $demographics['date_of_birth'] = now()->subYears($demographics['age'])->format('Y-m-d');
+            } else {
+                unset($demographics['age']);
             }
         }
 
@@ -353,7 +360,7 @@ class ImportValidationService
                 return (int)$existingByName->id;
             }
         } elseif (!empty($contact)) {
-            $digits = preg_replace('/\D+/', '', $contact);
+            $digits = preg_replace('/\D+/', '', $this->stripFloatSuffix($contact));
             $firstName = 'Patient';
             $lastName = (strlen($digits) >= 4) ? substr($digits, -4) : 'Imported';
         }
@@ -364,9 +371,9 @@ class ImportValidationService
             $targetBranchId = (int)(DB::table('branches')->value('id') ?? 1);
         }
 
-        // 4. Determine DOB & age
-        $age = !empty($demographics['age']) ? (int)$demographics['age'] : null;
-        $dob = $demographics['date_of_birth'] 
+        // 4. Determine DOB & age (FIX: validated parse, never derive a DOB from an out-of-range age)
+        $age = !empty($demographics['age']) ? $this->parseAge($demographics['age']) : null;
+        $dob = $demographics['date_of_birth']
             ?? ($age ? now()->subYears($age)->format('Y-m-d') : '1999-01-01');
 
         $gender = $demographics['gender'] ?? 'Other';
@@ -397,6 +404,40 @@ class ImportValidationService
     }
 
     /**
+     * Parse an age value into a sane integer, or null.
+     * Handles 27, "27", 27.0, "27.0", "27 yrs". Rejects values outside 0-120.
+     */
+    protected function parseAge($value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (!preg_match('/\d+(?:\.\d+)?/', (string)$value, $m)) {
+            return null;
+        }
+
+        $age = (int) round((float) $m[0]);
+
+        return ($age >= 0 && $age <= 120) ? $age : null;
+    }
+
+    /**
+     * Remove the ".0" suffix that spreadsheet readers add to whole-number cells
+     * (e.g. "700111222.0" -> "700111222").
+     */
+    protected function stripFloatSuffix(string $value): string
+    {
+        $value = trim($value);
+
+        if (preg_match('/^(\d+)\.0+$/', $value, $m)) {
+            return $m[1];
+        }
+
+        return $value;
+    }
+
+    /**
      * Canonicalize phone numbers to standard 10-digit local format with leading zero.
      * E.g. "700111222" -> "0700111222", "256700111222" -> "0700111222".
      */
@@ -406,7 +447,8 @@ class ImportValidationService
             return null;
         }
 
-        $raw = trim($phoneVal);
+        // FIX: "700111222.0" must not become "7001112220"
+        $raw = $this->stripFloatSuffix($phoneVal);
         $digits = preg_replace('/\D+/', '', $raw);
 
         // 9 digits without leading zero (e.g. 700111222 -> 0700111222)
@@ -427,7 +469,7 @@ class ImportValidationService
      */
     public function findPatientByPhone(string $phoneVal, ?int $branchId = null): ?object
     {
-        $raw = trim($phoneVal);
+        $raw = $this->stripFloatSuffix($phoneVal);
         $digits = preg_replace('/\D+/', '', $raw);
 
         if (strlen($digits) < 6) {

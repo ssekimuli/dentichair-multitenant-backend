@@ -303,7 +303,8 @@ return [
                 ],
             ],
             'custom_rules' => [
-                'patient_id' => 'required|integer|exists:patients,id',
+                // 'patient_id' => 'required|integer|exists:patients,id',
+                'patient_id' => 'nullable|integer',
                 'date' => 'nullable|date',
                 'consent' => 'nullable|boolean',
                 'chief_complaint' => 'nullable|string',

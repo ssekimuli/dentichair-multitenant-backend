@@ -57,6 +57,9 @@ class ImportSchemaService
         if ($table === 'invoice') {
             return 'invoices';
         }
+        if (in_array($table, ['lab_order', 'lab_orders', 'laboratory_order'], true)) {
+            return 'laboratory_orders';
+        }
         return $table;
     }
 
@@ -224,6 +227,16 @@ class ImportSchemaService
                     'comment' => 'Patient contact/phone number used to automatically resolve and link patient_id',
                 ];
             }
+        }
+
+        // For medical_histories and invoices: patient_id is auto-resolved from contact/phone
+        // at normalizeRow time, so it must NOT be flagged as required in the schema —
+        // doing so would block users whose spreadsheet only has a contact column.
+        if (($table === 'medical_histories' || $table === 'invoices') && isset($importable['patient_id'])) {
+            $importable['patient_id']['required'] = false;
+            $importable['patient_id']['nullable'] = true;
+            $importable['patient_id']['has_default'] = true; // tells proposeMapping it is covered
+            $importable['patient_id']['description'] = 'Auto-resolved from the Contact / Phone column. Leave unmapped if using Contact.';
         }
 
         if ($table === 'medical_histories') {

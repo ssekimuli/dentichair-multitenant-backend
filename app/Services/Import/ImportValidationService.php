@@ -282,6 +282,7 @@ class ImportValidationService
         $currId = $mappedData['patient_id'] ?? null;
         if (!empty($currId) && is_numeric($currId) && DB::table('patients')->where('id', (int)$currId)->exists()) {
             $mappedData['patient_id'] = (int)$currId;
+            $this->syncPatientDemographics((int)$currId, $demographics);
         } else {
             // Automatically find or create the patient so this record is ALWAYS imported
             $mappedData['patient_id'] = $this->findOrCreatePatientForMedicalHistory(
@@ -311,6 +312,13 @@ class ImportValidationService
 
         if ($table === 'medical_histories') {
             unset($mappedData['patient_name']);
+
+            // Keep the same parsed age on the history row that was written to the patient,
+            // so both tables always hold the age from the import file.
+            $importAge = $demographics['age'] ?? null;
+            if ($importAge !== null && Schema::hasColumn('medical_histories', 'age')) {
+                $mappedData['age'] = (int) $importAge;
+            }
         }
 
         return $mappedData;
@@ -329,6 +337,7 @@ class ImportValidationService
         if (!empty($contact)) {
             $patient = $this->findPatientByPhone($contact, $branchId);
             if ($patient) {
+                $this->syncPatientDemographics((int)$patient->id, $demographics);
                 return (int)$patient->id;
             }
         }
@@ -357,6 +366,7 @@ class ImportValidationService
             }
             $existingByName = $nameQuery->first();
             if ($existingByName) {
+                $this->syncPatientDemographics((int)$existingByName->id, $demographics);
                 return (int)$existingByName->id;
             }
         } elseif (!empty($contact)) {
@@ -401,6 +411,45 @@ class ImportValidationService
         }
 
         return (int) DB::table('patients')->insertGetId($patientData);
+    }
+
+    /**
+     * Update an existing patient's age / date_of_birth from the imported row.
+     * Skips the update when the stored DOB already yields the same age, so a
+     * precise real DOB is not replaced by an age-derived estimate.
+     */
+    protected function syncPatientDemographics(int $patientId, array $demographics): void
+    {
+        $age = !empty($demographics['age']) ? $this->parseAge($demographics['age']) : null;
+
+        if ($age === null || $age <= 0) {
+            return;
+        }
+
+        $patient = DB::table('patients')->where('id', $patientId)->first();
+        if (!$patient) {
+            return;
+        }
+
+        $currentAgeFromDob = null;
+        if (!empty($patient->date_of_birth)) {
+            try {
+                $currentAgeFromDob = Carbon::parse($patient->date_of_birth)->age;
+            } catch (\Throwable $e) {
+                $currentAgeFromDob = null;
+            }
+        }
+
+        // Already consistent with the imported age: nothing to change
+        if ((int)$patient->age === $age && $currentAgeFromDob === $age) {
+            return;
+        }
+
+        DB::table('patients')->where('id', $patientId)->update([
+            'age' => $age,
+            'date_of_birth' => now()->subYears($age)->format('Y-m-d'),
+            'updated_at' => now(),
+        ]);
     }
 
     /**

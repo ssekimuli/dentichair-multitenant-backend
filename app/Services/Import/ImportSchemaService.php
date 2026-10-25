@@ -362,7 +362,7 @@ class ImportSchemaService
             'date_of_birth' => 'Date of Birth',
             'role_id' => 'Role ID',
             'branch_id' => 'Branch ID',
-            'patient_id' => 'Patient ID / Contact',
+            // 'patient_id' => 'Patient ID / Contact',
             'doctor_id' => 'Doctor ID',
             'qty' => 'Quantity',
             'contact' => 'Patient Contact / Phone',

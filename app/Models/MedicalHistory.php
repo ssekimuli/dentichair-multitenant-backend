@@ -26,6 +26,7 @@ class MedicalHistory extends Model
         'treatment_note',
         'doctor_name',
         'doctor_id',
+        'client_uuid',
     ];
 
     protected $casts = [

@@ -12,6 +12,7 @@ use App\Models\XrayRequest;
 use App\Models\Patient;
 use App\Models\TreatmentPlan;
 use App\Models\DentalRecord;
+use App\Models\MedicalHistory;
 use Illuminate\Support\Arr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -86,6 +87,7 @@ class SyncController extends Controller
         $queryClients = Client::query();
         $queryLabOrders = LaboratoryOrder::with(['client', 'branch', 'labService']);
         $queryXrayRequests = XrayRequest::with(['patientRecord', 'branch', 'doctor', 'invoice']);
+        $queryMedicalHistories = MedicalHistory::with(['patient', 'doctor']);
 
         if ($branchId) {
             $queryPatients->where('branch_id', $branchId);
@@ -93,6 +95,9 @@ class SyncController extends Controller
             $queryInvoices->where('branch_id', $branchId);
             $queryLabOrders->where('branch_id', $branchId);
             $queryXrayRequests->where('branch_id', $branchId);
+            $queryMedicalHistories->whereHas('patient', function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            });
         }
 
         if ($updatedSince) {
@@ -103,6 +108,7 @@ class SyncController extends Controller
             $queryClients->where('updated_at', '>=', $since);
             $queryLabOrders->where('updated_at', '>=', $since);
             $queryXrayRequests->where('updated_at', '>=', $since);
+            $queryMedicalHistories->where('updated_at', '>=', $since);
         } else {
             $queryPatients->limit(100);
             $queryAppointments->limit(100);
@@ -110,6 +116,7 @@ class SyncController extends Controller
             $queryClients->limit(100);
             $queryLabOrders->limit(100);
             $queryXrayRequests->limit(100);
+            $queryMedicalHistories->limit(100);
         }
 
         return response()->json([
@@ -122,6 +129,7 @@ class SyncController extends Controller
                 'clients' => $queryClients->orderBy('updated_at', 'desc')->get(),
                 'laboratory_orders' => $queryLabOrders->orderBy('updated_at', 'desc')->get(),
                 'xray_requests' => $queryXrayRequests->orderBy('updated_at', 'desc')->get(),
+                'medical_histories' => $queryMedicalHistories->orderBy('updated_at', 'desc')->get(),
             ],
         ]);
     }
@@ -172,6 +180,12 @@ class SyncController extends Controller
             case 'dental_record':
             case 'dental_records':
                 return $this->processDentalRecord($operation, $data, $clientId);
+
+            case 'medical_history':
+            case 'medical_histories':
+            case 'clinical_record':
+            case 'clinical_records':
+                return $this->processMedicalHistory($operation, $data, $clientId);
 
             default:
                 return ['message' => "Entity {$entity} processed"];
@@ -499,5 +513,102 @@ class SyncController extends Controller
             ]);
             return ['server_id' => $record->id, 'action' => 'created'];
         }
+    }
+
+    protected function processMedicalHistory(string $operation, array $data, ?string $clientId): array
+    {
+        $patientId = $data['patient_id'] ?? $data['patientId'] ?? null;
+        $clientUuid = $data['client_uuid'] ?? $data['clientUuid'] ?? $clientId;
+
+        if ($operation === 'create') {
+            if (!empty($clientUuid)) {
+                $existing = MedicalHistory::where('client_uuid', $clientUuid)->first();
+                if ($existing) {
+                    return ['server_id' => $existing->id, 'action' => 'matched_existing'];
+                }
+            }
+
+            if (!$patientId) {
+                return ['action' => 'skipped', 'reason' => 'missing_patient_id'];
+            }
+
+            $patient = Patient::find($patientId);
+            if (!$patient) {
+                return ['action' => 'skipped', 'reason' => 'patient_not_found'];
+            }
+
+            $historyData = Arr::only($data, [
+                'date', 'chief_complaint', 'history_complaint', 'extra_oral_exam',
+                'intra_oral_exam', 'diagnosis', 'treatment_plan', 'treatment_given',
+                'consent', 'consent_notes', 'treatment_note', 'doctor_name', 'doctor_id',
+                'client_uuid'
+            ]);
+            $historyData['client_uuid'] = $clientUuid;
+            $historyData['patient_id'] = $patientId;
+            $historyData['date'] = $historyData['date'] ?? now()->toDateString();
+            $historyData['consent'] = isset($data['consent']) ? (bool)$data['consent'] : true;
+
+            $record = MedicalHistory::create($historyData);
+
+            if (!empty($data['next_visit'])) {
+                $patient->next_visit = $data['next_visit'];
+                $patient->save();
+            }
+            if (isset($data['medical_history']) && $data['medical_history'] !== null) {
+                $patient->history = $data['medical_history'];
+                $patient->save();
+            }
+
+            return ['server_id' => $record->id, 'action' => 'created'];
+        } elseif ($operation === 'update') {
+            $id = $data['id'] ?? null;
+            $record = null;
+            if ($id && is_numeric($id)) {
+                $record = MedicalHistory::find($id);
+            }
+            if (!$record && !empty($clientUuid)) {
+                $record = MedicalHistory::where('client_uuid', $clientUuid)->first();
+            }
+
+            if ($record) {
+                $historyData = Arr::only($data, [
+                    'date', 'chief_complaint', 'history_complaint', 'extra_oral_exam',
+                    'intra_oral_exam', 'diagnosis', 'treatment_plan', 'treatment_given',
+                    'consent', 'consent_notes', 'treatment_note', 'doctor_name', 'doctor_id'
+                ]);
+                $record->update($historyData);
+
+                if (!empty($data['next_visit']) || isset($data['medical_history'])) {
+                    $patient = $record->patient ?? Patient::find($record->patient_id);
+                    if ($patient) {
+                        if (!empty($data['next_visit'])) {
+                            $patient->next_visit = $data['next_visit'];
+                        }
+                        if (isset($data['medical_history']) && $data['medical_history'] !== null) {
+                            $patient->history = $data['medical_history'];
+                        }
+                        $patient->save();
+                    }
+                }
+
+                return ['server_id' => $record->id, 'action' => 'updated'];
+            }
+        } elseif ($operation === 'delete') {
+            $id = $data['id'] ?? null;
+            $record = null;
+            if ($id && is_numeric($id)) {
+                $record = MedicalHistory::find($id);
+            }
+            if (!$record && !empty($clientUuid)) {
+                $record = MedicalHistory::where('client_uuid', $clientUuid)->first();
+            }
+            if ($record) {
+                $deletedId = $record->id;
+                $record->delete();
+                return ['server_id' => $deletedId, 'action' => 'deleted'];
+            }
+        }
+
+        return ['action' => 'skipped'];
     }
 }

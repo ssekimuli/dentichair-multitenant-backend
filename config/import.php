@@ -226,6 +226,173 @@ return [
                 'name' => 'required|string|max:255',
             ],
         ],
+
+        'medical_histories' => [
+            'model' => \App\Models\MedicalHistory::class,
+            'label' => 'Medical History',
+            'description' => 'Clinical examination records, medical histories, complaints, and treatment plans',
+            'permission' => null,
+            'tenant_column' => null,
+            'unique_by' => ['id', 'client_uuid'],
+            'default_unique_by' => 'id',
+            'excluded_columns' => ['client_uuid'],
+            'defaults' => [
+                'consent' => true,
+                'chief_complaint' => 'Routine Consultation',
+            ],
+            'aliases' => [
+                'patient_id' => [
+                    'patient id', 'patient_id', 'patient', 'patient number', 'patient_no', 'client_id',
+                    'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
+                    'cell phone', 'phone number', 'contact number', 'contacts'
+                ],
+                'contact' => [
+                    'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
+                    'cell phone', 'phone number', 'contact number', 'contacts', 'tel'
+                ],
+                'patient_name' => [
+                    'patient name', 'name', 'full name', 'patient_name', 'client name', 'client',
+                    'patient_full_name', 'client_name', 'patient fullname'
+                ],
+                'age' => [
+                    'age', 'patient age', 'years old', 'years', 'yrs', 'patient_age', 'patient yrs',
+                    'age (yrs)', 'age(yrs)', 'age (years)', 'age in years'
+                ],
+                'gender' => [
+                    'gender', 'sex', 'patient gender', 'patient sex', 'm/f', 'mf', 'f/m',
+                    'patient sex (m/f)', 'gender (m/f)', 'sex (m/f)'
+                ],
+                'address' => [
+                    'address', 'residence', 'location', 'patient address', 'home address', 'area', 'city',
+                    'patient residence', 'residential address', 'street address'
+                ],
+                'date' => [
+                    'date', 'visit date', 'record date', 'consultation date', 'entry date',
+                    'date of visit', 'seen on', 'treatment date'
+                ],
+                'chief_complaint' => [
+                    'chief complaint', 'complaint', 'reason for visit', 'symptoms',
+                    'presenting complaint', 'reason', 'issue'
+                ],
+                'history_complaint' => [
+                    'history complaint', 'history of complaint', 'history of presenting complaint',
+                    'hpc', 'history'
+                ],
+                'extra_oral_exam' => [
+                    'extra oral exam', 'extra oral examination', 'extra oral', 'extraoral'
+                ],
+                'intra_oral_exam' => [
+                    'intra oral exam', 'intra oral examination', 'intra oral', 'intraoral'
+                ],
+                'diagnosis' => [
+                    'diagnosis', 'clinical diagnosis', 'condition', 'finding', 'findings'
+                ],
+                'treatment_plan' => [
+                    'treatment plan', 'plan', 'recommended treatment', 'proposed treatment'
+                ],
+                'treatment_given' => [
+                    'treatment given', 'treatment', 'procedure', 'procedure done', 'tx given',
+                    'management', 'action taken'
+                ],
+                'treatment_note' => [
+                    'treatment note', 'clinical note', 'notes', 'comments', 'remarks'
+                ],
+                'doctor_name' => [
+                    'doctor', 'doctor name', 'dentist', 'dentist name', 'clinician', 'practitioner',
+                    'attending doctor', 'doctor_id'
+                ],
+            ],
+            'custom_rules' => [
+                'patient_id' => 'required|integer|exists:patients,id',
+                'date' => 'nullable|date',
+                'consent' => 'nullable|boolean',
+                'chief_complaint' => 'nullable|string',
+            ],
+        ],
+
+        'invoices' => [
+            'model' => \App\Models\Invoice::class,
+            'label' => 'Invoices & Billing',
+            'description' => 'Billing records, receipts, patient charges, and payments',
+            'permission' => null,
+            'tenant_column' => 'branch_id',
+            'unique_by' => ['receipt_number', 'id', 'client_uuid'],
+            'default_unique_by' => 'receipt_number',
+            'excluded_columns' => ['client_uuid', 'qb_invoice_id', 'qb_synced_at', 'deleted_at'],
+            'defaults' => [
+                'status' => 'Paid',
+                'amount' => 0.00,
+                'paid_amount' => 0.00,
+                'discount' => 0.00,
+                'tax' => 0.00,
+                'insurance_coverage' => 0.00,
+                'insurance_responsibility' => 0.00,
+                'insurance_paid_amount' => 0.00,
+                'insurance_balance' => 0.00,
+                'category' => 'procedure-income',
+                'payment_method' => 'Cash',
+            ],
+            'aliases' => [
+                'patient_id' => [
+                    'patient id', 'patient_id', 'patient', 'patient number', 'patient_no', 'client_id',
+                    'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
+                    'cell phone', 'phone number', 'contact number', 'contacts'
+                ],
+                'contact' => [
+                    'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
+                    'cell phone', 'phone number', 'contact number', 'contacts', 'tel'
+                ],
+                'patient_name' => [
+                    'patient name', 'name', 'full name', 'patient_name', 'client name', 'client',
+                    'patient_full_name', 'client_name', 'patient fullname'
+                ],
+                'receipt_number' => [
+                    'receipt', 'receipt number', 'receipt_no', 'receipt_num', 'invoice number',
+                    'invoice no', 'invoice_no', 'inv_no', 'inv number', 'inv_number', 'bill no',
+                    'bill number', 'reference', 'ref'
+                ],
+                'amount' => [
+                    'amount', 'total', 'total amount', 'billed amount', 'invoice amount', 'price',
+                    'cost', 'gross amount', 'charge', 'subtotal'
+                ],
+                'paid_amount' => [
+                    'paid amount', 'paid', 'amount paid', 'payment', 'paid_total'
+                ],
+                'status' => [
+                    'status', 'invoice status', 'payment status', 'state'
+                ],
+                'issue_date' => [
+                    'date', 'invoice date', 'issue date', 'date issued', 'bill date', 'billing date',
+                    'created date', 'entry date'
+                ],
+                'due_date' => [
+                    'due date', 'date due', 'payment due'
+                ],
+                'payment_method' => [
+                    'payment method', 'method', 'paid via', 'mode of payment', 'payment mode',
+                    'type of payment', 'channel'
+                ],
+                'category' => [
+                    'category', 'income category', 'invoice category', 'department', 'type'
+                ],
+                'discount' => [
+                    'discount', 'disc', 'discount amount'
+                ],
+                'tax' => [
+                    'tax', 'vat', 'tax amount'
+                ],
+            ],
+            'custom_rules' => [
+                'patient_id' => 'nullable|integer|exists:patients,id',
+                'patient_name' => 'nullable|string|max:255',
+                'receipt_number' => 'nullable|string|max:255',
+                'amount' => 'required|numeric|min:0',
+                'paid_amount' => 'nullable|numeric|min:0',
+                'status' => 'nullable|in:Pending,Paid,Overdue,pending,paid,overdue',
+                'issue_date' => 'nullable|date',
+                'due_date' => 'nullable|date',
+            ],
+        ],
     ],
 
     /*
@@ -288,6 +455,10 @@ return [
         'cost' => ['procedure cost', 'price', 'fee', 'charge', 'rate'],
         'procedure' => ['procedure name', 'treatment', 'treatment name', 'clinical procedure'],
         'history' => ['procedure', 'treatment', 'medical history', 'notes', 'clinical notes'],
+        'chief_complaint' => ['chief complaint', 'complaint', 'reason for visit', 'symptoms', 'presenting complaint'],
+        'diagnosis' => ['diagnosis', 'clinical diagnosis', 'condition', 'finding'],
+        'treatment_plan' => ['treatment plan', 'plan', 'recommended treatment'],
+        'treatment_given' => ['treatment given', 'procedure done', 'tx given'],
         'category' => ['group', 'classification', 'department', 'type'],
         'quantity' => ['qty', 'stock', 'units', 'stock quantity', 'count'],
         'amount' => ['total amount', 'billed amount', 'expense amount', 'paid amount'],

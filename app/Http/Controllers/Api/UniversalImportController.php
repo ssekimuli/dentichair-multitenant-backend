@@ -65,6 +65,7 @@ class UniversalImportController extends Controller
      */
     public function columns(Request $request, string $table): JsonResponse
     {
+        $table = $this->schemaService->normalizeTableName($table);
         $user = $request->user();
 
         if (!$this->schemaService->isTableAuthorized($table, $user)) {

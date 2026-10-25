@@ -131,6 +131,7 @@ class MedicalHistoryController extends Controller
     public function store(Request $request, string|int $patientId): JsonResponse
     {
         $validated = $request->validate([
+            'client_uuid' => 'nullable|string',
             'date' => 'nullable|date',
             'chief_complaint' => 'required|string',
             'history_complaint' => 'nullable|string',
@@ -147,6 +148,19 @@ class MedicalHistoryController extends Controller
             'next_visit' => 'nullable|date',
             'medical_history' => 'nullable|string',
         ]);
+
+        // Idempotency: Return existing record if client_uuid has already been processed
+        if ($request->filled('client_uuid')) {
+            $existing = MedicalHistory::where('client_uuid', $request->client_uuid)->first();
+            if ($existing) {
+                $existing->load(['patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit', 'patient.branch:id,name']);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Medical history already recorded.',
+                    'data' => $existing,
+                ], 200);
+            }
+        }
 
         $nextVisit = $request->input('next_visit');
         $patientHistory = $request->input('medical_history');
@@ -186,11 +200,15 @@ class MedicalHistoryController extends Controller
      */
     public function show(string|int $id): JsonResponse
     {
-        $record = MedicalHistory::with([
+        $query = MedicalHistory::with([
             'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit',
             'patient.branch:id,name',
             'doctor:id,name'
-        ])->findOrFail($id);
+        ]);
+
+        $record = is_numeric($id)
+            ? $query->findOrFail($id)
+            : $query->where('client_uuid', $id)->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -204,9 +222,25 @@ class MedicalHistoryController extends Controller
      */
     public function update(Request $request, string|int $id): JsonResponse
     {
-        $record = MedicalHistory::findOrFail($id);
+        $record = null;
+        if (is_numeric($id)) {
+            $record = MedicalHistory::find($id);
+        }
+        if (!$record && $request->filled('client_uuid')) {
+            $record = MedicalHistory::where('client_uuid', $request->client_uuid)->first();
+        }
+        if (!$record && !is_numeric($id)) {
+            $record = MedicalHistory::where('client_uuid', $id)->first();
+        }
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Medical history not found.',
+            ], 404);
+        }
 
         $validated = $request->validate([
+            'client_uuid' => 'nullable|string',
             'date' => 'nullable|date',
             'chief_complaint' => 'sometimes|required|string',
             'history_complaint' => 'nullable|string',
@@ -258,7 +292,20 @@ class MedicalHistoryController extends Controller
      */
     public function destroy(string|int $id): JsonResponse
     {
-        $record = MedicalHistory::findOrFail($id);
+        $record = null;
+        if (is_numeric($id)) {
+            $record = MedicalHistory::find($id);
+        }
+        if (!$record) {
+            $record = MedicalHistory::where('client_uuid', $id)->first();
+        }
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Medical history not found.',
+            ], 404);
+        }
+
         $record->delete();
 
         return response()->json([

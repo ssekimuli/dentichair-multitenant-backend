@@ -872,9 +872,19 @@ class PatientController extends Controller
             'category' => 'required|string',
             'files' => 'required|array',
             'files.*' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:20480',
+            'client_uuid' => 'nullable|string',
+            'date' => 'nullable|date',
         ]);
 
+        $clientUuid = $request->input('client_uuid');
+        if ($clientUuid && $patient->images()->where('client_uuid', $clientUuid)->exists()) {
+            return response()->json($patient->load('images'));
+        }
+
         $service = app(CloudflareR2Service::class);
+        $dateStr = $request->input('date')
+            ? \Carbon\Carbon::parse($request->input('date'))->format('Y-m-d')
+            : now()->format('Y-m-d');
         
         foreach ($request->file('files') as $file) {
             $url = $service->upload($file, 'patient-documents');
@@ -882,7 +892,8 @@ class PatientController extends Controller
                 'url' => $url,
                 'description' => $request->description,
                 'category' => $request->category,
-                'date' => now()->format('Y-m-d'),
+                'date' => $dateStr,
+                'client_uuid' => $clientUuid,
             ]);
         }
 

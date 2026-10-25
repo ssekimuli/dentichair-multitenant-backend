@@ -48,6 +48,7 @@ class UniversalImportService
         ?int $branchId = null
     ): array
     {
+        $table = $this->schemaService->normalizeTableName($table);
         if (!$this->schemaService->isTableAuthorized($table, $user)) {
             throw new \Illuminate\Auth\Access\AuthorizationException("You are not authorized to import into table '{$table}'.");
         }
@@ -113,7 +114,7 @@ class UniversalImportService
         $user = null,
         ?UploadedFile $file = null
     ): ImportJob {
-        $table = $params['table'];
+        $table = $this->schemaService->normalizeTableName($params['table']);
 
         if (!$this->schemaService->isTableAuthorized($table, $user)) {
             throw new \Illuminate\Auth\Access\AuthorizationException("You are not authorized to import into table '{$table}'.");
@@ -227,7 +228,7 @@ class UniversalImportService
             'started_at' => now(),
         ]);
 
-        $table = $job->table_name;
+        $table = $this->schemaService->normalizeTableName($job->table_name);
         $mapping = $job->mapping ?? [];
         $mode = $job->mode;
         $errorMode = $job->error_mode;
@@ -294,7 +295,7 @@ class UniversalImportService
                         }
 
                         // Normalize row with selected branch
-                        $normalized = $this->validationService->normalizeRow($mappedData, $table, $user, $branchId);
+                        $normalized = $this->validationService->normalizeRow($mappedData, $table, $user, $branchId, $rawData);
 
                         // Validate row
                         $rowErrors = $this->validationService->validateRow($normalized, $rowNumber, $table, $fieldToHeaderMap);
@@ -494,7 +495,18 @@ class UniversalImportService
                             }
                         }
 
-                        DB::table($table)->where('id', $existing->id)->update($data);
+                        $tableColumns = Schema::getColumnListing($table);
+                        $cleanData = array_intersect_key($data, array_flip($tableColumns));
+
+                        DB::table($table)->where('id', $existing->id)->update($cleanData);
+
+                        if ($table === 'medical_histories' && !empty($data['_patient_demographics'])) {
+                            $pId = $cleanData['patient_id'] ?? $existing->patient_id ?? $data['patient_id'] ?? null;
+                            if ($pId) {
+                                $this->updatePatientDemographics((int)$pId, $data['_patient_demographics']);
+                            }
+                        }
+
                         $updatedCount++;
                         continue;
                     }
@@ -512,7 +524,70 @@ class UniversalImportService
                         $data['updated_at'] = $now;
                     }
 
-                    DB::table($table)->insert($data);
+                    $tableColumns = Schema::getColumnListing($table);
+                    $cleanData = array_intersect_key($data, array_flip($tableColumns));
+
+                    if ($table === 'medical_histories') {
+                        if (empty($cleanData['client_uuid']) && Schema::hasColumn($table, 'client_uuid')) {
+                            $cleanData['client_uuid'] = (string) Str::uuid();
+                        }
+                        if (empty($cleanData['date'])) {
+                            $cleanData['date'] = $now->toDateString();
+                        }
+                        if (!isset($cleanData['consent'])) {
+                            $cleanData['consent'] = true;
+                        }
+                    }
+
+                    if ($table === 'invoices') {
+                        if (empty($cleanData['client_uuid']) && Schema::hasColumn($table, 'client_uuid')) {
+                            $cleanData['client_uuid'] = (string) Str::uuid();
+                        }
+                        if (empty($cleanData['receipt_number'])) {
+                            $cleanData['receipt_number'] = 'REC-' . strtoupper(Str::random(8));
+                        }
+                        if (empty($cleanData['issue_date'])) {
+                            $cleanData['issue_date'] = $now->toDateString();
+                        }
+                        if (empty($cleanData['due_date'])) {
+                            $cleanData['due_date'] = $cleanData['issue_date'];
+                        }
+                        if (empty($cleanData['status'])) {
+                            $cleanData['status'] = 'Paid';
+                        }
+                        if (!isset($cleanData['amount'])) {
+                            $cleanData['amount'] = 0.00;
+                        }
+                        if (!isset($cleanData['insurance_responsibility'])) {
+                            $cleanData['insurance_responsibility'] = 0.00;
+                        }
+                        if (!isset($cleanData['insurance_paid_amount'])) {
+                            $cleanData['insurance_paid_amount'] = 0.00;
+                        }
+                        if (!isset($cleanData['insurance_balance'])) {
+                            $cleanData['insurance_balance'] = 0.00;
+                        }
+                        if (!isset($cleanData['patient_responsibility'])) {
+                            $cleanData['patient_responsibility'] = $cleanData['amount'];
+                        }
+                        if (!isset($cleanData['patient_paid_amount'])) {
+                            $cleanData['patient_paid_amount'] = $cleanData['paid_amount'] ?? 0.00;
+                        }
+                        if (!isset($cleanData['patient_balance'])) {
+                            $paid = $cleanData['patient_paid_amount'] ?? 0;
+                            $cleanData['patient_balance'] = max(0, (float)$cleanData['patient_responsibility'] - (float)$paid);
+                        }
+                    }
+
+                    DB::table($table)->insert($cleanData);
+
+                    if ($table === 'medical_histories' && !empty($data['_patient_demographics'])) {
+                        $pId = $cleanData['patient_id'] ?? $data['patient_id'] ?? null;
+                        if ($pId) {
+                            $this->updatePatientDemographics((int)$pId, $data['_patient_demographics']);
+                        }
+                    }
+
                     $importedCount++;
                 } catch (\Throwable $e) {
                     // Auto-recovery for any duplicate constraint collision: locate existing record and update it!
@@ -546,7 +621,19 @@ class UniversalImportService
                                     }
                                 }
                             }
-                            DB::table($table)->where('id', $duplicateExisting->id)->update($data);
+
+                            $tableColumns = Schema::getColumnListing($table);
+                            $cleanData = array_intersect_key($data, array_flip($tableColumns));
+
+                            DB::table($table)->where('id', $duplicateExisting->id)->update($cleanData);
+
+                            if ($table === 'medical_histories' && !empty($data['_patient_demographics'])) {
+                                $pId = $cleanData['patient_id'] ?? $duplicateExisting->patient_id ?? $data['patient_id'] ?? null;
+                                if ($pId) {
+                                    $this->updatePatientDemographics((int)$pId, $data['_patient_demographics']);
+                                }
+                            }
+
                             $updatedCount++;
                             continue; // Successfully updated existing record!
                         }
@@ -793,13 +880,43 @@ class UniversalImportService
     }
 
     /**
-     * Formula injection defense: prepends a single quote if string begins with =, +, -, @, \t, or \r.
+     * Update linked patient demographics (age, gender, address) if provided during medical history import.
      */
-    public function defendFormulaInjection(string $val): string
+    protected function updatePatientDemographics(int $patientId, array $demographics): void
     {
-        if (preg_match('/^[=+\-@\t\r]/', $val)) {
-            return "'" . $val;
+        if (empty($demographics)) {
+            return;
         }
-        return $val;
+
+        $patient = DB::table('patients')->where('id', $patientId)->first();
+        if (!$patient) {
+            return;
+        }
+
+        $updates = [];
+
+        if (!empty($demographics['gender'])) {
+            $updates['gender'] = $demographics['gender'];
+        }
+
+        if (!empty($demographics['age'])) {
+            $updates['age'] = (int)$demographics['age'];
+        }
+
+        if (!empty($demographics['date_of_birth']) && empty($patient->date_of_birth)) {
+            $updates['date_of_birth'] = $demographics['date_of_birth'];
+        }
+
+        if (!empty($demographics['address'])) {
+            $updates['address'] = $demographics['address'];
+        }
+
+        if (!empty($updates)) {
+            if (Schema::hasColumn('patients', 'updated_at')) {
+                $updates['updated_at'] = now();
+            }
+            DB::table('patients')->where('id', $patientId)->update($updates);
+        }
     }
 }
+

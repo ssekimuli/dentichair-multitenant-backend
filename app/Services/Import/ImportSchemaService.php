@@ -46,10 +46,26 @@ class ImportSchemaService
     }
 
     /**
+     * Normalize table identifiers (e.g. medical_history -> medical_histories).
+     */
+    public function normalizeTableName(string $table): string
+    {
+        $table = strtolower(trim($table));
+        if ($table === 'medical_history') {
+            return 'medical_histories';
+        }
+        if ($table === 'invoice') {
+            return 'invoices';
+        }
+        return $table;
+    }
+
+    /**
      * Check if user is authorized to access destination table.
      */
     public function isTableAuthorized(string $table, $user = null): bool
     {
+        $table = $this->normalizeTableName($table);
         $configuredTables = Config::get('import.tables', []);
 
         if (!isset($configuredTables[$table])) {
@@ -79,6 +95,7 @@ class ImportSchemaService
      */
     public function getTableConfig(string $table): ?array
     {
+        $table = $this->normalizeTableName($table);
         return Config::get("import.tables.{$table}");
     }
 
@@ -87,6 +104,7 @@ class ImportSchemaService
      */
     public function getImportableColumns(string $table): array
     {
+        $table = $this->normalizeTableName($table);
         $cacheKey = "universal_import_columns_{$table}";
 
         return Cache::remember($cacheKey, 3600, function () use ($table) {
@@ -184,6 +202,108 @@ class ImportSchemaService
             ];
         }
 
+        // Virtual columns for foreign key resolution
+        if ($table === 'medical_histories' || $table === 'invoices') {
+            if (!isset($importable['contact'])) {
+                $importable['contact'] = [
+                    'name' => 'contact',
+                    'label' => 'Patient Contact / Phone',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'foreign_key' => [
+                        'foreign_table' => 'patients',
+                        'foreign_column' => 'phone',
+                    ],
+                    'comment' => 'Patient contact/phone number used to automatically resolve and link patient_id',
+                ];
+            }
+        }
+
+        if ($table === 'medical_histories') {
+
+            if (!isset($importable['patient_name'])) {
+                $importable['patient_name'] = [
+                    'name' => 'patient_name',
+                    'label' => 'Patient Name / Full Name',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Patient name used to automatically resolve or create the patient record',
+                ];
+            }
+
+            // Virtual patient demographic columns — mapped values update the linked patient record
+            if (!isset($importable['age'])) {
+                $importable['age'] = [
+                    'name' => 'age',
+                    'label' => 'Patient Age',
+                    'type' => 'integer',
+                    'raw_type' => 'tinyint unsigned',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Patient age — updates the linked patient record',
+                ];
+            }
+            if (!isset($importable['gender'])) {
+                $importable['gender'] = [
+                    'name' => 'gender',
+                    'label' => 'Patient Gender',
+                    'type' => 'string',
+                    'raw_type' => "enum('Male','Female','Other')",
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Patient gender — updates the linked patient record',
+                ];
+            }
+            if (!isset($importable['address'])) {
+                $importable['address'] = [
+                    'name' => 'address',
+                    'label' => 'Patient Address',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Patient address — updates the linked patient record',
+                ];
+            }
+        }
+
         return $importable;
     }
 
@@ -242,9 +362,10 @@ class ImportSchemaService
             'date_of_birth' => 'Date of Birth',
             'role_id' => 'Role ID',
             'branch_id' => 'Branch ID',
-            'patient_id' => 'Patient ID',
+            'patient_id' => 'Patient ID / Contact',
             'doctor_id' => 'Doctor ID',
             'qty' => 'Quantity',
+            'contact' => 'Patient Contact / Phone',
         ];
 
         if (isset($customLabels[$colName])) {

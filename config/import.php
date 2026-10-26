@@ -108,25 +108,6 @@ return [
             ],
         ],
 
-        'invoices' => [
-            'model' => \App\Models\Invoice::class,
-            'label' => 'Invoices',
-            'description' => 'Patient billing invoices and charges',
-            'permission' => null,
-            'tenant_column' => 'branch_id',
-            'unique_by' => ['id', 'receipt_number'],
-            'default_unique_by' => 'receipt_number',
-            'excluded_columns' => [],
-            'defaults' => [
-                'status' => 'Pending',
-                'paid_amount' => 0.00,
-            ],
-            'custom_rules' => [
-                'total_amount' => 'nullable|numeric',
-                'status' => 'nullable|in:Pending,Paid,Partially Paid,Cancelled,Overdue',
-            ],
-        ],
-
         'medicines' => [
             'model' => \App\Models\Medicine::class,
             'label' => 'Medicines',
@@ -332,16 +313,19 @@ return [
                 'insurance_balance' => 0.00,
                 'category' => 'procedure-income',
                 'payment_method' => 'Cash',
+                'issue_date' => null,
+                'due_date' => null,
             ],
             'aliases' => [
-                'patient_id' => [
-                    'patient id', 'patient_id', 'patient', 'patient number', 'patient_no', 'client_id',
-                    'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
-                    'cell phone', 'phone number', 'contact number', 'contacts'
-                ],
                 'contact' => [
                     'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
                     'cell phone', 'phone number', 'contact number', 'contacts', 'tel'
+                ],
+                'patient_id' => [
+                    'patient id', 'patient_id', 'patient number', 'patient_no', 'client_id'
+                ],
+                'procedure' => [
+                    'treatment', 'procedure', 'treatment name', 'procedure name', 'service', 'item'
                 ],
                 'patient_name' => [
                     'patient name', 'name', 'full name', 'patient_name', 'client name', 'client',
@@ -384,14 +368,113 @@ return [
                 ],
             ],
             'custom_rules' => [
-                'patient_id' => 'nullable|integer|exists:patients,id',
+                'patient_id' => 'nullable|integer',
                 'patient_name' => 'nullable|string|max:255',
                 'receipt_number' => 'nullable|string|max:255',
-                'amount' => 'required|numeric|min:0',
+                'amount' => 'nullable|numeric|min:0',
                 'paid_amount' => 'nullable|numeric|min:0',
-                'status' => 'nullable|in:Pending,Paid,Overdue,pending,paid,overdue',
+                'status' => 'nullable|in:Pending,Paid,Partially Paid,Cancelled,Overdue,pending,paid,partially paid,cancelled,overdue',
                 'issue_date' => 'nullable|date',
                 'due_date' => 'nullable|date',
+            ],
+        ],
+
+        'laboratory_orders' => [
+            'model' => \App\Models\LaboratoryOrder::class,
+            'label' => 'Lab Orders',
+            'description' => 'Dental laboratory orders, dental prosthetic tracking, client labs, and invoices',
+            'permission' => null,
+            'tenant_column' => 'branch_id',
+            'unique_by' => ['id', 'invoice_number'],
+            'default_unique_by' => 'id',
+            'excluded_columns' => [],
+            'defaults' => [
+                'status' => 'Received',
+                'doctor_name' => 'Attending Doctor',
+                'applied_price' => 0.00,
+                'sent_date' => null,
+                'due_date' => null,
+                'received_date' => null,
+            ],
+            'aliases' => [
+                'client_name' => [
+                    'client', 'client name', 'client_name', 'lab', 'lab name', 'lab_name',
+                    'dental lab', 'dentallab', 'dental_lab', 'laboratory', 'vendor', 'supplier'
+                ],
+                'client_phone' => [
+                    'client phone', 'client_phone', 'lab phone', 'lab_phone', 'client contact',
+                    'client_contact', 'lab contact', 'lab_contact'
+                ],
+                'client_email' => [
+                    'client email', 'client_email', 'lab email', 'lab_email'
+                ],
+                'client_id' => [
+                    'client id', 'client_id', 'lab id', 'lab_id'
+                ],
+                'item' => [
+                    'item', 'item name', 'item_name', 'service', 'service name', 'service_name',
+                    'procedure', 'procedure name', 'treatment', 'description', 'restoration'
+                ],
+                'doctor_name' => [
+                    'doctor', 'doctor name', 'doctor_name', 'dentist', 'dentist name',
+                    'clinician', 'practitioner', 'attending doctor', 'doctor_id'
+                ],
+                'tooth' => [
+                    'tooth', 'tooth number', 'tooth_number', 'tooth no', 'tooth_no', 'teeth'
+                ],
+                'status' => [
+                    'status', 'order status', 'lab status', 'state'
+                ],
+                'sent_date' => [
+                    'sent date', 'sent_date', 'date sent', 'order date', 'date', 'created date'
+                ],
+                'due_date' => [
+                    'due date', 'due_date', 'date due', 'expected date', 'delivery date'
+                ],
+                'received_date' => [
+                    'received date', 'received_date', 'date received', 'completion date'
+                ],
+                'applied_price' => [
+                    'applied price', 'applied_price', 'price', 'cost', 'total amount',
+                    'total_amount', 'amount', 'fee', 'charge', 'total', 'billed amount'
+                ],
+                'total_amount' => [
+                    'total amount', 'total_amount', 'amount', 'cost', 'total', 'price', 'applied price'
+                ],
+                'paid_amount' => [
+                    'paid amount', 'paid_amount', 'paid', 'amount paid', 'payment', 'advance', 'paid total'
+                ],
+                'shade' => [
+                    'shade', 'color', 'tooth shade'
+                ],
+                'material' => [
+                    'material', 'type of material'
+                ],
+                'instructions' => [
+                    'instructions', 'instruction', 'notes', 'note', 'remarks', 'comments'
+                ],
+                'patient_name' => [
+                    'patient name', 'patient_name', 'patient', 'patient full name'
+                ],
+                'invoice_number' => [
+                    'invoice number', 'invoice no', 'invoice_no', 'inv no', 'inv_no',
+                    'receipt number', 'receipt no', 'receipt_no', 'bill no'
+                ],
+            ],
+            'custom_rules' => [
+                'item' => 'required|string|max:255',
+                'doctor_name' => 'nullable|string|max:255',
+                'status' => 'nullable|string',
+                'client_id' => 'nullable|integer',
+                'branch_id' => 'nullable|integer',
+                'invoice_id' => 'nullable|integer',
+                'lab_service_id' => 'nullable|integer',
+                'applied_price' => 'nullable|numeric|min:0',
+                'total_amount' => 'nullable|numeric|min:0',
+                'paid_amount' => 'nullable|numeric|min:0',
+                'sent_date' => 'nullable|date',
+                'due_date' => 'nullable|date',
+                'received_date' => 'nullable|date',
             ],
         ],
     ],

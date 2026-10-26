@@ -650,7 +650,7 @@ class UniversalImportTest extends TestCase
         $patient1 = Patient::where('first_name', 'Ludigo')->first();
         $this->assertNotNull($patient1);
         $this->assertEquals('Stephane', $patient1->last_name);
-        $this->assertEquals('755734498', $patient1->phone);
+        $this->assertEquals('0755734498', $patient1->phone);
         $this->assertEquals('2025-06-01', $patient1->last_visit->format('Y-m-d'));
         $this->assertEquals('ortho', $patient1->history);
         $this->assertEquals('1999-01-01', $patient1->date_of_birth->format('Y-m-d'));

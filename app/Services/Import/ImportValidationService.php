@@ -25,9 +25,13 @@ class ImportValidationService
     {
         $table = $this->schemaService->normalizeTableName($table);
 
-        // Special lookup for medical_histories and invoices: resolve patient by contact/phone
-        if ($table === 'medical_histories' || $table === 'invoices') {
+        // Special lookup for medical_histories, invoices, and laboratory_orders
+        if ($table === 'medical_histories') {
             $mappedData = $this->resolveMedicalHistoryPatient($mappedData, $branchId, $rawData, $table);
+        } elseif ($table === 'invoices') {
+            $mappedData = $this->resolveInvoicePatient($mappedData, $branchId, $rawData);
+        } elseif ($table === 'laboratory_orders') {
+            $mappedData = $this->resolveLabOrderClient($mappedData, $branchId, $rawData);
         }
 
         $columns = $this->schemaService->getImportableColumns($table);
@@ -150,19 +154,430 @@ class ImportValidationService
             }
         }
 
-        if (isset($mappedData['_unresolved_patient_contact'])) {
-            $normalized['_unresolved_patient_contact'] = $mappedData['_unresolved_patient_contact'];
+        foreach ($mappedData as $k => $v) {
+            if (str_starts_with((string)$k, '_')) {
+                $normalized[$k] = $v;
+            }
         }
 
-        if (isset($mappedData['_patient_demographics'])) {
-            $normalized['_patient_demographics'] = $mappedData['_patient_demographics'];
+        if ($table === 'invoices') {
+            $amount = isset($normalized['amount']) && is_numeric($normalized['amount']) ? (float)$normalized['amount'] : 0.0;
+            $paid = isset($normalized['paid_amount']) && is_numeric($normalized['paid_amount']) ? (float)$normalized['paid_amount'] : 0.0;
+            $balance = max(0, $amount - $paid);
+
+            $normalized['patient_responsibility'] = $amount;
+            $normalized['patient_paid_amount'] = $paid;
+            $normalized['patient_balance'] = $balance;
+
+            // If the imported invoice still has a balance after making calculation, make status Pending
+            if ($balance > 0) {
+                $normalized['status'] = 'Pending';
+            } elseif ($amount > 0 && $balance <= 0) {
+                $normalized['status'] = 'Paid';
+            } elseif (empty($normalized['status'])) {
+                $normalized['status'] = 'Paid';
+            }
         }
 
         return $normalized;
     }
 
     /**
-     * Resolve patient_id for medical_histories and invoices from contact / phone or raw row data.
+     * Resolve patient for invoices from contact/phone.
+     * If matching with an existing patient, link invoice to that patient by getting patient_id.
+     * If not matched (or contact missing), DO NOT error and DO NOT create a patient;
+     * set patient_id = null and import the invoice cleanly.
+     */
+    protected function resolveInvoicePatient(array $mappedData, ?int $branchId = null, array $rawData = []): array
+    {
+        // 1. Extract contact from mapped data
+        $contact = $mappedData['contact']
+            ?? $mappedData['phone']
+            ?? $mappedData['patient_contact']
+            ?? $mappedData['patient_phone']
+            ?? null;
+
+        // 2. Check if patient_id is holding an existing patient ID or a phone/contact string
+        $patientIdVal = $mappedData['patient_id'] ?? null;
+        $explicitPatientId = null;
+
+        if (!empty($patientIdVal)) {
+            $pStr = trim((string)$patientIdVal);
+            $cleanDigits = preg_replace('/\D+/', '', $pStr);
+            $isPhoneLike = str_starts_with($pStr, '+')
+                || str_starts_with($pStr, '0')
+                || str_starts_with($pStr, '256')
+                || strlen($cleanDigits) >= 7
+                || preg_match('/[\s\-]/', $pStr);
+
+            if ($isPhoneLike) {
+                // If numeric, short, and already an existing patient ID, use it directly
+                if (is_numeric($pStr) && strlen($pStr) <= 6 && DB::table('patients')->where('id', (int)$pStr)->exists()) {
+                    $explicitPatientId = (int)$pStr;
+                } else {
+                    if (empty($contact)) {
+                        $contact = $pStr;
+                    }
+                }
+            } elseif (is_numeric($pStr) && DB::table('patients')->where('id', (int)$pStr)->exists()) {
+                $explicitPatientId = (int)$pStr;
+            }
+        }
+
+        // 3. Check unmapped raw data columns for contact / phone
+        if (empty($contact) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['contact', 'phone', 'telephone', 'mobile', 'patient contact', 'patient phone', 'patient_contact', 'patient_phone', 'cell phone', 'phone number', 'contact number', 'contacts', 'tel'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $contact = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 4. Extract patient name from mapped or raw headers
+        $patientName = $mappedData['patient_name'] ?? $mappedData['name'] ?? null;
+        if (empty($patientName) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['patient name', 'name', 'full name', 'patient_name', 'client name', 'client', 'patient', 'patient fullname'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $patientName = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 5. Extract treatment / procedure if present (e.g. from TREATMENT column)
+        $treatment = $mappedData['procedure'] ?? $mappedData['treatment'] ?? null;
+        if (empty($treatment) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['treatment', 'procedure', 'treatment name', 'procedure name', 'service', 'item'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $treatment = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+        if (!empty($treatment)) {
+            $mappedData['_invoice_treatment'] = (string)$treatment;
+        }
+
+        // 6. Check contact matching with patient
+        $matchedPatient = null;
+        if ($explicitPatientId) {
+            $matchedPatient = DB::table('patients')->where('id', $explicitPatientId)->first();
+        } elseif (!empty($contact)) {
+            $matchedPatient = $this->findPatientByPhone((string)$contact, $branchId);
+        }
+
+        if ($matchedPatient) {
+            // Match found: link that invoice to that patient by getting that patient ID
+            $mappedData['patient_id'] = (int)$matchedPatient->id;
+            if (empty($patientName)) {
+                $mappedData['patient_name'] = trim("{$matchedPatient->first_name} {$matchedPatient->last_name}");
+            } else {
+                $mappedData['patient_name'] = $patientName;
+            }
+        } else {
+            // Not matched: DO NOT error, DO NOT auto-create patient.
+            // Just import the record with patient_id = null without showing any error!
+            $mappedData['patient_id'] = null;
+            if (!empty($patientName)) {
+                $mappedData['patient_name'] = $patientName;
+            }
+        }
+
+        // Clean up virtual columns so they don't break MySQL insert
+        unset(
+            $mappedData['contact'], $mappedData['phone'],
+            $mappedData['patient_contact'], $mappedData['patient_phone'],
+            $mappedData['name'],
+            $mappedData['procedure'], $mappedData['treatment'],
+            $mappedData['age'], $mappedData['gender'], $mappedData['address'],
+            $mappedData['_unresolved_patient_contact']
+        );
+
+        return $mappedData;
+    }
+
+    /**
+     * Resolve client for laboratory_orders from client_name / contact, auto-creating if missing,
+     * and capture total_amount / paid_amount for invoice creation.
+     */
+    public function resolveLabOrderClient(array $mappedData, ?int $branchId = null, array $rawData = []): array
+    {
+        // 1. Extract explicit client_id or check if client_id contains a client name
+        $explicitClientId = null;
+        if (isset($mappedData['client_id'])) {
+            $val = trim((string)$mappedData['client_id']);
+            if (is_numeric($val) && (int)$val > 0) {
+                $explicitClientId = (int)$val;
+            } else {
+                if (empty($mappedData['client_name']) && $val !== '') {
+                    $mappedData['client_name'] = $val;
+                }
+                unset($mappedData['client_id']);
+            }
+        }
+
+        // 2. Extract client phone / contact
+        $clientPhone = $mappedData['client_phone']
+            ?? $mappedData['client_contact']
+            ?? $mappedData['phone']
+            ?? null;
+
+        if (empty($clientPhone) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['client phone', 'client_phone', 'lab phone', 'lab_phone', 'client contact', 'client_contact', 'lab contact', 'lab_contact', 'contact', 'phone'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $clientPhone = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 3. Extract client email
+        $clientEmail = $mappedData['client_email']
+            ?? $mappedData['email']
+            ?? null;
+
+        if (empty($clientEmail) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['client email', 'client_email', 'lab email', 'lab_email', 'email'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $clientEmail = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 4. Extract client name
+        $clientName = $mappedData['client_name']
+            ?? $mappedData['client']
+            ?? $mappedData['lab_name']
+            ?? $mappedData['lab']
+            ?? $mappedData['dental_lab']
+            ?? null;
+
+        if (empty($clientName) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['client', 'client name', 'client_name', 'lab', 'lab name', 'lab_name', 'dental lab', 'dentallab', 'dental_lab', 'laboratory', 'vendor', 'supplier'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $clientName = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 5. Check if client exists in `clients` table
+        $matchedClient = null;
+        if ($explicitClientId) {
+            $matchedClient = DB::table('clients')->where('id', $explicitClientId)->first();
+        }
+        if (!$matchedClient && !empty($clientPhone)) {
+            $matchedClient = $this->findClientByPhone((string)$clientPhone);
+        }
+        if (!$matchedClient && !empty($clientEmail)) {
+            $matchedClient = DB::table('clients')->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim((string)$clientEmail))])->first();
+        }
+        if (!$matchedClient && !empty($clientName)) {
+            $normName = strtolower(trim((string)$clientName));
+            $matchedClient = DB::table('clients')->whereRaw('LOWER(TRIM(name)) = ?', [$normName])->first();
+            if (!$matchedClient) {
+                $matchedClient = DB::table('clients')->where('name', 'like', "%" . trim((string)$clientName) . "%")->first();
+            }
+        }
+
+        if ($matchedClient) {
+            $mappedData['client_id'] = (int)$matchedClient->id;
+            $mappedData['_resolved_client_name'] = $matchedClient->name;
+        } else {
+            // Client does NOT exist: auto-create the client in `clients` table!
+            $cName = !empty($clientName) ? trim((string)$clientName) : 'Dental Lab';
+            $cPhone = !empty($clientPhone) ? $this->normalizePhoneNumber((string)$clientPhone) : null;
+            $cEmail = !empty($clientEmail) ? strtolower(trim((string)$clientEmail)) : null;
+            $cAddress = !empty($mappedData['address']) ? trim((string)$mappedData['address']) : null;
+
+            $newClientId = DB::table('clients')->insertGetId([
+                'name' => $cName,
+                'phone' => $cPhone,
+                'email' => $cEmail,
+                'address' => $cAddress,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $mappedData['client_id'] = (int)$newClientId;
+            $mappedData['_resolved_client_name'] = $cName;
+        }
+
+        // 6. Extract financial amounts: total_amount and paid_amount
+        $totalAmount = null;
+        foreach (['applied_price', 'total_amount', 'cost', 'amount', 'price', 'total'] as $k) {
+            if (isset($mappedData[$k]) && is_scalar($mappedData[$k])) {
+                $clean = str_replace([',', '$', 'UGX', ' '], '', (string)$mappedData[$k]);
+                if (is_numeric($clean)) {
+                    $totalAmount = (float)$clean;
+                    break;
+                }
+            }
+        }
+        if ($totalAmount === null && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['total amount', 'total_amount', 'amount', 'cost', 'price', 'total', 'applied price', 'applied_price', 'fee', 'charge', 'billed amount'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $clean = str_replace([',', '$', 'UGX', ' '], '', (string)$headerVal);
+                        if (is_numeric($clean)) {
+                            $totalAmount = (float)$clean;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        $totalAmount = max(0, (float)($totalAmount ?? 0));
+        $mappedData['applied_price'] = $totalAmount;
+        $mappedData['_total_amount'] = $totalAmount;
+
+        $paidAmount = null;
+        foreach (['paid_amount', 'paid', 'amount_paid', 'advance'] as $k) {
+            if (isset($mappedData[$k]) && is_scalar($mappedData[$k])) {
+                $clean = str_replace([',', '$', 'UGX', ' '], '', (string)$mappedData[$k]);
+                if (is_numeric($clean)) {
+                    $paidAmount = (float)$clean;
+                    break;
+                }
+            }
+        }
+        if ($paidAmount === null && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['paid amount', 'paid_amount', 'paid', 'amount paid', 'payment', 'advance', 'paid total'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $clean = str_replace([',', '$', 'UGX', ' '], '', (string)$headerVal);
+                        if (is_numeric($clean)) {
+                            $paidAmount = (float)$clean;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        $paidAmount = max(0, (float)($paidAmount ?? 0));
+        $mappedData['_paid_amount'] = $paidAmount;
+
+        // 7. Extract item / procedure
+        if (empty($mappedData['item'])) {
+            $item = $mappedData['service'] ?? $mappedData['procedure'] ?? $mappedData['treatment'] ?? $mappedData['description'] ?? null;
+            if (empty($item) && !empty($rawData)) {
+                foreach ($rawData as $hk => $hv) {
+                    $chk = strtolower(trim((string)$hk));
+                    if (in_array($chk, ['item', 'item name', 'item_name', 'service', 'service name', 'service_name', 'procedure', 'procedure name', 'treatment', 'description'], true)) {
+                        if (!empty($hv) && is_scalar($hv)) {
+                            $item = trim((string)$hv);
+                            break;
+                        }
+                    }
+                }
+            }
+            $mappedData['item'] = !empty($item) ? (string)$item : 'Lab Order';
+        }
+
+        // 8. Extract patient name and update instructions
+        $patientName = $mappedData['patient_name'] ?? null;
+        if (empty($patientName) && !empty($rawData)) {
+            foreach ($rawData as $hk => $hv) {
+                $chk = strtolower(trim((string)$hk));
+                if (in_array($chk, ['patient', 'patient name', 'patient_name', 'patient full name'], true)) {
+                    if (!empty($hv) && is_scalar($hv)) {
+                        $patientName = trim((string)$hv);
+                        break;
+                    }
+                }
+            }
+        }
+        if (!empty($patientName)) {
+            $mappedData['_patient_name'] = $patientName;
+            $instructions = $mappedData['instructions'] ?? '';
+            if (stripos($instructions, $patientName) === false) {
+                $mappedData['instructions'] = empty($instructions) ? "Patient: {$patientName}" : "Patient: {$patientName} | {$instructions}";
+            }
+        }
+
+        // 9. Tooth validation
+        if (!empty($mappedData['tooth'])) {
+            $rawTooth = trim((string)$mappedData['tooth']);
+            if (preg_match('/^(\d+)/', $rawTooth, $m)) {
+                $mappedData['tooth'] = (int)$m[1];
+                if ($rawTooth !== (string)$m[1]) {
+                    $instructions = $mappedData['instructions'] ?? '';
+                    $rangeNote = "Tooth: {$rawTooth}";
+                    $mappedData['instructions'] = empty($instructions) ? $rangeNote : ($instructions . " | " . $rangeNote);
+                }
+            } else {
+                $mappedData['tooth'] = null;
+                $instructions = $mappedData['instructions'] ?? '';
+                $rangeNote = "Tooth: {$rawTooth}";
+                $mappedData['instructions'] = empty($instructions) ? $rangeNote : ($instructions . " | " . $rangeNote);
+            }
+        }
+
+        // 10. Status normalization to ENUM
+        $rawStatus = strtolower(trim((string)($mappedData['status'] ?? '')));
+        if (in_array($rawStatus, ['draft'], true)) {
+            $normStatus = 'Draft';
+        } elseif (in_array($rawStatus, ['in progress', 'in_progress', 'in production', 'in_production', 'production', 'processing'], true)) {
+            $normStatus = 'In Production';
+        } elseif (in_array($rawStatus, ['ready', 'ready for delivery', 'ready_for_delivery'], true)) {
+            $normStatus = 'Ready for Delivery';
+        } elseif (in_array($rawStatus, ['delivered', 'completed', 'done'], true)) {
+            $normStatus = 'Delivered';
+        } elseif (in_array($rawStatus, ['cancelled', 'canceled'], true)) {
+            $normStatus = 'Cancelled';
+        } else {
+            $normStatus = 'Received';
+        }
+        $mappedData['status'] = $normStatus;
+
+        // 11. Branch ID
+        if (empty($mappedData['branch_id'])) {
+            $mappedData['branch_id'] = $branchId ?: 1;
+        }
+
+        // 12. Doctor name
+        if (empty($mappedData['doctor_name'])) {
+            $mappedData['doctor_name'] = 'Attending Doctor';
+        }
+
+        // 13. Clean up virtual helper fields so they don't break MySQL insert
+        unset(
+            $mappedData['client_name'], $mappedData['client'], $mappedData['lab_name'], $mappedData['lab'], $mappedData['dental_lab'],
+            $mappedData['client_phone'], $mappedData['client_contact'], $mappedData['phone'],
+            $mappedData['client_email'], $mappedData['email'],
+            $mappedData['total_amount'], $mappedData['cost'], $mappedData['amount'], $mappedData['price'],
+            $mappedData['paid_amount'], $mappedData['paid'], $mappedData['amount_paid'],
+            $mappedData['patient_name'], $mappedData['service'], $mappedData['procedure'], $mappedData['treatment'],
+            $mappedData['address'], $mappedData['client_address']
+        );
+
+        return $mappedData;
+    }
+
+    /**
+     * Resolve patient_id for medical_histories from contact / phone or raw row data.
      */
     protected function resolveMedicalHistoryPatient(array $mappedData, ?int $branchId = null, array $rawData = [], string $table = 'medical_histories'): array
     {
@@ -291,14 +706,6 @@ class ImportValidationService
                 $demographics,
                 $branchId
             );
-        }
-
-        // For invoices: populate patient_name from linked patient if empty
-        if ($table === 'invoices' && empty($mappedData['patient_name']) && !empty($mappedData['patient_id'])) {
-            $pat = DB::table('patients')->where('id', (int)$mappedData['patient_id'])->first();
-            if ($pat) {
-                $mappedData['patient_name'] = trim("{$pat->first_name} {$pat->last_name}");
-            }
         }
 
         // Clean up virtual contact, name, and demographic fields so they don't reach database insert
@@ -556,6 +963,44 @@ class ImportValidationService
         }
 
         return $buildPhoneQuery()->first();
+    }
+
+    /**
+     * Resilient lookup for a client by phone number.
+     */
+    public function findClientByPhone(string $phoneVal): ?object
+    {
+        $raw = $this->stripFloatSuffix($phoneVal);
+        $digits = preg_replace('/\D+/', '', $raw);
+
+        if (strlen($digits) < 6) {
+            return null;
+        }
+
+        $candidates = [$raw, $digits];
+
+        $last9 = null;
+        if (strlen($digits) >= 9) {
+            $last9 = substr($digits, -9);
+            $candidates[] = $last9;
+            $candidates[] = '0' . $last9;
+            $candidates[] = '+256' . $last9;
+            $candidates[] = '256' . $last9;
+            $candidates[] = '0' . substr($last9, 0, 3) . ' ' . substr($last9, 3, 3) . ' ' . substr($last9, 6);
+            $candidates[] = '+256 ' . substr($last9, 0, 3) . ' ' . substr($last9, 3);
+        }
+        $candidates = array_unique(array_filter($candidates));
+
+        $client = DB::table('clients')->whereIn('phone', $candidates)->first();
+        if ($client) {
+            return $client;
+        }
+
+        if ($last9) {
+            return DB::table('clients')->where('phone', 'LIKE', '%' . $last9)->first();
+        }
+
+        return null;
     }
 
     /**

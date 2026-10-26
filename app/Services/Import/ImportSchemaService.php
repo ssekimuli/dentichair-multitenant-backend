@@ -229,14 +229,32 @@ class ImportSchemaService
             }
         }
 
-        // For medical_histories and invoices: patient_id is auto-resolved from contact/phone
-        // at normalizeRow time, so it must NOT be flagged as required in the schema —
-        // doing so would block users whose spreadsheet only has a contact column.
         if (($table === 'medical_histories' || $table === 'invoices') && isset($importable['patient_id'])) {
             $importable['patient_id']['required'] = false;
             $importable['patient_id']['nullable'] = true;
             $importable['patient_id']['has_default'] = true; // tells proposeMapping it is covered
             $importable['patient_id']['description'] = 'Auto-resolved from the Contact / Phone column. Leave unmapped if using Contact.';
+        }
+
+        if ($table === 'invoices') {
+            if (!isset($importable['procedure'])) {
+                $importable['procedure'] = [
+                    'name' => 'procedure',
+                    'label' => 'Treatment / Procedure',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Dental treatment or procedure line item',
+                ];
+            }
         }
 
         if ($table === 'medical_histories') {
@@ -314,6 +332,143 @@ class ImportSchemaService
                     'foreign_key' => null,
                     'comment' => 'Patient address — updates the linked patient record',
                 ];
+            }
+        }
+
+        if ($table === 'laboratory_orders') {
+            if (!isset($importable['client_name'])) {
+                $importable['client_name'] = [
+                    'name' => 'client_name',
+                    'label' => 'Client / Dental Lab Name',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => [
+                        'foreign_table' => 'clients',
+                        'foreign_column' => 'name',
+                    ],
+                    'comment' => 'Dental lab or client name. Checks if client exists and creates one if missing.',
+                ];
+            }
+
+            if (!isset($importable['client_phone'])) {
+                $importable['client_phone'] = [
+                    'name' => 'client_phone',
+                    'label' => 'Client Phone / Contact',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Client phone number used for lookup or client creation.',
+                ];
+            }
+
+            if (!isset($importable['client_email'])) {
+                $importable['client_email'] = [
+                    'name' => 'client_email',
+                    'label' => 'Client Email',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Client email used for lookup or client creation.',
+                ];
+            }
+
+            if (!isset($importable['total_amount'])) {
+                $importable['total_amount'] = [
+                    'name' => 'total_amount',
+                    'label' => 'Total Amount / Price',
+                    'type' => 'decimal',
+                    'raw_type' => 'decimal(10,2)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Total order cost / applied price.',
+                ];
+            }
+
+            if (!isset($importable['paid_amount'])) {
+                $importable['paid_amount'] = [
+                    'name' => 'paid_amount',
+                    'label' => 'Paid Amount',
+                    'type' => 'decimal',
+                    'raw_type' => 'decimal(10,2)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Amount paid towards the order / invoice.',
+                ];
+            }
+
+            if (!isset($importable['patient_name'])) {
+                $importable['patient_name'] = [
+                    'name' => 'patient_name',
+                    'label' => 'Patient Name',
+                    'type' => 'string',
+                    'raw_type' => 'varchar(255)',
+                    'nullable' => true,
+                    'has_default' => false,
+                    'default' => null,
+                    'required' => false,
+                    'is_writable' => true,
+                    'is_auto_increment' => false,
+                    'is_unique' => false,
+                    'is_primary' => false,
+                    'foreign_key' => null,
+                    'comment' => 'Patient name for the lab order instructions.',
+                ];
+            }
+
+            if (isset($importable['client_id'])) {
+                $importable['client_id']['required'] = false;
+                $importable['client_id']['nullable'] = true;
+                $importable['client_id']['has_default'] = true;
+                $importable['client_id']['description'] = 'Auto-resolved from the Client Name / Contact column. Leave unmapped if using Client Name.';
+            }
+
+            if (isset($importable['branch_id'])) {
+                $importable['branch_id']['required'] = false;
+                $importable['branch_id']['nullable'] = true;
+                $importable['branch_id']['has_default'] = true;
+            }
+
+            if (isset($importable['status'])) {
+                $importable['status']['required'] = false;
+                $importable['status']['has_default'] = true;
             }
         }
 

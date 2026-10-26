@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 use App\Services\Import\ImportErrorHumanizer;
 
@@ -498,12 +499,55 @@ class UniversalImportService
                         $tableColumns = Schema::getColumnListing($table);
                         $cleanData = array_intersect_key($data, array_flip($tableColumns));
 
+                        if ($table === 'invoices') {
+                            $amt = isset($cleanData['amount']) ? (float)$cleanData['amount'] : (float)($existing->amount ?? 0);
+                            $p = isset($cleanData['paid_amount']) ? (float)$cleanData['paid_amount'] : (float)($existing->paid_amount ?? 0);
+                            $cleanData['patient_responsibility'] = $amt;
+                            $cleanData['patient_paid_amount'] = $p;
+                            $cleanData['patient_balance'] = max(0, $amt - $p);
+                            if ($cleanData['patient_balance'] > 0) {
+                                $cleanData['status'] = 'Pending';
+                            } elseif ($amt > 0 && $cleanData['patient_balance'] <= 0) {
+                                $cleanData['status'] = 'Paid';
+                            }
+                        }
+
                         DB::table($table)->where('id', $existing->id)->update($cleanData);
+
+                        if ($table === 'laboratory_orders') {
+                            $this->handleLabOrderInvoice($existing->id, $cleanData, $data, $branchId, $now);
+                        }
 
                         if ($table === 'medical_histories' && !empty($data['_patient_demographics'])) {
                             $pId = $cleanData['patient_id'] ?? $existing->patient_id ?? $data['patient_id'] ?? null;
                             if ($pId) {
                                 $this->updatePatientDemographics((int)$pId, $data['_patient_demographics']);
+                            }
+                        }
+
+                        if ($table === 'invoices' && !empty($data['_invoice_treatment'])) {
+                            $hasTreatments = DB::table('invoice_treatments')->where('invoice_id', $existing->id)->exists();
+                            if (!$hasTreatments) {
+                                $treatmentProc = $data['_invoice_treatment'];
+                                $cost = (float)($cleanData['amount'] ?? $existing->amount ?? 0);
+                                $procedureId = null;
+                                $treatmentModel = DB::table('treatments')->where('procedure', $treatmentProc)->first();
+                                if ($treatmentModel) {
+                                    $procedureId = $treatmentModel->id;
+                                }
+                                DB::table('invoice_treatments')->insert([
+                                    'invoice_id' => $existing->id,
+                                    'procedure' => $treatmentProc,
+                                    'procedure_id' => $procedureId,
+                                    'cost' => $cost,
+                                    'quantity' => 1,
+                                    'unit_price' => $cost,
+                                    'total_amount' => $cost,
+                                    'patient_amount' => $cost,
+                                    'insurance_amount' => 0,
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ]);
                             }
                         }
 
@@ -573,19 +617,73 @@ class UniversalImportService
                         if (!isset($cleanData['patient_paid_amount'])) {
                             $cleanData['patient_paid_amount'] = $cleanData['paid_amount'] ?? 0.00;
                         }
-                        if (!isset($cleanData['patient_balance'])) {
-                            $paid = $cleanData['patient_paid_amount'] ?? 0;
-                            $cleanData['patient_balance'] = max(0, (float)$cleanData['patient_responsibility'] - (float)$paid);
+                        $paid = (float)($cleanData['patient_paid_amount'] ?? 0);
+                        $cleanData['patient_balance'] = max(0, (float)$cleanData['patient_responsibility'] - $paid);
+                        $totalBalance = (float)$cleanData['patient_balance'] + (float)($cleanData['insurance_balance'] ?? 0);
+
+                        // If the imported invoice still has a balance after making calculation, make status Pending
+                        if ($totalBalance > 0) {
+                            $cleanData['status'] = 'Pending';
+                        } elseif ((float)$cleanData['amount'] > 0 && $totalBalance <= 0) {
+                            $cleanData['status'] = 'Paid';
+                        } elseif (empty($cleanData['status'])) {
+                            $cleanData['status'] = 'Paid';
+                        }
+
+                        if (empty($cleanData['branch_id'])) {
+                            $cleanData['branch_id'] = $branchId ?: 1;
+                            if (!DB::table('branches')->where('id', $cleanData['branch_id'])->exists()) {
+                                $cleanData['branch_id'] = (int)(DB::table('branches')->value('id') ?? 1);
+                            }
                         }
                     }
 
-                    DB::table($table)->insert($cleanData);
+                    if ($table === 'laboratory_orders') {
+                        if (empty($cleanData['branch_id'])) {
+                            $cleanData['branch_id'] = $branchId ?: 1;
+                            if (!DB::table('branches')->where('id', $cleanData['branch_id'])->exists()) {
+                                $cleanData['branch_id'] = (int)(DB::table('branches')->value('id') ?? 1);
+                            }
+                        }
+                        if (empty($cleanData['status'])) {
+                            $cleanData['status'] = 'Received';
+                        }
+                    }
+
+                    $insertedId = DB::table($table)->insertGetId($cleanData);
+
+                    if ($table === 'laboratory_orders') {
+                        $this->handleLabOrderInvoice($insertedId, $cleanData, $data, $branchId, $now);
+                    }
 
                     if ($table === 'medical_histories' && !empty($data['_patient_demographics'])) {
                         $pId = $cleanData['patient_id'] ?? $data['patient_id'] ?? null;
                         if ($pId) {
                             $this->updatePatientDemographics((int)$pId, $data['_patient_demographics']);
                         }
+                    }
+
+                    if ($table === 'invoices' && !empty($data['_invoice_treatment'])) {
+                        $treatmentProc = $data['_invoice_treatment'];
+                        $cost = (float)($cleanData['amount'] ?? 0);
+                        $procedureId = null;
+                        $treatmentModel = DB::table('treatments')->where('procedure', $treatmentProc)->first();
+                        if ($treatmentModel) {
+                            $procedureId = $treatmentModel->id;
+                        }
+                        DB::table('invoice_treatments')->insert([
+                            'invoice_id' => $insertedId,
+                            'procedure' => $treatmentProc,
+                            'procedure_id' => $procedureId,
+                            'cost' => $cost,
+                            'quantity' => 1,
+                            'unit_price' => $cost,
+                            'total_amount' => $cost,
+                            'patient_amount' => $cost,
+                            'insurance_amount' => 0,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
                     }
 
                     $importedCount++;
@@ -625,12 +723,55 @@ class UniversalImportService
                             $tableColumns = Schema::getColumnListing($table);
                             $cleanData = array_intersect_key($data, array_flip($tableColumns));
 
+                            if ($table === 'invoices') {
+                                $amt = isset($cleanData['amount']) ? (float)$cleanData['amount'] : (float)($duplicateExisting->amount ?? 0);
+                                $p = isset($cleanData['paid_amount']) ? (float)$cleanData['paid_amount'] : (float)($duplicateExisting->paid_amount ?? 0);
+                                $cleanData['patient_responsibility'] = $amt;
+                                $cleanData['patient_paid_amount'] = $p;
+                                $cleanData['patient_balance'] = max(0, $amt - $p);
+                                if ($cleanData['patient_balance'] > 0) {
+                                    $cleanData['status'] = 'Pending';
+                                } elseif ($amt > 0 && $cleanData['patient_balance'] <= 0) {
+                                    $cleanData['status'] = 'Paid';
+                                }
+                            }
+
                             DB::table($table)->where('id', $duplicateExisting->id)->update($cleanData);
+
+                            if ($table === 'laboratory_orders') {
+                                $this->handleLabOrderInvoice($duplicateExisting->id, $cleanData, $data, $branchId, $now);
+                            }
 
                             if ($table === 'medical_histories' && !empty($data['_patient_demographics'])) {
                                 $pId = $cleanData['patient_id'] ?? $duplicateExisting->patient_id ?? $data['patient_id'] ?? null;
                                 if ($pId) {
                                     $this->updatePatientDemographics((int)$pId, $data['_patient_demographics']);
+                                }
+                            }
+
+                            if ($table === 'invoices' && !empty($data['_invoice_treatment'])) {
+                                $hasTreatments = DB::table('invoice_treatments')->where('invoice_id', $duplicateExisting->id)->exists();
+                                if (!$hasTreatments) {
+                                    $treatmentProc = $data['_invoice_treatment'];
+                                    $cost = (float)($cleanData['amount'] ?? $duplicateExisting->amount ?? 0);
+                                    $procedureId = null;
+                                    $treatmentModel = DB::table('treatments')->where('procedure', $treatmentProc)->first();
+                                    if ($treatmentModel) {
+                                        $procedureId = $treatmentModel->id;
+                                    }
+                                    DB::table('invoice_treatments')->insert([
+                                        'invoice_id' => $duplicateExisting->id,
+                                        'procedure' => $treatmentProc,
+                                        'procedure_id' => $procedureId,
+                                        'cost' => $cost,
+                                        'quantity' => 1,
+                                        'unit_price' => $cost,
+                                        'total_amount' => $cost,
+                                        'patient_amount' => $cost,
+                                        'insurance_amount' => 0,
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ]);
                                 }
                             }
 
@@ -918,5 +1059,135 @@ class UniversalImportService
             DB::table('patients')->where('id', $patientId)->update($updates);
         }
     }
+
+    /**
+     * Automatically create or update a linked invoice for a laboratory order.
+     */
+    protected function handleLabOrderInvoice(int $labOrderId, array $cleanData, array $data, ?int $branchId, Carbon $now): void
+    {
+        $totalAmount = isset($data['_total_amount']) ? (float)$data['_total_amount'] : (float)($cleanData['applied_price'] ?? 0);
+        $paidAmount = isset($data['_paid_amount']) ? (float)$data['_paid_amount'] : 0.00;
+        $balance = max(0, $totalAmount - $paidAmount);
+        $invoiceStatus = ($balance > 0) ? 'Pending' : 'Paid';
+
+        // Resolve client name for the invoice's patient_name field
+        $clientName = $data['_resolved_client_name'] ?? null;
+        if (empty($clientName)) {
+            $clientId = $cleanData['client_id'] ?? DB::table('laboratory_orders')->where('id', $labOrderId)->value('client_id');
+            if ($clientId) {
+                $clientName = DB::table('clients')->where('id', $clientId)->value('name');
+            }
+        }
+        if (empty($clientName)) {
+            $clientName = 'Lab Client';
+        }
+
+        $orderBranchId = $cleanData['branch_id'] ?? $branchId ?? 1;
+        if (!DB::table('branches')->where('id', $orderBranchId)->exists()) {
+            $orderBranchId = (int)(DB::table('branches')->value('id') ?? 1);
+        }
+
+        $issueDate = !empty($cleanData['sent_date']) ? Carbon::parse($cleanData['sent_date'])->toDateString() : $now->toDateString();
+        $dueDate = !empty($cleanData['due_date']) ? Carbon::parse($cleanData['due_date'])->toDateString() : Carbon::parse($issueDate)->addDays(30)->toDateString();
+
+        // Check if laboratory order already has a linked invoice
+        $existingInvoiceId = DB::table('laboratory_orders')->where('id', $labOrderId)->value('invoice_id');
+        $existingInvoice = null;
+
+        if ($existingInvoiceId) {
+            $existingInvoice = DB::table('invoices')->where('id', $existingInvoiceId)->first();
+        }
+
+        // Also check if an invoice_number was provided that matches an existing invoice
+        if (!$existingInvoice && !empty($cleanData['invoice_number'])) {
+            $existingInvoice = DB::table('invoices')->where('receipt_number', $cleanData['invoice_number'])->first();
+        }
+
+        if ($existingInvoice) {
+            $invoiceId = $existingInvoice->id;
+            DB::table('invoices')->where('id', $invoiceId)->update([
+                'patient_name' => $clientName,
+                'amount' => $totalAmount,
+                'patient_responsibility' => $totalAmount,
+                'patient_paid_amount' => $paidAmount,
+                'patient_balance' => $balance,
+                'paid_amount' => $paidAmount,
+                'status' => $invoiceStatus,
+                'category' => 'lab-income',
+                'issue_date' => $issueDate,
+                'due_date' => $dueDate,
+                'branch_id' => $orderBranchId,
+                'updated_at' => $now,
+            ]);
+        } else {
+            $receiptNumber = !empty($cleanData['invoice_number']) 
+                ? $cleanData['invoice_number'] 
+                : 'INV-LAB-' . strtoupper(Str::random(8));
+
+            $invoiceId = DB::table('invoices')->insertGetId([
+                'receipt_number' => $receiptNumber,
+                'client_uuid' => (string) Str::uuid(),
+                'patient_name' => $clientName,
+                'patient_id' => null,
+                'amount' => $totalAmount,
+                'patient_responsibility' => $totalAmount,
+                'patient_paid_amount' => $paidAmount,
+                'patient_balance' => $balance,
+                'insurance_responsibility' => 0.00,
+                'insurance_paid_amount' => 0.00,
+                'insurance_balance' => 0.00,
+                'paid_amount' => $paidAmount,
+                'status' => $invoiceStatus,
+                'category' => 'lab-income',
+                'issue_date' => $issueDate,
+                'due_date' => $dueDate,
+                'branch_id' => $orderBranchId,
+                'payment_method' => 'Cash',
+                'medicines' => json_encode(['lab_order_id' => $labOrderId]),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        // Link the invoice back to the laboratory order
+        $orderUpdates = ['invoice_id' => $invoiceId];
+        if (empty($cleanData['invoice_number'])) {
+            $receiptNum = DB::table('invoices')->where('id', $invoiceId)->value('receipt_number');
+            $orderUpdates['invoice_number'] = $receiptNum ?: (string)$invoiceId;
+        }
+        DB::table('laboratory_orders')->where('id', $labOrderId)->update($orderUpdates);
+
+        // Record line item in invoice_treatments if table exists
+        if (Schema::hasTable('invoice_treatments')) {
+            $hasTreatments = DB::table('invoice_treatments')->where('invoice_id', $invoiceId)->exists();
+            if (!$hasTreatments) {
+                DB::table('invoice_treatments')->insert([
+                    'invoice_id' => $invoiceId,
+                    'procedure' => $cleanData['item'] ?? 'Lab Order',
+                    'procedure_id' => $cleanData['lab_service_id'] ?? null,
+                    'cost' => $totalAmount,
+                    'quantity' => 1,
+                    'unit_price' => $totalAmount,
+                    'total_amount' => $totalAmount,
+                    'patient_amount' => $totalAmount,
+                    'insurance_amount' => 0.00,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Escape spreadsheet formula injection prefixes (=, +, -, @).
+     */
+    public function defendFormulaInjection(string $val): string
+    {
+        if (preg_match('/^[=\+\-@]/', $val)) {
+            return "'" . $val;
+        }
+        return $val;
+    }
 }
+
 

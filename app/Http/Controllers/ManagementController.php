@@ -1172,6 +1172,7 @@ class ManagementController extends Controller
         // Self-heal: ensure any existing invoices tied to X-ray requests or with Radiology other charges are categorized as radiology-income
         try {
             DB::table('invoices')
+                ->whereNull('deleted_at')
                 ->where(function ($q) {
                     $q->whereNull('category')
                       ->orWhere('category', '!=', 'radiology-income');
@@ -1211,6 +1212,7 @@ class ManagementController extends Controller
         }
 
         $incomeQuery = Invoice::query()
+            ->whereNull('deleted_at')
             ->whereBetween('issue_date', [$startDate, $endDate])
             ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId));
 

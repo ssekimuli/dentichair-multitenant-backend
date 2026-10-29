@@ -259,7 +259,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::post('/attendance', [ManagementController::class, 'markAttendance']);
 
     // Dashboard summary
-    Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
+    // Route::get('/dashboard-summary', [ManagementController::class, 'getPracticeSummary']);
     Route::get('/practice-trends', [ManagementController::class, 'getPracticeTrends']);
     Route::get('/financial-summary', [ManagementController::class, 'getFinancialSummary']);
     Route::get('/expense-records', [ManagementController::class, 'getExpenseRecords']);

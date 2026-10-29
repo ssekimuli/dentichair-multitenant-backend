@@ -1385,19 +1385,25 @@ class ManagementController extends Controller
             $appointmentQuery->where('branch_id', $branchId);
         }
 
-        $paymentQuery = PaymentTransaction::query()
-            ->whereHas('invoice', function ($q) use ($hasBranch, $branchId) {
-                $q->whereNull('deleted_at')
-                  ->where(function ($sq) {
-                      $sq->whereNull('status')
-                        ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
-                  });
-                if ($hasBranch) {
-                    $q->where('branch_id', $branchId);
-                }
+        // $paymentQuery = PaymentTransaction::query()
+        //     ->whereHas('invoice', function ($q) use ($hasBranch, $branchId) {
+        //         $q->whereNull('deleted_at')
+        //           ->where(function ($sq) {
+        //               $sq->whereNull('status')
+        //                 ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
+        //           });
+        //         if ($hasBranch) {
+        //             $q->where('branch_id', $branchId);
+        //         }
+        //     });
+        $invoiceQuery = Invoice::query()
+            ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
             });
-
-        $totalRevenue = (clone $paymentQuery)->sum('amount');
+            
+        $totalRevenue = $invoiceQuery->sum('paid_amount');
         $activePatients = (clone $patientQuery)->where('status', 'Active')->count();
         $appointmentsLast30Days = (clone $appointmentQuery)->whereBetween('date', [$last30Days, $today])->count();
         $newPatientsLast30Days = (clone $patientQuery)->where('created_at', '>=', $last30Days)->count();

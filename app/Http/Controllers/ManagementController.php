@@ -17,6 +17,7 @@ use App\Models\ExpenseCategory;
 use App\Models\ChartData;
 use App\Models\Employee;
 use App\Models\Invoice;
+use App\Models\PaymentTransaction;
 use App\Models\Appointment;
 use App\Models\Patient;
 use Carbon\Carbon;
@@ -1372,31 +1373,37 @@ class ManagementController extends Controller
     public function getPracticeSummary(Request $request)
     {
         $branchId = $request->branch_id;
+        $hasBranch = $branchId && $branchId !== 'all';
         $today = Carbon::today();
         $last30Days = $today->copy()->subDays(30);
 
-        $invoiceQuery = Invoice::query()
-            ->whereNull('deleted_at')
-            ->where(function ($q) {
-                $q->whereNull('status')
-                  ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
-            });
         $patientQuery = Patient::query();
         $appointmentQuery = Appointment::query();
 
-        if ($branchId) {
-            $invoiceQuery->where('branch_id', $branchId);
+        if ($hasBranch) {
             $patientQuery->where('branch_id', $branchId);
             $appointmentQuery->where('branch_id', $branchId);
         }
 
-        $totalRevenue = (clone $invoiceQuery)->sum('paid_amount');
+        $paymentQuery = PaymentTransaction::query()
+            ->whereHas('invoice', function ($q) use ($hasBranch, $branchId) {
+                $q->whereNull('deleted_at')
+                  ->where(function ($sq) {
+                      $sq->whereNull('status')
+                        ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
+                  });
+                if ($hasBranch) {
+                    $q->where('branch_id', $branchId);
+                }
+            });
+
+        $totalRevenue = (clone $paymentQuery)->sum('amount');
         $activePatients = (clone $patientQuery)->where('status', 'Active')->count();
         $appointmentsLast30Days = (clone $appointmentQuery)->whereBetween('date', [$last30Days, $today])->count();
         $newPatientsLast30Days = (clone $patientQuery)->where('created_at', '>=', $last30Days)->count();
 
         $upcomingAppointments = Appointment::with(['patient', 'doctor'])
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId))
             ->whereDate('date', $today)
             ->where('status', 'Scheduled')
             ->orderBy('time')
@@ -1412,7 +1419,7 @@ class ManagementController extends Controller
                 ];
             });
 
-        $recentPatients = Patient::when($branchId, fn($q) => $q->where('branch_id', $branchId))
+        $recentPatients = Patient::when($hasBranch, fn($q) => $q->where('branch_id', $branchId))
             ->orderByRaw('CASE WHEN last_visit IS NOT NULL THEN 0 ELSE 1 END, last_visit DESC')
             ->take(5)
             ->get(['id', 'first_name', 'last_name', 'last_visit']);

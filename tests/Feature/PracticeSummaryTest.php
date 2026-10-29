@@ -8,6 +8,7 @@ use App\Models\RolePermission;
 use App\Models\Patient;
 use App\Models\Appointment;
 use App\Models\Invoice;
+use App\Models\PaymentTransaction;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -72,8 +73,8 @@ class PracticeSummaryTest extends TestCase
             'created_at' => $today->copy()->subDays(2),
         ]);
 
-        // 3. Paid Invoice
-        Invoice::create([
+        // 3. Paid Invoice with PaymentTransaction
+        $invoice1 = Invoice::create([
             'patient_name' => 'John Doe',
             'patient_id' => $patient1->id,
             'amount' => 500.00,
@@ -84,8 +85,15 @@ class PracticeSummaryTest extends TestCase
             'branch_id' => $this->branch->id,
         ]);
 
-        // 4. Cancelled Invoice (should not be included in revenue)
-        Invoice::create([
+        PaymentTransaction::create([
+            'invoice_id' => $invoice1->id,
+            'amount' => 300.00,
+            'method' => 'Cash',
+            'date' => $today->toDateString(),
+        ]);
+
+        // 4. Cancelled Invoice (should not be included in revenue even with transaction)
+        $invoice2 = Invoice::create([
             'patient_name' => 'John Doe',
             'patient_id' => $patient1->id,
             'amount' => 1000.00,
@@ -94,6 +102,13 @@ class PracticeSummaryTest extends TestCase
             'issue_date' => $today->toDateString(),
             'due_date' => $today->copy()->addDays(30)->toDateString(),
             'branch_id' => $this->branch->id,
+        ]);
+
+        PaymentTransaction::create([
+            'invoice_id' => $invoice2->id,
+            'amount' => 1000.00,
+            'method' => 'Cash',
+            'date' => $today->toDateString(),
         ]);
 
         // 5. Today's Scheduled Appointment

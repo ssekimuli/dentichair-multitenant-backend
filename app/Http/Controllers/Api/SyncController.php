@@ -319,12 +319,43 @@ class SyncController extends Controller
 
     protected function processLaboratoryOrdersBatch(array $data, ?string $clientId): array
     {
-        // If data contains an 'items' array or structured payload from the desktop app,
-        // delegate to ManagementController::createBatchLabOrders for client/service resolution & invoicing
+        // 1. Ensure branch_id is present
+        $branchId = $data['branchId'] ?? $data['branch_id'] ?? auth()->user()?->branch_id ?? 1;
+        $data['branchId'] = $branchId;
+        $data['branch_id'] = $branchId;
+
+        // 2. Normalize status
+        $status = $data['status'] ?? 'Draft';
+        if ($status === 'In Fabrication') {
+            $status = 'In Production';
+        }
+        $data['status'] = $status;
+
+        // 3. Resolve or create client if clientId is not valid
+        $client = null;
+        $cId = $data['clientId'] ?? $data['client_id'] ?? null;
+        if (!empty($cId) && is_numeric($cId)) {
+            $client = Client::find($cId);
+        }
+        if (!$client) {
+            $cName = trim((string)($data['clientName'] ?? $data['client_name'] ?? ''));
+            if (!empty($cName)) {
+                $client = Client::firstOrCreate(['name' => $cName]);
+            } else {
+                $client = Client::first() ?? Client::create(['name' => 'General Lab']);
+            }
+        }
+        $data['clientId'] = $client->id;
+        $data['client_id'] = $client->id;
+
+        // 4. Try delegating to ManagementController::createBatchLabOrders for client/service resolution & invoicing
         if (isset($data['items']) && is_array($data['items'])) {
             try {
-                $req = new Request();
-                $req->replace($data);
+                $req = \Illuminate\Http\Request::create('/api/management/lab-orders/batch', 'POST', $data);
+                $user = auth()->user() ?? auth('sanctum')->user();
+                if ($user) {
+                    $req->setUserResolver(fn() => $user);
+                }
                 $resp = app(\App\Http\Controllers\ManagementController::class)->createBatchLabOrders($req);
                 if ($resp instanceof \Illuminate\Http\JsonResponse && $resp->getStatusCode() < 300) {
                     $created = $resp->getData(true);
@@ -332,25 +363,69 @@ class SyncController extends Controller
                     return ['server_ids' => $ids, 'action' => 'batch_created'];
                 }
             } catch (\Throwable $e) {
-                Log::warning('[SyncController] createBatchLabOrders delegation failed, falling back: ' . $e->getMessage());
+                Log::warning('[SyncController] createBatchLabOrders delegation failed, falling back to direct creation: ' . $e->getMessage());
             }
         }
 
-        $orders = $data['orders'] ?? $data;
-        $createdIds = [];
+        // 5. Fallback: extract list of order items cleanly
+        $items = [];
+        if (isset($data['items']) && is_array($data['items'])) {
+            $items = $data['items'];
+        } elseif (isset($data['orders']) && is_array($data['orders'])) {
+            $items = $data['orders'];
+        } elseif (array_is_list($data)) {
+            $items = $data;
+        } else {
+            $items = [$data];
+        }
 
-        if (is_array($orders)) {
-            foreach ($orders as $orderData) {
-                if (is_array($orderData)) {
-                    $order = LaboratoryOrder::create($orderData);
-                    $createdIds[] = $order->id;
-                    if (($order->status ?? '') === 'In Production' && !$order->invoice_id) {
-                        try {
-                            app(\App\Http\Controllers\ManagementController::class)->generateLabOrderInvoice($order);
-                        } catch (\Throwable $e) {
-                            Log::error('[SyncController] Error generating invoice for batch lab order: ' . $e->getMessage());
-                        }
-                    }
+        $createdIds = [];
+        $doctorName = $data['doctorName'] ?? $data['doctor_name'] ?? null;
+        $sentDate = $data['sentDate'] ?? $data['sent_date'] ?? null;
+        $dueDate = $data['dueDate'] ?? $data['due_date'] ?? null;
+        $receivedDate = $data['receivedDate'] ?? $data['received_date'] ?? null;
+        $instructions = $data['instructions'] ?? null;
+
+        foreach ($items as $itemData) {
+            if (!is_array($itemData)) {
+                continue;
+            }
+
+            $itemName = $itemData['item'] 
+                ?? $itemData['service_name'] 
+                ?? $itemData['serviceName'] 
+                ?? ($data['item'] ?? 'Lab Order Item');
+
+            $itemBranchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $branchId;
+            $itemStatus = $itemData['status'] ?? $status;
+            if ($itemStatus === 'In Fabrication') {
+                $itemStatus = 'In Production';
+            }
+
+            $order = LaboratoryOrder::create([
+                'client_id' => $itemData['client_id'] ?? $itemData['clientId'] ?? $client->id,
+                'doctor_name' => $itemData['doctor_name'] ?? $itemData['doctorName'] ?? $doctorName,
+                'item' => $itemName,
+                'tooth' => !empty($itemData['tooth']) ? (int)$itemData['tooth'] : null,
+                'status' => $itemStatus,
+                'sent_date' => $itemData['sent_date'] ?? $itemData['sentDate'] ?? $sentDate,
+                'due_date' => $itemData['due_date'] ?? $itemData['dueDate'] ?? $dueDate,
+                'branch_id' => $itemBranchId,
+                'received_date' => $itemData['received_date'] ?? $itemData['receivedDate'] ?? $receivedDate,
+                'shade' => $itemData['shade'] ?? null,
+                'material' => $itemData['material'] ?? null,
+                'instructions' => $itemData['instructions'] ?? $instructions,
+                'lab_service_id' => $itemData['lab_service_id'] ?? $itemData['labServiceId'] ?? null,
+                'applied_price' => $itemData['applied_price'] ?? $itemData['appliedPrice'] ?? null,
+            ]);
+
+            $createdIds[] = $order->id;
+
+            if ($itemStatus === 'In Production' && !$order->invoice_id) {
+                try {
+                    app(\App\Http\Controllers\ManagementController::class)->generateLabOrderInvoice($order);
+                } catch (\Throwable $e) {
+                    Log::error('[SyncController] Error generating invoice for batch lab order: ' . $e->getMessage());
                 }
             }
         }

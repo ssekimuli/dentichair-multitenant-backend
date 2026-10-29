@@ -111,14 +111,13 @@ class SyncController extends Controller
 
                 if ($change['entity'] === 'laboratory_orders_batch') {
                     try {
-                        $req = new Request();
-                        $req->replace($data);
-                        $resp = app(ManagementController::class)->createBatchLabOrders($req);
-                        if ($resp->getStatusCode() < 300) {
-                            $results[] = ['id' => $change['id'], 'status' => 'success', 'client_uuid' => $data['client_uuid'] ?? null];
-                        } else {
-                            $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => 'HTTP ' . $resp->getStatusCode()];
-                        }
+                        $batchRes = app(\App\Http\Controllers\Api\SyncController::class)->processLaboratoryOrdersBatch($data, $change['id'] ?? null);
+                        $results[] = [
+                            'id' => $change['id'],
+                            'status' => 'success',
+                            'server_ids' => $batchRes['server_ids'] ?? [],
+                            'client_uuid' => $data['client_uuid'] ?? null,
+                        ];
                     } catch (\Throwable $e) {
                         $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => $e->getMessage()];
                     }

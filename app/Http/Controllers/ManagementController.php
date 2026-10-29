@@ -1227,7 +1227,8 @@ class ManagementController extends Controller
             ->whereBetween('pay_date', [$startDate, $endDate])
             ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId));
 
-        $totalIncome = $incomeQuery->sum(DB::raw('CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END'));
+        $totalIncome = $incomeQuery->sum('paid_amount'); //->sum(DB::raw('CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END'));
+        
         $totalOtherExpenses = $expenseQuery->sum('amount');
         $totalPayroll = $payrollQuery->sum('net_pay');
         $totalExpenses = $totalOtherExpenses + $totalPayroll;
@@ -1402,7 +1403,7 @@ class ManagementController extends Controller
                 $q->whereNull('status')
                   ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
             });
-            
+
         $totalRevenue = $invoiceQuery->sum('paid_amount');
         $activePatients = (clone $patientQuery)->where('status', 'Active')->count();
         $appointmentsLast30Days = (clone $appointmentQuery)->whereBetween('date', [$last30Days, $today])->count();

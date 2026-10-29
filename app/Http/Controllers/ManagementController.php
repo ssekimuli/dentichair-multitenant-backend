@@ -1231,6 +1231,18 @@ class ManagementController extends Controller
         $totalExpenses = $totalOtherExpenses + $totalPayroll;
         $netProfit = $totalIncome - $totalExpenses;
 
+        // Calculate outstanding bills and pending balance
+        $outstandingQuery = (clone $incomeQuery)
+            ->where(function ($q) {
+                $q->where('status', '!=', 'Paid')
+                  ->orWhereNull('status');
+            })
+            ->whereRaw('(amount - COALESCE(paid_amount, 0)) > 0');
+
+        $totalOutstandingBill = (float) (clone $outstandingQuery)->sum('amount');
+        $totalPendingBalance = (float) (clone $outstandingQuery)->sum(DB::raw('CASE WHEN (amount - COALESCE(paid_amount, 0)) > 0 THEN (amount - COALESCE(paid_amount, 0)) ELSE 0 END'));
+        $outstandingBillsCount = (clone $outstandingQuery)->count();
+
         // Calculate income by category
         $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'radiology-income', 'other'];
         $incomeByCategory = [];
@@ -1268,18 +1280,38 @@ class ManagementController extends Controller
             ->get()
             ->keyBy('month');
 
+        $outstandingByMonth = (clone $incomeQuery)
+            ->where(function ($q) {
+                $q->where('status', '!=', 'Paid')
+                  ->orWhereNull('status');
+            })
+            ->whereRaw('(amount - COALESCE(paid_amount, 0)) > 0')
+            ->selectRaw("
+                DATE_FORMAT(issue_date, '%Y-%m') as month,
+                SUM(amount) as outstanding_bill,
+                SUM(CASE WHEN (amount - COALESCE(paid_amount, 0)) > 0 THEN (amount - COALESCE(paid_amount, 0)) ELSE 0 END) as pending_balance
+            ")
+            ->groupBy('month')
+            ->get()
+            ->keyBy('month');
+
         $financialSummary = [];
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addMonthNoOverflow()) {
             $monthKey = $date->format('Y-m');
             $income = $incomeByMonth->get($monthKey)->income ?? 0;
             $expenses = ($otherExpensesByMonth->get($monthKey)->expense ?? 0)
                 + ($payrollByMonth->get($monthKey)->payroll ?? 0);
+            $monthOutstandingBill = $outstandingByMonth->get($monthKey)->outstanding_bill ?? 0;
+            $monthPendingBalance = $outstandingByMonth->get($monthKey)->pending_balance ?? 0;
 
             $financialSummary[] = [
                 'month' => $monthKey,
                 'income' => number_format($income, 2, '.', ''),
                 'expenses' => number_format($expenses, 2, '.', ''),
                 'net_profit' => number_format($income - $expenses, 2, '.', ''),
+                'outstanding_bill' => number_format($monthOutstandingBill, 2, '.', ''),
+                'outstanding_bills' => number_format($monthOutstandingBill, 2, '.', ''),
+                'pending_balance' => number_format($monthPendingBalance, 2, '.', ''),
             ];
         }
 
@@ -1289,6 +1321,11 @@ class ManagementController extends Controller
             'income_by_category' => $incomeByCategory,
             'total_expenses' => number_format($totalExpenses, 2, '.', ''),
             'net_profit' => number_format($netProfit, 2, '.', ''),
+            'outstanding_bill' => number_format($totalOutstandingBill, 2, '.', ''),
+            'outstanding_bills' => number_format($totalOutstandingBill, 2, '.', ''),
+            'outstanding_bills_count' => $outstandingBillsCount,
+            'pending_balance' => number_format($totalPendingBalance, 2, '.', ''),
+            'total_pending_balance' => number_format($totalPendingBalance, 2, '.', ''),
             'from' => $startDate->toDateString(),
             'to' => $endDate->toDateString(),
             'monthlyFinancials' => $financialSummary,

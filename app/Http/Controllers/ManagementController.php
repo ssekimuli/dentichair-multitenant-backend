@@ -1894,6 +1894,31 @@ class ManagementController extends Controller
         unset($it);
         $request->merge(['items' => $items]);
 
+        // Normalize status against DB enum
+        $rawStatus = trim((string)$request->input('status', 'Draft'));
+        $labStatusMap = [
+            'Completed'          => 'Delivered',
+            'completed'          => 'Delivered',
+            'Sent'               => 'Received',
+            'sent'               => 'Received',
+            'Order Sent'         => 'Received',
+            'order sent'         => 'Received',
+            'In Fabrication'     => 'In Production',
+            'in fabrication'     => 'In Production',
+            'in production'      => 'In Production',
+            'Ready for Fitting'  => 'Ready for Delivery',
+            'ready for fitting'  => 'Ready for Delivery',
+            'ready for delivery' => 'Ready for Delivery',
+            'draft'              => 'Draft',
+            'received'           => 'Received',
+            'delivered'          => 'Delivered',
+            'cancelled'          => 'Cancelled',
+        ];
+        $normalizedStatus = $labStatusMap[$rawStatus] ?? $rawStatus;
+        if (!in_array($normalizedStatus, ['Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled'], true)) {
+            $normalizedStatus = 'Draft';
+        }
+
         // Normalize camelCase / snake_case top-level keys
         $request->merge([
             'clientId' => $request->input('clientId', $request->input('client_id')),
@@ -1902,7 +1927,7 @@ class ManagementController extends Controller
             'sentDate' => $request->input('sentDate', $request->input('sent_date')),
             'dueDate' => $request->input('dueDate', $request->input('due_date')),
             'receivedDate' => $request->input('receivedDate', $request->input('received_date')),
-            'status' => $request->input('status', 'Draft'),
+            'status' => $normalizedStatus,
         ]);
 
         $validated = $request->validate([
@@ -1935,7 +1960,11 @@ class ManagementController extends Controller
         try {
             foreach ($validated['items'] as $itemData) {
                 $branchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $validated['branchId'];
-                $orderStatus = $itemData['status'] ?? $validated['status'];
+                $itemRawStatus = trim((string)($itemData['status'] ?? $validated['status']));
+                $orderStatus = $labStatusMap[$itemRawStatus] ?? $itemRawStatus;
+                if (!in_array($orderStatus, ['Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled'], true)) {
+                    $orderStatus = $validated['status'];
+                }
                 $sentDate = $itemData['sent_date'] ?? $itemData['sentDate'] ?? ($validated['sentDate'] ?? null);
                 $dueDate = $itemData['due_date'] ?? $itemData['dueDate'] ?? ($validated['dueDate'] ?? null);
                 $receivedDate = $itemData['received_date'] ?? $itemData['receivedDate'] ?? ($validated['receivedDate'] ?? null);

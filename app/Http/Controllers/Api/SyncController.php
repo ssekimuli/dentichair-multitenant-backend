@@ -324,11 +324,33 @@ class SyncController extends Controller
         $data['branchId'] = $branchId;
         $data['branch_id'] = $branchId;
 
-        // 2. Normalize status
-        $status = $data['status'] ?? 'Draft';
-        if ($status === 'In Fabrication') {
-            $status = 'In Production';
-        }
+        // 2. Normalize status against DB enum: Draft, Received, In Production, Ready for Delivery, Delivered, Cancelled
+        $normalizeStatus = function (?string $raw) {
+            $s = trim((string)$raw);
+            $map = [
+                'Completed'          => 'Delivered',
+                'completed'          => 'Delivered',
+                'Sent'               => 'Received',
+                'sent'               => 'Received',
+                'Order Sent'         => 'Received',
+                'order sent'         => 'Received',
+                'In Fabrication'     => 'In Production',
+                'in fabrication'     => 'In Production',
+                'in production'      => 'In Production',
+                'Ready for Fitting'  => 'Ready for Delivery',
+                'ready for fitting'  => 'Ready for Delivery',
+                'ready for delivery' => 'Ready for Delivery',
+                'draft'              => 'Draft',
+                'received'           => 'Received',
+                'delivered'          => 'Delivered',
+                'cancelled'          => 'Cancelled',
+            ];
+            $mapped = $map[$s] ?? $s;
+            $allowed = ['Draft', 'Received', 'In Production', 'Ready for Delivery', 'Delivered', 'Cancelled'];
+            return in_array($mapped, $allowed, true) ? $mapped : 'Draft';
+        };
+
+        $status = $normalizeStatus($data['status'] ?? 'Draft');
         $data['status'] = $status;
 
         // 3. Resolve or create client if clientId is not valid
@@ -397,10 +419,7 @@ class SyncController extends Controller
                 ?? ($data['item'] ?? 'Lab Order Item');
 
             $itemBranchId = $itemData['branch_id'] ?? $itemData['branchId'] ?? $branchId;
-            $itemStatus = $itemData['status'] ?? $status;
-            if ($itemStatus === 'In Fabrication') {
-                $itemStatus = 'In Production';
-            }
+            $itemStatus = $normalizeStatus($itemData['status'] ?? $status);
 
             $order = LaboratoryOrder::create([
                 'client_id' => $itemData['client_id'] ?? $itemData['clientId'] ?? $client->id,

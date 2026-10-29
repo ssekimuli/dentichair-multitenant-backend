@@ -319,6 +319,23 @@ class SyncController extends Controller
 
     protected function processLaboratoryOrdersBatch(array $data, ?string $clientId): array
     {
+        // If data contains an 'items' array or structured payload from the desktop app,
+        // delegate to ManagementController::createBatchLabOrders for client/service resolution & invoicing
+        if (isset($data['items']) && is_array($data['items'])) {
+            try {
+                $req = new Request();
+                $req->replace($data);
+                $resp = app(\App\Http\Controllers\ManagementController::class)->createBatchLabOrders($req);
+                if ($resp instanceof \Illuminate\Http\JsonResponse && $resp->getStatusCode() < 300) {
+                    $created = $resp->getData(true);
+                    $ids = is_array($created) ? array_column($created, 'id') : [];
+                    return ['server_ids' => $ids, 'action' => 'batch_created'];
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[SyncController] createBatchLabOrders delegation failed, falling back: ' . $e->getMessage());
+            }
+        }
+
         $orders = $data['orders'] ?? $data;
         $createdIds = [];
 

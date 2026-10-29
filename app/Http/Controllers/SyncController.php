@@ -109,6 +109,22 @@ class SyncController extends Controller
                     continue;
                 }
 
+                if ($change['entity'] === 'laboratory_orders_batch') {
+                    try {
+                        $req = new Request();
+                        $req->replace($data);
+                        $resp = app(ManagementController::class)->createBatchLabOrders($req);
+                        if ($resp->getStatusCode() < 300) {
+                            $results[] = ['id' => $change['id'], 'status' => 'success', 'client_uuid' => $data['client_uuid'] ?? null];
+                        } else {
+                            $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => 'HTTP ' . $resp->getStatusCode()];
+                        }
+                    } catch (\Throwable $e) {
+                        $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => $e->getMessage()];
+                    }
+                    continue;
+                }
+
                 if (!Schema::hasTable($table)) {
                     $results[] = [
                         'id' => $change['id'] ?? null,

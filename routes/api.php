@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Offline-First Synchronization Endpoints
     Route::post('/sync', [SyncController::class, 'sync']);
+    Route::get('/sync/pull', [SyncController::class, 'pull']);
 
     Route::post('/top-up-sms', [NotificationController::class, 'topUpSms']);
     Route::post('/verify-transaction', [NotificationController::class, 'verifyWebhook']);
@@ -401,6 +402,4 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
 
 
-// Sync Routes
-Route::post('/sync', [App\Http\Controllers\SyncController::class, 'push']);
-Route::get('/sync/pull', [App\Http\Controllers\SyncController::class, 'pull']);
+

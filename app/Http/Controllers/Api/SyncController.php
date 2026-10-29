@@ -362,7 +362,7 @@ class SyncController extends Controller
                     try {
                         app(\App\Http\Controllers\XrayRequestController::class)->cancelXrayInvoice($req);
                     } catch (\Throwable $e) {}
-                } elseif ((float)($req->amount ?? 0) > 0 && !$req->invoice_id) {
+                } elseif (($req->status ?? '') !== 'cancelled') {
                     try {
                         app(\App\Http\Controllers\XrayRequestController::class)->generateXrayInvoice($req);
                     } catch (\Throwable $e) {}

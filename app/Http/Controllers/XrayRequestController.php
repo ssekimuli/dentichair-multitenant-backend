@@ -240,10 +240,7 @@ class XrayRequestController extends Controller
      */
     public function generateXrayInvoice(XrayRequest $xrayRequest): ?Invoice
     {
-        $amount = (float) $xrayRequest->amount;
-        if ($amount <= 0) {
-            return null;
-        }
+        $amount = (float) ($xrayRequest->amount ?? 0);
 
         if (!$xrayRequest->relationLoaded('patientRecord')) {
             $xrayRequest->load(['patientRecord', 'branch', 'doctor']);
@@ -263,19 +260,75 @@ class XrayRequestController extends Controller
         if ($xrayRequest->invoice_id) {
             $existing = Invoice::find($xrayRequest->invoice_id);
             if ($existing) {
-                if ($existing->patient_responsibility <= 0 && $existing->amount > 0) {
-                    $existing->patient_responsibility = $existing->amount;
-                    $existing->patient_balance = max(0, $existing->amount - $existing->paid_amount);
+                // Update or create the otherCharges line item for this xray request
+                $charge = $existing->otherCharges()
+                    ->where(function ($q) {
+                        $q->where('description', 'LIKE', '%Radiology%')
+                          ->orWhere('description', 'LIKE', '%X-Ray%');
+                    })
+                    ->first();
+
+                if (!$charge) {
+                    $charge = $existing->otherCharges()->first();
                 }
+
+                if ($charge) {
+                    $charge->update([
+                        'description' => $desc,
+                        'amount'      => $amount,
+                    ]);
+                } else {
+                    $existing->otherCharges()->create([
+                        'description' => $desc,
+                        'amount'      => $amount,
+                    ]);
+                }
+
+                // If this invoice only has charges for this request, or calculate total from other charges
+                $otherChargesCount = $existing->otherCharges()->count();
+                if ($otherChargesCount <= 1) {
+                    $existing->amount = $amount;
+                } else {
+                    $existing->amount = (float) $existing->otherCharges()->sum('amount');
+                }
+
+                $discount = (float) ($existing->discount ?? 0);
+                $tax = (float) ($existing->tax ?? 0);
+                $netTotal = max(0, (float) $existing->amount - $discount + $tax);
+
+                $insuranceResp = (float) ($existing->insurance_responsibility ?? 0);
+                $existing->patient_responsibility = max(0, $netTotal - $insuranceResp);
+
+                $paidAmount = (float) ($existing->paid_amount ?? 0);
+                $patientPaid = (float) ($existing->patient_paid_amount ?? $paidAmount);
+                $existing->patient_balance = max(0, (float) $existing->patient_responsibility - $patientPaid);
+
                 if ($existing->category !== 'radiology-income') {
                     $existing->category = 'radiology-income';
                 }
                 if ($branchId && $existing->branch_id != $branchId) {
                     $existing->branch_id = $branchId;
                 }
+                if ($patientDisplayName && $existing->patient_name !== $patientDisplayName) {
+                    $existing->patient_name = $patientDisplayName;
+                }
+                if ($xrayRequest->patient_id && $existing->patient_id != $xrayRequest->patient_id) {
+                    $existing->patient_id = $xrayRequest->patient_id;
+                }
+
+                if ($existing->status === 'Cancelled' && $xrayRequest->status !== 'cancelled') {
+                    $existing->status = ($paidAmount >= $existing->amount && $existing->amount > 0) ? 'Paid' : 'Pending';
+                } elseif ($existing->status === 'Paid' && $paidAmount < $existing->amount) {
+                    $existing->status = 'Pending';
+                }
+
                 $existing->save();
                 return $existing;
             }
+        }
+
+        if ($amount <= 0) {
+            return null;
         }
 
         // Check for existing open Pending invoice for same patient on same date and same branch
@@ -314,7 +367,6 @@ class XrayRequestController extends Controller
                 'due_date'                 => $dueDate,
                 'branch_id'                => $branchId,
                 'category'                 => 'radiology-income',
-                'employee_id'              => $xrayRequest->doctor_id ?: null,
             ]);
         }
 
@@ -444,12 +496,10 @@ class XrayRequestController extends Controller
         $oldStatus = $xrayRequest->status;
         $xrayRequest->update($validated);
 
-        if ((float) $xrayRequest->amount > 0 && (!$xrayRequest->invoice_id || ($validated['status'] ?? '') !== 'cancelled')) {
-            $this->generateXrayInvoice($xrayRequest);
-        }
-
-        if (($validated['status'] ?? '') === 'cancelled' && $oldStatus !== 'cancelled') {
+        if (($validated['status'] ?? $xrayRequest->status) === 'cancelled' && $oldStatus !== 'cancelled') {
             $this->cancelXrayInvoice($xrayRequest);
+        } elseif ($xrayRequest->status !== 'cancelled') {
+            $this->generateXrayInvoice($xrayRequest);
         }
 
         $xrayRequest->load([

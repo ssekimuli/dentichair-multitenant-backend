@@ -1439,7 +1439,12 @@ class ManagementController extends Controller
         $endDate = $request->end_date;
 
         // 1. Financial Summary
-        $invoiceQuery = Invoice::query();
+        $invoiceQuery = Invoice::query()
+            ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
+            });
         $expenseQuery = Expense::query();
         $payrollQuery = Payroll::query();
 

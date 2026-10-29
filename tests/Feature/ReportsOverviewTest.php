@@ -169,4 +169,65 @@ class ReportsOverviewTest extends TestCase
             'total_patients' => 1,
         ]);
     }
+
+    /** @test */
+    public function it_does_not_include_deleted_or_cancelled_invoices_in_reports_overview()
+    {
+        $patient = Patient::create([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john.doe@example.com',
+            'date_of_birth' => '2000-01-15',
+            'gender' => 'Male',
+            'branch_id' => $this->branch->id,
+            'status' => 'Active',
+        ]);
+
+        // Active valid invoice
+        Invoice::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $patient->id,
+            'amount' => 500.00,
+            'paid_amount' => 300.00,
+            'status' => 'Pending',
+            'issue_date' => '2026-07-08',
+            'due_date' => '2026-08-08',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        // Soft-deleted invoice
+        $deletedInvoice = Invoice::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $patient->id,
+            'amount' => 400.00,
+            'paid_amount' => 400.00,
+            'status' => 'Paid',
+            'issue_date' => '2026-07-08',
+            'due_date' => '2026-08-08',
+            'branch_id' => $this->branch->id,
+        ]);
+        $deletedInvoice->delete();
+
+        // Invoice with Cancelled / Deleted status
+        Invoice::create([
+            'patient_name' => 'John Doe',
+            'patient_id' => $patient->id,
+            'amount' => 200.00,
+            'paid_amount' => 200.00,
+            'status' => 'Cancelled',
+            'issue_date' => '2026-07-08',
+            'due_date' => '2026-08-08',
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $response = $this->actingAs($this->employee)
+            ->getJson('/api/reports/overview');
+
+        $response->assertStatus(200);
+
+        // total_income should only include the active invoice (300.00), not the deleted or cancelled ones
+        $response->assertJsonFragment([
+            'total_income' => '300.00',
+        ]);
+    }
 }

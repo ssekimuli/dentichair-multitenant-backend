@@ -263,6 +263,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::get('/practice-trends', [ManagementController::class, 'getPracticeTrends']);
     Route::get('/financial-summary', [ManagementController::class, 'getFinancialSummary']);
     Route::get('/expense-records', [ManagementController::class, 'getExpenseRecords']);
+    Route::get('/expense-categories', [ManagementController::class, 'getExpenseCategories']);
+    Route::post('/expense-categories', [ManagementController::class, 'createExpenseCategory']);
     Route::get('/reports/overview', [ManagementController::class, 'getReportsOverview']);
 
     // Lab Services Management
@@ -312,6 +314,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::post('/expenses', [ManagementController::class, 'createExpense']);
         Route::patch('/expenses/{id}', [ManagementController::class, 'updateExpense']);
         Route::delete('/expenses/{id}', [ManagementController::class, 'deleteExpense']);
+        Route::get('/expense-categories', [ManagementController::class, 'getExpenseCategories']);
+        Route::post('/expense-categories', [ManagementController::class, 'createExpenseCategory']);
 
         // Chart Data
         Route::get('/chart-data', [ManagementController::class, 'getChartData']);

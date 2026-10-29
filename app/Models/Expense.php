@@ -17,7 +17,7 @@ class Expense extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'id', 'branch_id', 'date', 'category', 'description', 'amount'
+        'id', 'branch_id', 'expense_category_id', 'date', 'category', 'description', 'amount'
     ];
 
     protected $casts = [
@@ -28,5 +28,10 @@ class Expense extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function expenseCategory(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
     }
 }

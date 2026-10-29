@@ -13,6 +13,7 @@ use App\Models\StaffAdvance;
 use App\Models\Branch;
 use App\Models\Client;
 use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\ChartData;
 use App\Models\Employee;
 use App\Models\Invoice;
@@ -2270,23 +2271,73 @@ class ManagementController extends Controller
 
     public function createExpense(Request $request)
     {
+        if (!$request->has('branchId') && $request->has('branch_id')) {
+            $request->merge(['branchId' => $request->input('branch_id')]);
+        }
+
         $validated = $request->validate([
             'branchId' => 'required|exists:branches,id',
             'date' => 'required|date',
-            'category' => 'required|string',
+            'category' => 'nullable',
+            'category_id' => 'nullable',
+            'expense_category_id' => 'nullable',
             'description' => 'required|string',
             'amount' => 'required|numeric',
         ]);
 
+        $branchId = $validated['branchId'];
+        $categoryInput = $request->input('category')
+            ?? $request->input('category_id')
+            ?? $request->input('expense_category_id');
+
+        if ($categoryInput === null || $categoryInput === '') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'category' => ['The category field is required.'],
+            ]);
+        }
+
+        $categoryId = null;
+        $categoryName = null;
+
+        if (is_numeric($categoryInput)) {
+            $cat = ExpenseCategory::find((int) $categoryInput);
+            if ($cat) {
+                $categoryId = $cat->id;
+                $categoryName = $cat->name;
+            } else {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'category' => ['The selected expense category is invalid.'],
+                ]);
+            }
+        } else {
+            $categoryName = trim((string) $categoryInput);
+            $cat = ExpenseCategory::where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                })
+                ->whereRaw('LOWER(name) = ?', [strtolower($categoryName)])
+                ->first();
+
+            if (!$cat) {
+                $cat = ExpenseCategory::create([
+                    'name' => $categoryName,
+                    'branch_id' => $branchId,
+                ]);
+            }
+
+            $categoryId = $cat->id;
+            $categoryName = $cat->name;
+        }
+
         $expense = Expense::create([
-            'branch_id' => $validated['branchId'],
+            'branch_id' => $branchId,
+            'expense_category_id' => $categoryId,
             'date' => $validated['date'],
-            'category' => $validated['category'],
+            'category' => $categoryName,
             'description' => $validated['description'],
             'amount' => $validated['amount'],
         ]);
 
-        return response()->json($expense->load('branch'), 201);
+        return response()->json($expense->load(['branch', 'expenseCategory']), 201);
     }
 
     /**
@@ -2297,7 +2348,7 @@ class ManagementController extends Controller
      * @authenticated
      * @urlParam id int required The expense ID. Example: 1
      * @bodyParam date date required Expense date. Example: 2026-08-28
-     * @bodyParam category string required Expense category. Example: "Utilities"
+     * @bodyParam category string required Expense category name or ID. Example: "Utilities"
      * @bodyParam description string required Expense description. Example: "Monthly electricity bill"
      * @bodyParam amount numeric required Expense amount. Example: 150.00
      * @response 200 {
@@ -2322,16 +2373,112 @@ class ManagementController extends Controller
             return response()->json(['error' => 'Expense not found'], 404);
         }
 
+        if (!$request->has('branchId') && $request->has('branch_id')) {
+            $request->merge(['branchId' => $request->input('branch_id')]);
+        }
+
         $validated = $request->validate([
             'date' => 'sometimes|required|date',
-            'category' => 'sometimes|required|string',
+            'category' => 'nullable',
+            'category_id' => 'nullable',
+            'expense_category_id' => 'nullable',
             'description' => 'sometimes|required|string',
             'amount' => 'sometimes|required|numeric',
+            'branchId' => 'sometimes|required|exists:branches,id',
         ]);
 
-        $expense->update($validated);
+        $updateData = [];
+        if (isset($validated['date'])) $updateData['date'] = $validated['date'];
+        if (isset($validated['description'])) $updateData['description'] = $validated['description'];
+        if (isset($validated['amount'])) $updateData['amount'] = $validated['amount'];
+        if (isset($validated['branchId'])) $updateData['branch_id'] = $validated['branchId'];
 
-        return response()->json($expense->load('branch'), 200);
+        $branchId = $updateData['branch_id'] ?? $expense->branch_id;
+
+        $categoryInput = $request->input('category')
+            ?? $request->input('category_id')
+            ?? $request->input('expense_category_id');
+
+        if ($categoryInput !== null && $categoryInput !== '') {
+            if (is_numeric($categoryInput)) {
+                $cat = ExpenseCategory::find((int) $categoryInput);
+                if ($cat) {
+                    $updateData['expense_category_id'] = $cat->id;
+                    $updateData['category'] = $cat->name;
+                } else {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'category' => ['The selected expense category is invalid.'],
+                    ]);
+                }
+            } else {
+                $categoryName = trim((string) $categoryInput);
+                $cat = ExpenseCategory::where(function ($q) use ($branchId) {
+                        $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+                    })
+                    ->whereRaw('LOWER(name) = ?', [strtolower($categoryName)])
+                    ->first();
+
+                if (!$cat) {
+                    $cat = ExpenseCategory::create([
+                        'name' => $categoryName,
+                        'branch_id' => $branchId,
+                    ]);
+                }
+
+                $updateData['expense_category_id'] = $cat->id;
+                $updateData['category'] = $cat->name;
+            }
+        }
+
+        $expense->update($updateData);
+
+        return response()->json($expense->load(['branch', 'expenseCategory']), 200);
+    }
+
+    /**
+     * Get Expense Categories
+     */
+    public function getExpenseCategories(Request $request)
+    {
+        $branchId = $request->branch_id ?? $request->branchId;
+        $categories = ExpenseCategory::query()
+            ->when($branchId, function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+            })
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $categories,
+            'categories' => $categories,
+        ]);
+    }
+
+    /**
+     * Create Expense Category
+     */
+    public function createExpenseCategory(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'branch_id' => 'nullable|exists:branches,id',
+            'branchId' => 'nullable|exists:branches,id',
+            'description' => 'nullable|string',
+        ]);
+
+        $branchId = $validated['branch_id'] ?? $validated['branchId'] ?? null;
+
+        $category = ExpenseCategory::firstOrCreate(
+            [
+                'name' => trim($validated['name']),
+                'branch_id' => $branchId,
+            ],
+            [
+                'description' => $validated['description'] ?? null,
+            ]
+        );
+
+        return response()->json($category, 201);
     }
 
     /**

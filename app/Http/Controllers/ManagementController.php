@@ -1374,7 +1374,12 @@ class ManagementController extends Controller
         $today = Carbon::today();
         $last30Days = $today->copy()->subDays(30);
 
-        $invoiceQuery = Invoice::query();
+        $invoiceQuery = Invoice::query()
+            ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
+            });
         $patientQuery = Patient::query();
         $appointmentQuery = Appointment::query();
 
@@ -1384,10 +1389,10 @@ class ManagementController extends Controller
             $appointmentQuery->where('branch_id', $branchId);
         }
 
-        $totalRevenue = $invoiceQuery->sum('paid_amount');
-        $activePatients = $patientQuery->where('status', 'Active')->count();
-        $appointmentsLast30Days = $appointmentQuery->whereBetween('date', [$last30Days, $today])->count();
-        $newPatientsLast30Days = $patientQuery->where('created_at', '>=', $last30Days)->count();
+        $totalRevenue = (clone $invoiceQuery)->sum('paid_amount');
+        $activePatients = (clone $patientQuery)->where('status', 'Active')->count();
+        $appointmentsLast30Days = (clone $appointmentQuery)->whereBetween('date', [$last30Days, $today])->count();
+        $newPatientsLast30Days = (clone $patientQuery)->where('created_at', '>=', $last30Days)->count();
 
         $upcomingAppointments = Appointment::with(['patient', 'doctor'])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -1398,21 +1403,21 @@ class ManagementController extends Controller
             ->map(function ($appointment) {
                 return [
                     'id' => $appointment->id,
-                    'patient_name' => $appointment->patient_name,
-                    'doctor_name' => $appointment->doctor_name,
-                    'date' => $appointment->date->toDateString(),
+                    'patient_name' => $appointment->patient_name ?: ($appointment->patient ? trim($appointment->patient->first_name . ' ' . $appointment->patient->last_name) : null),
+                    'doctor_name' => $appointment->doctor_name ?: $appointment->doctor?->name,
+                    'date' => $appointment->date?->toDateString() ?? (string) $appointment->date,
                     'time' => $appointment->time,
                     'status' => $appointment->status,
                 ];
             });
 
         $recentPatients = Patient::when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->orderByDesc('last_visit')
+            ->orderByRaw('CASE WHEN last_visit IS NOT NULL THEN 0 ELSE 1 END, last_visit DESC')
             ->take(5)
             ->get(['id', 'first_name', 'last_name', 'last_visit']);
 
         return response()->json([
-            'total_revenue' => number_format($totalRevenue, 2, '.', ''),
+            'total_revenue' => number_format((float) $totalRevenue, 2, '.', ''),
             'active_patients' => $activePatients,
             'appointments_last_30_days' => $appointmentsLast30Days,
             'new_patients_last_30_days' => $newPatientsLast30Days,

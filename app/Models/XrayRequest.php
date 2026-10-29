@@ -47,6 +47,14 @@ class XrayRequest extends Model
         return $this->belongsTo(Patient::class, 'patient_id');
     }
 
+    /**
+     * Alias for patientRecord relationship
+     */
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class, 'patient_id');
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

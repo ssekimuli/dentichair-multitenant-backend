@@ -10,6 +10,7 @@ use App\Models\PaymentTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @group Invoices & Billing

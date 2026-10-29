@@ -1112,6 +1112,7 @@ class ManagementController extends Controller
         $startDate = $today->copy()->subDays(29);
 
         $revenueTrend = Invoice::query()
+            ->whereNull('deleted_at')
             ->selectRaw('DATE(issue_date) as date, SUM(paid_amount) as total_revenue')
             ->whereBetween('issue_date', [$startDate, $today])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))

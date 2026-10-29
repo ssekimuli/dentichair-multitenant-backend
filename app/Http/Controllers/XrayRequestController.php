@@ -71,7 +71,7 @@ class XrayRequestController extends Controller
         if ($request->filled('branch_id')) {
             $query->where(function ($q) use ($request) {
                 $q->where('branch_id', $request->branch_id)
-                  ->orWhereHas('patient', function ($pq) use ($request) {
+                  ->orWhereHas('patientRecord', function ($pq) use ($request) {
                       $pq->where('branch_id', $request->branch_id);
                   });
             });
@@ -126,7 +126,7 @@ class XrayRequestController extends Controller
                   ->orWhere('tooth_region', 'like', "%{$term}%")
                   ->orWhere('clinical_notes', 'like', "%{$term}%")
                   ->orWhere('doctor_name', 'like', "%{$term}%")
-                  ->orWhereHas('patient', function ($pq) use ($term) {
+                  ->orWhereHas('patientRecord', function ($pq) use ($term) {
                       $pq->where('first_name', 'like', "%{$term}%")
                          ->orWhere('last_name', 'like', "%{$term}%")
                          ->orWhere('phone', 'like', "%{$term}%")

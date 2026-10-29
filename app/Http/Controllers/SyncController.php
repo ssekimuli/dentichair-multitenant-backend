@@ -48,7 +48,10 @@ class SyncController extends Controller
             'treatment_plan' => 'treatment_plans',
             'payroll' => 'payrolls',
             'invoice' => 'invoices',
-            'payment' => 'payments',
+            'payment' => 'payment_transactions',
+            'payments' => 'payment_transactions',
+            'payment_transaction' => 'payment_transactions',
+            'payment_transactions' => 'payment_transactions',
             'prescription' => 'prescriptions',
             'product' => 'pharmacy_products',
             'sale' => 'pharmacy_sales',
@@ -56,7 +59,18 @@ class SyncController extends Controller
             'expense' => 'expenses',
             'document' => 'documents',
         ];
-        return $map[$entity] ?? $entity;
+        $table = $map[$entity] ?? $entity;
+
+        if (!Schema::hasTable($table)) {
+            if (($table === 'payments' || $table === 'payment') && Schema::hasTable('payment_transactions')) {
+                return 'payment_transactions';
+            }
+            if (($table === 'pharmacy_products' || $table === 'product') && Schema::hasTable('medicines')) {
+                return 'medicines';
+            }
+        }
+
+        return $table;
     }
 
     public function push(Request $request)
@@ -78,7 +92,7 @@ class SyncController extends Controller
 
                 // Payments must go through addPayment: it is idempotent on
                 // client_uuid and updates the invoice's paid amount/status.
-                if ($change['entity'] === 'payment' && $operation === 'create') {
+                if (($change['entity'] === 'payment' || $change['entity'] === 'payments') && $operation === 'create') {
                     try {
                         $resp = app(InvoiceController::class)->addPayment(
                             Request::create('/', 'POST', $data),
@@ -92,6 +106,15 @@ class SyncController extends Controller
                     } catch (ValidationException $e) {
                         $results[] = ['id' => $change['id'], 'status' => 'failed', 'error' => collect($e->errors())->flatten()->first()];
                     }
+                    continue;
+                }
+
+                if (!Schema::hasTable($table)) {
+                    $results[] = [
+                        'id' => $change['id'] ?? null,
+                        'status' => 'failed',
+                        'error' => "Table '{$table}' does not exist on server",
+                    ];
                     continue;
                 }
 
@@ -139,14 +162,21 @@ class SyncController extends Controller
         $lastSyncedAt = $request->query('last_synced_at');
         
         $data = [];
-        foreach ($this->syncableTables as $table) {
+        foreach ($this->syncableTables as $entityKey) {
+            $table = $this->getEntityTable($entityKey);
+
+            if (!Schema::hasTable($table)) {
+                $data[$entityKey] = [];
+                continue;
+            }
+
             $query = DB::table($table);
             
-            if ($lastSyncedAt) {
+            if ($lastSyncedAt && Schema::hasColumn($table, 'updated_at')) {
                 $query->where('updated_at', '>=', $lastSyncedAt);
             }
             
-            $data[$table] = $query->get();
+            $data[$entityKey] = $query->get();
         }
 
         return response()->json([

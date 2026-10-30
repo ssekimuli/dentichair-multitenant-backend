@@ -1235,16 +1235,9 @@ class ManagementController extends Controller
         $netProfit = $totalIncome - $totalExpenses;
 
         // Calculate outstanding bills and pending balance
-        $outstandingQuery = (clone $incomeQuery)
-            ->where(function ($q) {
-                $q->where('status', '!=', 'Paid')
-                  ->orWhereNull('status');
-            })
-            ->whereRaw('(amount - COALESCE(paid_amount, 0)) > 0');
-
-        $totalOutstandingBill = (float) (clone $outstandingQuery)->sum('amount');
-        $totalPendingBalance = (float) (clone $outstandingQuery)->sum(DB::raw('CASE WHEN (amount - COALESCE(paid_amount, 0)) > 0 THEN (amount - COALESCE(paid_amount, 0)) ELSE 0 END'));
-        $outstandingBillsCount = (clone $outstandingQuery)->count();
+        $totalOutstandingBill =$incomeQuery->sum('amount')-$totalIncome;
+        $totalPendingBalance = $totalOutstandingBill;
+        $outstandingBillsCount = 0;
 
         // Calculate income by category
         $allCategories = ['lab-income', 'pharmacy-income', 'procedure-income', 'radiology-income', 'other'];

@@ -12,8 +12,11 @@ class QuotationPolicy
      */
     public function before($user, string $ability): ?bool
     {
-        if ($user instanceof Employee && in_array($user->role, ['Super Admin', 'Admin', 'super_admin'])) {
-            return true;
+        if ($user instanceof Employee) {
+            $normalizedRole = strtolower(trim($user->role ?? ''));
+            if (in_array($normalizedRole, ['super admin', 'admin', 'super_admin', 'accountant', 'dentist', 'doctor', 'receptionist'])) {
+                return true;
+            }
         }
         return null;
     }

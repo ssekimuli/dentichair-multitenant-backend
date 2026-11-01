@@ -21,6 +21,7 @@ use App\Services\Quotation\QuotationStatusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @group Quotation Management
@@ -59,7 +60,12 @@ class QuotationController extends Controller
         $this->authorize('viewAny', Quotation::class);
 
         $branchId = $this->getBranchId($request);
+        Log::info('[Quotation API] GET /quotations', [
+            'branch_id' => $branchId,
+            'filters' => $request->only(['customer_type', 'status', 'search', 'page', 'per_page']),
+        ]);
         $paginator = $this->quotationService->list($branchId, $request->all());
+        Log::info('[Quotation API] Loaded quotations count: ' . $paginator->total());
 
         return response()->json([
             'data' => QuotationResource::collection($paginator->items()),
@@ -82,11 +88,17 @@ class QuotationController extends Controller
         $this->authorize('create', Quotation::class);
 
         $branchId = $this->getBranchId($request);
+        Log::info('[Quotation API] POST /quotations', [
+            'branch_id' => $branchId,
+            'customer_type' => $request->input('customer_type'),
+            'user_id' => $request->user()?->id,
+        ]);
         $quotation = $this->quotationService->create(
             $request->validated(),
             $branchId,
             $request->user()?->id
         );
+        Log::info('[Quotation API] Created quotation ' . $quotation->quotation_number . ' (ID: ' . $quotation->id . ')');
 
         return response()->json([
             'message' => 'Quotation created successfully.',
@@ -127,12 +139,14 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('update', $quotation);
+        Log::info("[Quotation API] PUT /quotations/$id", ['user_id' => $request->user()?->id]);
 
         $updated = $this->quotationService->update(
             $quotation,
             $request->validated(),
             $request->user()?->id
         );
+        Log::info("[Quotation API] Updated quotation $id");
 
         return response()->json([
             'message' => 'Quotation updated successfully.',
@@ -147,8 +161,10 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('delete', $quotation);
+        Log::info("[Quotation API] DELETE /quotations/$id", ['user_id' => request()->user()?->id]);
 
         $this->quotationService->deleteOrCancel($quotation, request()->user()?->id);
+        Log::info("[Quotation API] Deleted quotation $id");
 
         return response()->json([
             'message' => 'Quotation deleted or cancelled successfully.',
@@ -287,6 +303,10 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('send', $quotation);
+        Log::info("[Quotation API] POST /quotations/$id/send", [
+            'channels' => $request->input('channels'),
+            'user_id' => $request->user()?->id,
+        ]);
 
         $channels = $request->input('channels', ['email']);
         $result = $this->notificationService->send(
@@ -295,6 +315,7 @@ class QuotationController extends Controller
             $request->input('message'),
             $request->user()?->id
         );
+        Log::info("[Quotation API] Quotation $id dispatched.");
 
         return response()->json([
             'message' => 'Quotation sent successfully.',
@@ -309,12 +330,18 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('approve', $quotation);
+        Log::info("[Quotation API] POST /quotations/$id/approve", [
+            'customer_name' => $request->input('customer_name'),
+            'approval_method' => $request->input('approval_method'),
+            'user_id' => $request->user()?->id,
+        ]);
 
         $approved = $this->approvalService->recordStaffApproval(
             $quotation,
             $request->validated(),
             $request->user()?->id
         );
+        Log::info("[Quotation API] Quotation $id approved.");
 
         return response()->json([
             'message' => 'Quotation approval recorded successfully.',
@@ -329,12 +356,17 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('reject', $quotation);
+        Log::info("[Quotation API] POST /quotations/$id/reject", [
+            'reason' => $request->input('reason'),
+            'user_id' => $request->user()?->id,
+        ]);
 
         $rejected = $this->approvalService->recordStaffRejection(
             $quotation,
             $request->validated(),
             $request->user()?->id
         );
+        Log::info("[Quotation API] Quotation $id marked rejected.");
 
         return response()->json([
             'message' => 'Quotation rejection recorded successfully.',
@@ -351,11 +383,17 @@ class QuotationController extends Controller
         $this->authorize('convert', $quotation);
 
         $branchId = $this->getBranchId($request);
+        Log::info("[Quotation API] POST /quotations/$id/convert", [
+            'branch_id' => $branchId,
+            'user_id' => $request->user()?->id,
+        ]);
+
         $invoice = $this->conversionService->convertToInvoice(
             $quotation,
             $branchId,
             $request->user()?->id
         );
+        Log::info("[Quotation API] Quotation $id converted into Invoice ID: " . $invoice->id);
 
         return response()->json([
             'message' => 'Quotation converted into invoice successfully.',
@@ -373,12 +411,14 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('update', $quotation);
+        Log::info("[Quotation API] POST /quotations/$id/renew", ['user_id' => $request->user()?->id]);
 
         $renewed = $this->revisionService->renew(
             $quotation,
             $request->all(),
             $request->user()?->id
         );
+        Log::info("[Quotation API] Quotation $id renewed.");
 
         return response()->json([
             'message' => 'Quotation renewed successfully.',
@@ -393,12 +433,14 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('create', Quotation::class);
+        Log::info("[Quotation API] POST /quotations/$id/revise", ['user_id' => $request->user()?->id]);
 
         $revised = $this->revisionService->revise(
             $quotation,
             $request->all(),
             $request->user()?->id
         );
+        Log::info("[Quotation API] Created revised quotation #" . $revised->quotation_number . " for base quotation $id");
 
         return response()->json([
             'message' => 'Revised quotation created successfully.',
@@ -413,9 +455,11 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('cancel', $quotation);
+        Log::info("[Quotation API] POST /quotations/$id/cancel", ['reason' => $request->input('reason')]);
 
         $reason = $request->input('reason', 'Cancelled by staff.');
         $this->statusService->transition($quotation, 'cancelled', $request->user()?->id, 'staff', $reason);
+        Log::info("[Quotation API] Quotation $id marked cancelled.");
 
         return response()->json([
             'message' => 'Quotation cancelled successfully.',

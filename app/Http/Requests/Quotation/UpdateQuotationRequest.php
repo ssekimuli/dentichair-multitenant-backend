@@ -26,7 +26,7 @@ class UpdateQuotationRequest extends FormRequest
             'expected_delivery_date' => 'nullable|date',
             'items' => 'sometimes|array|min:1',
             'items.*.description' => 'required_with:items|string|max:255',
-            'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items.*.quantity' => 'required_with:items|numeric|min:0.01',
             'items.*.unit_price' => 'required_with:items|numeric|min:0',
             'items.*.discount_type' => 'nullable|in:percentage,fixed,none',
             'items.*.discount_amount' => 'nullable|numeric|min:0',

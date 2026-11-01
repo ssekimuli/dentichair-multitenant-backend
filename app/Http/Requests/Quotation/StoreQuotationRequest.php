@@ -31,7 +31,7 @@ class StoreQuotationRequest extends FormRequest
             'expected_delivery_date' => 'nullable|date',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string|max:255',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount_type' => 'nullable|in:percentage,fixed,none',
             'items.*.discount_amount' => 'nullable|numeric|min:0',

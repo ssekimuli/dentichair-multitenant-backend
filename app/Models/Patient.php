@@ -119,6 +119,11 @@ class Patient extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class);
+    }
+
     public function paidInvoices(): HasMany
     {
         return $this->hasMany(Invoice::class)->where('status', 'Paid');

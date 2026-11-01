@@ -32,6 +32,17 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOTP']);
 Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
 
+// Public Quotation Customer Approval & Review
+$registerPublicQuotationRoutes = function () {
+    Route::middleware(['throttle:60,1'])->group(function () {
+        Route::get('/public/quotations/{token}', [\App\Http\Controllers\PublicQuotationController::class, 'show']);
+        Route::post('/public/quotations/{token}/approve', [\App\Http\Controllers\PublicQuotationController::class, 'approve']);
+        Route::post('/public/quotations/{token}/reject', [\App\Http\Controllers\PublicQuotationController::class, 'reject']);
+    });
+};
+$registerPublicQuotationRoutes();
+Route::prefix('v1')->group($registerPublicQuotationRoutes);
+
 
 Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function () {
     // Notifications API
@@ -396,6 +407,40 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::post('billing/estimate/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'estimate']);
         Route::post('billing/invoice/{patientPolicyId}', [\App\Http\Controllers\Api\Insurance\InsuranceBillingController::class, 'createInvoice']);
     });
+
+    // --- QUOTATION MANAGEMENT REST API ---
+    $registerQuotationRoutes = function () {
+        // General quotation CRUD
+        Route::get('/quotations', [\App\Http\Controllers\QuotationController::class, 'index']);
+        Route::post('/quotations', [\App\Http\Controllers\QuotationController::class, 'store']);
+        Route::get('/quotations/{id}', [\App\Http\Controllers\QuotationController::class, 'show']);
+        Route::put('/quotations/{id}', [\App\Http\Controllers\QuotationController::class, 'update']);
+        Route::delete('/quotations/{id}', [\App\Http\Controllers\QuotationController::class, 'destroy']);
+
+        // Workflow transitions & actions
+        Route::post('/quotations/{id}/send', [\App\Http\Controllers\QuotationController::class, 'send']);
+        Route::post('/quotations/{id}/approve', [\App\Http\Controllers\QuotationController::class, 'approve']);
+        Route::post('/quotations/{id}/reject', [\App\Http\Controllers\QuotationController::class, 'reject']);
+        Route::post('/quotations/{id}/convert', [\App\Http\Controllers\QuotationController::class, 'convert']);
+        Route::post('/quotations/{id}/renew', [\App\Http\Controllers\QuotationController::class, 'renew']);
+        Route::post('/quotations/{id}/revise', [\App\Http\Controllers\QuotationController::class, 'revise']);
+        Route::post('/quotations/{id}/cancel', [\App\Http\Controllers\QuotationController::class, 'cancel']);
+        Route::get('/quotations/{id}/pdf', [\App\Http\Controllers\QuotationController::class, 'pdf']);
+        Route::get('/quotations/{id}/history', [\App\Http\Controllers\QuotationController::class, 'history']);
+
+        // Patient-specific quotation endpoints
+        Route::get('/patients/{patientId}/quotations', [\App\Http\Controllers\QuotationController::class, 'patientQuotations']);
+        Route::post('/patients/{patientId}/quotations/from-treatment-plan', [\App\Http\Controllers\QuotationController::class, 'fromTreatmentPlan']);
+
+        // Laboratory-specific quotation endpoints
+        Route::get('/lab-clients/{labClientId}/quotations', [\App\Http\Controllers\QuotationController::class, 'labClientQuotations']);
+        Route::get('/lab-orders/{labOrderId}/quotations', [\App\Http\Controllers\QuotationController::class, 'labOrderQuotations']);
+        Route::post('/lab-orders/{labOrderId}/quotations', [\App\Http\Controllers\QuotationController::class, 'fromLabOrder']);
+        Route::post('/quotations/from-lab-order', [\App\Http\Controllers\QuotationController::class, 'fromLabOrder']);
+    };
+
+    $registerQuotationRoutes();
+    Route::prefix('v1')->group($registerQuotationRoutes);
 });
 
 

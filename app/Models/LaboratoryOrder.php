@@ -43,6 +43,11 @@ use HasFactory;
         return $this->belongsTo(Invoice::class);
     }
 
+    public function quotations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Quotation::class, 'lab_order_id');
+    }
+
     public function labService(): BelongsTo
     {
         return $this->belongsTo(LabService::class);

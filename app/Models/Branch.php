@@ -36,6 +36,11 @@ use HasFactory, SoftDeletes;
         return $this->hasMany(Invoice::class);
     }
 
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class);
+    }
+
     public function employees()
     {
         return $this->hasMany(Employee::class, 'branch_id', 'id');

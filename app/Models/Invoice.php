@@ -21,7 +21,7 @@ class Invoice extends Model
     // public $incrementing = false;
 
     protected $fillable = [
-        'receipt_number', 'patient_name', 'patient_id', 'amount', 'paid_amount', 'status',
+        'receipt_number', 'patient_name', 'patient_id', 'client_id', 'amount', 'paid_amount', 'status',
         'issue_date', 'due_date', 'branch_id', 'payment_method', 'medicines', 'category',
         'discount', 'tax', 'insurance_coverage',
         'patient_responsibility', 'insurance_responsibility',
@@ -64,6 +64,16 @@ class Invoice extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class, 'patient_id');
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
+
+    public function quotation(): HasOne
+    {
+        return $this->hasOne(Quotation::class, 'converted_invoice_id');
     }
 
     public function branch(): BelongsTo

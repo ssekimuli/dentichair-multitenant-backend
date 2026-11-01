@@ -468,15 +468,32 @@ class QuotationController extends Controller
     }
 
     /**
-     * Generate Quotation PDF or Print View
+     * Get Quotation PDF Data (JSON) or Binary
      */
-    public function pdf(Request $request, $id): Response
+    public function pdf(Request $request, $id)
     {
-        $quotation = Quotation::findOrFail($id);
+        $quotation = Quotation::with([
+            'items',
+            'patient',
+            'labClient',
+            'dentist',
+            'labOrder',
+            'branch.setting',
+        ])->findOrFail($id);
+
         $this->authorize('view', $quotation);
 
-        $format = $request->input('format', 'pdf');
-        return $this->pdfService->response($quotation, $format);
+        $format = $request->input('format', 'json');
+        if ($format === 'raw_pdf') {
+            return $this->pdfService->response($quotation, 'pdf');
+        }
+
+        $branding = $this->pdfService->getBranding($quotation);
+
+        return response()->json([
+            'quotation' => new QuotationResource($quotation),
+            'branding' => $branding,
+        ]);
     }
 
     /**

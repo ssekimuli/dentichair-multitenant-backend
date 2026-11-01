@@ -41,12 +41,17 @@ class QuotationPdfService
             ?: ($globalSetting?->logo
             ?: ($business?->logo ?: null)));
 
+        $subtitle = $globalSetting?->subtitle ?: ($branchSetting?->subtitle ?: '');
+        $receiptFooter = $globalSetting?->receipt_footer ?: ($branchSetting?->receipt_footer ?: 'Thank you for choosing our facility for your healthcare needs.');
+
         return [
             'clinicName' => $clinicName,
+            'subtitle' => $subtitle,
             'clinicAddress' => $clinicAddress,
             'clinicPhone' => $clinicPhone,
             'clinicEmail' => $clinicEmail,
             'clinicLogo' => $clinicLogo,
+            'receiptFooter' => $receiptFooter,
         ];
     }
 

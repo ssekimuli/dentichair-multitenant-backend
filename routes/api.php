@@ -36,6 +36,7 @@ Route::post('/send-whatsapp', [NotificationController::class, 'sendWhatsApp']);
 $registerPublicQuotationRoutes = function () {
     Route::middleware(['throttle:60,1'])->group(function () {
         Route::get('/public/quotations/{token}', [\App\Http\Controllers\PublicQuotationController::class, 'show']);
+        Route::get('/public/quotations/{token}/pdf', [\App\Http\Controllers\PublicQuotationController::class, 'pdf']);
         Route::post('/public/quotations/{token}/approve', [\App\Http\Controllers\PublicQuotationController::class, 'approve']);
         Route::post('/public/quotations/{token}/reject', [\App\Http\Controllers\PublicQuotationController::class, 'reject']);
     });

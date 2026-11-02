@@ -250,9 +250,20 @@ class QuotationPdfService
         $stream[] = "BT /F1 10 Tf 50 735 Td (Quote #: " . $quoteNumber . ") Tj ET";
         $stream[] = "BT /F1 10 Tf 50 720 Td (Status: " . $status . ") Tj ET";
         $stream[] = "BT /F1 10 Tf 50 705 Td (Date: " . $quoteDate . " | Valid Until: " . $validUntil . ") Tj ET";
+        $customerEmail = $this->sanitizePdfString($quotation->customer_email ?? '');
+        $customerPhone = $this->sanitizePdfString($quotation->customer_phone ?? '');
         $stream[] = "BT /F1 10 Tf 320 735 Td (Customer: " . $customerName . ") Tj ET";
+        $yRight = 720;
+        if (!empty($customerEmail)) {
+            $stream[] = "BT /F1 9 Tf 320 {$yRight} Td (Email: {$customerEmail}) Tj ET";
+            $yRight -= 12;
+        }
+        if (!empty($customerPhone)) {
+            $stream[] = "BT /F1 9 Tf 320 {$yRight} Td (Phone: {$customerPhone}) Tj ET";
+            $yRight -= 12;
+        }
         if ($quotation->dentist) {
-            $stream[] = "BT /F1 10 Tf 320 720 Td (Dentist: Dr. " . $this->sanitizePdfString($quotation->dentist->name) . ") Tj ET";
+            $stream[] = "BT /F1 9 Tf 320 {$yRight} Td (Dentist: Dr. " . $this->sanitizePdfString($quotation->dentist->name) . ") Tj ET";
         }
 
         // Table Header

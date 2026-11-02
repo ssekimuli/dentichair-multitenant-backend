@@ -14,7 +14,7 @@ class QuotationPolicy
     {
         if ($user instanceof Employee) {
             $normalizedRole = strtolower(trim($user->role ?? ''));
-            if (in_array($normalizedRole, ['super admin', 'admin', 'super_admin', 'accountant', 'dentist', 'doctor', 'receptionist'])) {
+            if (in_array($normalizedRole, ['super admin', 'super_admin'])) {
                 return true;
             }
         }

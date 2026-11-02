@@ -797,4 +797,227 @@ class QuotationManagementTest extends TestCase
         $this->assertNotEmpty($historyRes->json('data.status_history'));
         $this->assertNotEmpty($historyRes->json('data.approvals'));
     }
+
+    /** @test */
+    public function it_validates_and_dispatches_email_with_pdf_and_description()
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        Sanctum::actingAs($this->admin);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $this->patientA->id, // has email and phone
+            'items' => [['description' => 'Teeth Cleaning', 'quantity' => 1, 'unit_price' => 120]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        $sendRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['email'],
+            'message' => 'Please find your treatment estimate attached.',
+        ]);
+
+        $sendRes->assertStatus(200);
+        $sendRes->assertJsonPath('data.channels.email.success', true);
+        $sendRes->assertJsonPath('data.channels.email.has_pdf', true);
+        $sendRes->assertJsonPath('data.email', $this->patientA->email);
+        $sendRes->assertJsonPath('data.channels.email.recipient', $this->patientA->email);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\Illuminate\Mail\Mailable::class, 0); // Sent via raw
+    }
+
+    /** @test */
+    public function it_requires_email_when_email_channel_selected_and_allows_custom_email_input()
+    {
+        Sanctum::actingAs($this->admin);
+
+        // Patient without email
+        $patientNoContact = Patient::create([
+            'first_name' => 'Dwight',
+            'last_name' => 'Schrute',
+            'date_of_birth' => '1982-01-20',
+            'gender' => 'male',
+            'branch_id' => $this->branchA->id,
+            'status' => 'Active',
+        ]);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $patientNoContact->id,
+            'items' => [['description' => 'Extraction', 'quantity' => 1, 'unit_price' => 200]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        // Sending via email without email on file or in request should fail validation
+        $failRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['email'],
+        ]);
+        $failRes->assertStatus(422);
+        $failRes->assertJsonValidationErrors(['email']);
+
+        // Providing email in request should pass and dispatch
+        \Illuminate\Support\Facades\Mail::fake();
+        $successRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['email'],
+            'email' => 'dwight@schrute-farms.com',
+            'message' => 'Your quotation is ready.',
+        ]);
+
+        $successRes->assertStatus(200);
+        $successRes->assertJsonPath('data.email', 'dwight@schrute-farms.com');
+        $successRes->assertJsonPath('data.channels.email.recipient', 'dwight@schrute-farms.com');
+        $successRes->assertJsonPath('data.channels.email.has_pdf', true);
+
+        // Patient profile email should be synced
+        $this->assertEquals('dwight@schrute-farms.com', $patientNoContact->fresh()->email);
+    }
+
+    /** @test */
+    public function it_validates_and_dispatches_whatsapp_with_pdf_media_and_caption()
+    {
+        Sanctum::actingAs($this->admin);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $this->patientA->id, // has phone +1555123456
+            'items' => [['description' => 'Crown', 'quantity' => 1, 'unit_price' => 800]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        $sendRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['whatsapp'],
+            'message' => 'Hello Michael, your dental quotation is attached.',
+        ]);
+
+        $sendRes->assertStatus(200);
+        $sendRes->assertJsonPath('data.channels.whatsapp.success', true);
+        $sendRes->assertJsonPath('data.channels.whatsapp.has_pdf', true);
+        $sendRes->assertJsonPath('data.phone', $this->patientA->phone);
+        $sendRes->assertJsonPath('data.channels.whatsapp.recipient', $this->patientA->phone);
+        $this->assertNotEmpty($sendRes->json('data.pdf_url'));
+    }
+
+    /** @test */
+    public function it_requires_phone_for_whatsapp_and_allows_custom_phone_input()
+    {
+        Sanctum::actingAs($this->admin);
+
+        $patientNoPhone = Patient::create([
+            'first_name' => 'Jim',
+            'last_name' => 'Halpert',
+            'date_of_birth' => '1985-10-01',
+            'gender' => 'male',
+            'branch_id' => $this->branchA->id,
+            'status' => 'Active',
+        ]);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $patientNoPhone->id,
+            'items' => [['description' => 'Consultation', 'quantity' => 1, 'unit_price' => 50]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        // Fails when whatsapp selected and no phone
+        $failRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['whatsapp'],
+        ]);
+        $failRes->assertStatus(422);
+        $failRes->assertJsonValidationErrors(['phone']);
+
+        // Passes when phone is provided in request
+        $passRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['whatsapp'],
+            'phone' => '+1555999888',
+        ]);
+        $passRes->assertStatus(200);
+        $passRes->assertJsonPath('data.phone', '+1555999888');
+        $passRes->assertJsonPath('data.channels.whatsapp.recipient', '+1555999888');
+        $passRes->assertJsonPath('data.channels.whatsapp.has_pdf', true);
+        $this->assertEquals('+1555999888', $patientNoPhone->fresh()->phone);
+    }
+
+    /** @test */
+    public function it_validates_and_dispatches_sms_with_text_only_and_no_pdf()
+    {
+        Sanctum::actingAs($this->admin);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $this->patientA->id,
+            'items' => [['description' => 'X-Ray', 'quantity' => 1, 'unit_price' => 75]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        $sendRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['sms'],
+            'message' => 'Please review your quotation.',
+        ]);
+
+        $sendRes->assertStatus(200);
+        $sendRes->assertJsonPath('data.channels.sms.success', true);
+        $sendRes->assertJsonPath('data.channels.sms.has_pdf', false);
+        $sendRes->assertJsonPath('data.telephone_number', $this->patientA->phone);
+        $sendRes->assertJsonPath('data.channels.sms.recipient', $this->patientA->phone);
+    }
+
+    /** @test */
+    public function it_requires_telephone_number_for_sms_and_allows_custom_telephone_number_input()
+    {
+        Sanctum::actingAs($this->admin);
+
+        $patientNoPhone = Patient::create([
+            'first_name' => 'Pam',
+            'last_name' => 'Beesly',
+            'date_of_birth' => '1986-03-25',
+            'gender' => 'female',
+            'branch_id' => $this->branchA->id,
+            'status' => 'Active',
+        ]);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $patientNoPhone->id,
+            'items' => [['description' => 'Checkup', 'quantity' => 1, 'unit_price' => 60]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        // Fails when SMS selected and no phone
+        $failRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['sms'],
+        ]);
+        $failRes->assertStatus(422);
+        $failRes->assertJsonValidationErrors(['telephone_number']);
+
+        // Passes when telephone_number is provided in request
+        $passRes = $this->postJson("/api/v1/quotations/{$quotationId}/send", [
+            'channels' => ['sms'],
+            'telephone_number' => '+1555777666',
+        ]);
+        $passRes->assertStatus(200);
+        $passRes->assertJsonPath('data.telephone_number', '+1555777666');
+        $passRes->assertJsonPath('data.channels.sms.recipient', '+1555777666');
+        $passRes->assertJsonPath('data.channels.sms.has_pdf', false);
+        $this->assertEquals('+1555777666', $patientNoPhone->fresh()->phone);
+    }
+
+    /** @test */
+    public function it_downloads_pdf_through_public_token()
+    {
+        Sanctum::actingAs($this->admin);
+
+        $createRes = $this->postJson('/api/v1/quotations', [
+            'customer_type' => 'patient',
+            'patient_id' => $this->patientA->id,
+            'items' => [['description' => 'Veneer', 'quantity' => 2, 'unit_price' => 450]],
+        ]);
+        $quotationId = $createRes->json('data.id');
+
+        $sendRes = $this->postJson("/api/v1/quotations/{$quotationId}/send");
+        $token = $sendRes->json('data.token');
+
+        $pdfRes = $this->get("/api/v1/public/quotations/{$token}/pdf");
+        $pdfRes->assertStatus(200);
+        $pdfRes->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-1.4', $pdfRes->getContent());
+    }
 }

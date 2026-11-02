@@ -309,11 +309,13 @@ class QuotationController extends Controller
         ]);
 
         $channels = $request->input('channels', ['email']);
+        $recipientOptions = $request->only(['email', 'phone', 'phone_number', 'telephone_number']);
         $result = $this->notificationService->send(
             $quotation,
             $channels,
             $request->input('message'),
-            $request->user()?->id
+            $request->user()?->id,
+            $recipientOptions
         );
         Log::info("[Quotation API] Quotation $id dispatched.");
 
@@ -483,9 +485,12 @@ class QuotationController extends Controller
 
         $this->authorize('view', $quotation);
 
-        $format = $request->input('format', 'json');
-        if ($format === 'raw_pdf') {
+        $format = $request->input('format');
+        if ($format === 'raw_pdf' || $format === 'pdf' || (!$format && !$request->wantsJson())) {
             return $this->pdfService->response($quotation, 'pdf');
+        }
+        if ($format === 'html') {
+            return $this->pdfService->response($quotation, 'html');
         }
 
         $branding = $this->pdfService->getBranding($quotation);

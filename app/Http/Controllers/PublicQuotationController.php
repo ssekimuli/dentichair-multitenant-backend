@@ -67,5 +67,14 @@ class PublicQuotationController extends Controller
             'data' => new QuotationPublicResource($quotation),
         ]);
     }
+
+    /**
+     * Download / Stream Quotation PDF (Public)
+     */
+    public function pdf(string $token): \Illuminate\Http\Response
+    {
+        [$quotation] = $this->approvalService->validatePublicToken($token);
+        return app(\App\Services\Quotation\QuotationPdfService::class)->response($quotation, 'pdf');
+    }
 }
 

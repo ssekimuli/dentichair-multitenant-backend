@@ -109,7 +109,9 @@ class QuotationNotificationService
                 }
             }
 
-           
+            if (!$mediaUrl) {
+                $mediaUrl = url("/public/quotations/{$rawToken}/pdf");
+            }
         }
 
         $results = [

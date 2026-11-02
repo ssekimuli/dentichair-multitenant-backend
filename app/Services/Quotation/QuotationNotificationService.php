@@ -144,7 +144,7 @@ class QuotationNotificationService
                 try {
                     Mail::raw($emailBody, function ($m) use ($recipientEmail, $quotation, $clinicName, $pdfBinary, $pdfFileName) {
                         $m->to($recipientEmail)
-                          ->subject("Quotation #{$quotation->quotation_number} from {$clinicName}");
+                          ->subject("Quotation- from {$clinicName}");
                         if ($pdfBinary) {
                             $m->attachData($pdfBinary, $pdfFileName, ['mime' => 'application/pdf']);
                         }

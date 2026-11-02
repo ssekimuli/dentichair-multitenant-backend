@@ -162,19 +162,19 @@ class QuotationPdfService
 
         if (extension_loaded('gd')) {
             $img = imagecreatetruecolor($w, $h);
-            $blue = imagecolorallocate($img, 30, 64, 175); // #1e40af
+            $green = imagecolorallocate($img, 15, 118, 110); // #0F766E
             $white = imagecolorallocate($img, 255, 255, 255);
-            $cyan = imagecolorallocate($img, 56, 189, 248);
+            $lightTeal = imagecolorallocate($img, 45, 212, 191);
 
-            imagefill($img, 0, 0, $blue);
+            imagefill($img, 0, 0, $green);
 
             // Draw dental cross emblem
             imagefilledrectangle($img, 46, 25, 74, 95, $white);
             imagefilledrectangle($img, 25, 46, 95, 74, $white);
 
             // Inner accent
-            imagefilledrectangle($img, 53, 33, 67, 87, $cyan);
-            imagefilledrectangle($img, 33, 53, 87, 67, $cyan);
+            imagefilledrectangle($img, 53, 33, 67, 87, $lightTeal);
+            imagefilledrectangle($img, 33, 53, 87, 67, $lightTeal);
 
             ob_start();
             imagejpeg($img, null, 90);
@@ -217,110 +217,195 @@ class QuotationPdfService
         // Resolve logo (either from upload or default practice emblem)
         $logoInfo = $this->resolveLogoImage($branding['clinicLogo']) ?: $this->generateDefaultLogo();
 
-        // Calculate display dimensions for logo (height: 36pt, width: proportional up to 85pt)
-        $logoHeight = 36.0;
+        // Calculate display dimensions for logo (height: 38pt, width: proportional up to 75pt)
+        $logoHeight = 38.0;
         $aspectRatio = $logoInfo['height'] > 0 ? ($logoInfo['width'] / $logoInfo['height']) : 1.0;
         $logoWidth = round($logoHeight * $aspectRatio, 1);
-        if ($logoWidth > 85.0) {
-            $logoWidth = 85.0;
+        if ($logoWidth > 75.0) {
+            $logoWidth = 75.0;
             $logoHeight = round($logoWidth / $aspectRatio, 1);
         }
 
         $stream = [];
         $stream[] = "q";
 
-        // Header blue banner
-        $stream[] = "0.12 0.25 0.69 rg"; // #1e40af
-        $stream[] = "40 758 515 44 re f";
-
-        // Render logo image
-        $logoY = 762;
+        // Render logo image on top left
+        $logoY = 752;
         $stream[] = "q";
-        $stream[] = sprintf("%.2f 0 0 %.2f 46 %.2f cm", $logoWidth, $logoHeight, $logoY);
+        $stream[] = sprintf("%.2f 0 0 %.2f 40 %.2f cm", $logoWidth, $logoHeight, $logoY);
         $stream[] = "/Im1 Do";
         $stream[] = "Q";
 
-        // Header text beside logo
-        $textX = round(46 + $logoWidth + 10);
-        $stream[] = "1 1 1 rg";
-        $stream[] = "BT /F1 15 Tf {$textX} 776 Td (" . $clinicName . " - QUOTATION) Tj ET";
-        $stream[] = "0 0 0 rg";
+        // Header clinic info beside logo
+        $textX = round(40 + $logoWidth + 12);
+        // Clinic Name in Bold Green (#0F766E)
+        $stream[] = "0.06 0.46 0.43 rg";
+        $stream[] = "BT /F1 13.5 Tf {$textX} 784 Td (" . $clinicName . ") Tj ET";
 
-        // Metadata block
-        $stream[] = "BT /F1 10 Tf 50 735 Td (Quote #: " . $quoteNumber . ") Tj ET";
-        $stream[] = "BT /F1 10 Tf 50 720 Td (Status: " . $status . ") Tj ET";
-        $stream[] = "BT /F1 10 Tf 50 705 Td (Date: " . $quoteDate . " | Valid Until: " . $validUntil . ") Tj ET";
-        $customerEmail = $this->sanitizePdfString($quotation->customer_email ?? '');
+        // Subtitle & Address in slate
+        $stream[] = "0.39 0.45 0.55 rg";
+        $subtitle = $this->sanitizePdfString($branding['subtitle'] ?? 'Dental Care Practice');
+        if (!empty($subtitle)) {
+            $stream[] = "BT /F1 8.5 Tf {$textX} 772 Td (" . $subtitle . ") Tj ET";
+        }
+        $stream[] = "BT /F1 8 Tf {$textX} 761 Td (" . $clinicAddress . ") Tj ET";
+        $contactStr = "Email: " . $this->sanitizePdfString($branding['clinicEmail'] ?? '') . ($clinicPhone ? " • Phone: " . $clinicPhone : "");
+        $stream[] = "BT /F1 8 Tf {$textX} 750 Td (" . $contactStr . ") Tj ET";
+
+        // Top Right: Dark Pill Badge "TREATMENT QUOTATION"
+        $stream[] = "0.06 0.09 0.16 rg"; // #0F172A
+        $stream[] = "375 780 180 20 re f";
+        $stream[] = "1 1 1 rg";
+        $stream[] = "BT /F1 9.5 Tf 395 786 Td (TREATMENT QUOTATION) Tj ET";
+
+        // Meta under badge
+        $stream[] = "0.06 0.09 0.16 rg";
+        $stream[] = "BT /F1 9 Tf 375 765 Td (Quote #: " . $quoteNumber . ") Tj ET";
+        $stream[] = "0.39 0.45 0.55 rg";
+        $stream[] = "BT /F1 8.5 Tf 375 753 Td (Date: " . $quoteDate . ") Tj ET";
+        // Valid until in Green (#0F766E)
+        $stream[] = "0.06 0.46 0.43 rg";
+        $stream[] = "BT /F1 8.5 Tf 375 741 Td (Valid Until: " . $validUntil . ") Tj ET";
+
+        // Solid Green Horizontal Divider Line
+        $stream[] = "0.06 0.46 0.43 RG";
+        $stream[] = "2.5 w";
+        $stream[] = "40 732 m 555 732 l S";
+
+        // Patient Details & Clinical Reference Box
+        $stream[] = "0.97 0.98 0.99 rg"; // #F8FAFC
+        $stream[] = "40 668 515 56 re f";
+        $stream[] = "0.80 0.84 0.88 RG"; // #CBD5E1
+        $stream[] = "1 w";
+        $stream[] = "40 668 515 56 re S";
+
+        // Vertical divider inside card
+        $stream[] = "0.88 0.91 0.94 RG"; // #E2E8F0
+        $stream[] = "0.8 w";
+        $stream[] = "285 670 m 285 722 l S";
+
+        // Left: Patient / Client Details
+        $custLabel = $quotation->customer_type === 'patient' ? "PATIENT DETAILS:" : "CLIENT DETAILS:";
+        $stream[] = "0.39 0.45 0.55 rg";
+        $stream[] = "BT /F1 7.5 Tf 50 712 Td (" . $custLabel . ") Tj ET";
+        $stream[] = "0.06 0.09 0.16 rg";
+        $stream[] = "BT /F1 12 Tf 50 697 Td (" . $customerName . ") Tj ET";
+        $stream[] = "0.20 0.25 0.35 rg";
         $customerPhone = $this->sanitizePdfString($quotation->customer_phone ?? '');
-        $stream[] = "BT /F1 10 Tf 320 735 Td (Customer: " . $customerName . ") Tj ET";
-        $yRight = 720;
-        if (!empty($customerEmail)) {
-            $stream[] = "BT /F1 9 Tf 320 {$yRight} Td (Email: {$customerEmail}) Tj ET";
-            $yRight -= 12;
-        }
-        if (!empty($customerPhone)) {
-            $stream[] = "BT /F1 9 Tf 320 {$yRight} Td (Phone: {$customerPhone}) Tj ET";
-            $yRight -= 12;
-        }
-        if ($quotation->dentist) {
-            $stream[] = "BT /F1 9 Tf 320 {$yRight} Td (Dentist: Dr. " . $this->sanitizePdfString($quotation->dentist->name) . ") Tj ET";
-        }
+        $customerEmail = $this->sanitizePdfString($quotation->customer_email ?? '');
+        $contactLine = $customerPhone ? "Phone: " . $customerPhone : ($customerEmail ? "Email: " . $customerEmail : "Contact on file");
+        $stream[] = "BT /F1 8.5 Tf 50 684 Td (" . $contactLine . ") Tj ET";
+
+        // Right: Clinical Reference
+        $dentistName = $quotation->dentist ? "Dr. " . $this->sanitizePdfString($quotation->dentist->name) : "General Practice";
+        $sourceType = strtoupper(str_replace('_', ' ', $quotation->source_type ?? 'MANUAL'));
+        $stream[] = "0.39 0.45 0.55 rg";
+        $stream[] = "BT /F1 7.5 Tf 295 712 Td (CLINICAL REFERENCE:) Tj ET";
+        $stream[] = "0.20 0.25 0.35 rg";
+        $stream[] = "BT /F1 8.5 Tf 295 699 Td (Attending: " . $dentistName . ") Tj ET";
+        $stream[] = "BT /F1 8.5 Tf 295 687 Td (Source: " . $sourceType . ") Tj ET";
+        // Status in Green
+        $stream[] = "0.06 0.46 0.43 rg";
+        $stream[] = "BT /F1 8.5 Tf 295 675 Td (Status: " . $status . ") Tj ET";
+
+        // Section Title: PROPOSED SERVICES & PROCEDURES
+        $stream[] = "0.28 0.33 0.41 rg";
+        $stream[] = "BT /F1 8.5 Tf 40 648 Td (PROPOSED SERVICES & PROCEDURES) Tj ET";
 
         // Table Header
-        $stream[] = "0.95 0.96 0.98 rg";
-        $stream[] = "40 670 515 20 re f";
-        $stream[] = "0 0 0 rg";
-        $stream[] = "BT /F1 9 Tf 50 676 Td (Item Description) Tj ET";
-        $stream[] = "BT /F1 9 Tf 280 676 Td (Tooth) Tj ET";
-        $stream[] = "BT /F1 9 Tf 330 676 Td (Qty) Tj ET";
-        $stream[] = "BT /F1 9 Tf 380 676 Td (Unit Price) Tj ET";
-        $stream[] = "BT /F1 9 Tf 470 676 Td (Total (" . $currency . ")) Tj ET";
+        $stream[] = "0.97 0.98 0.99 rg";
+        $stream[] = "40 626 515 18 re f";
+        $stream[] = "0.80 0.84 0.88 RG";
+        $stream[] = "1 w";
+        $stream[] = "40 626 515 18 re S";
+        $stream[] = "0.06 0.09 0.16 rg";
+        $stream[] = "BT /F1 8 Tf 46 631 Td (#) Tj ET";
+        $stream[] = "BT /F1 8 Tf 68 631 Td (Procedure / Item Description) Tj ET";
+        $stream[] = "BT /F1 8 Tf 275 631 Td (Tooth) Tj ET";
+        $stream[] = "BT /F1 8 Tf 325 631 Td (Qty) Tj ET";
+        $stream[] = "BT /F1 8 Tf 375 631 Td (Unit Price (" . $currency . ")) Tj ET";
+        $stream[] = "BT /F1 8 Tf 465 631 Td (Total (" . $currency . ")) Tj ET";
 
-        $y = 650;
+        $y = 608;
         foreach ($quotation->items as $idx => $item) {
-            if ($y < 120) {
+            if ($y < 140) {
                 break;
             }
-            $desc = $this->sanitizePdfString(substr($item->description, 0, 40));
+            $desc = $this->sanitizePdfString(substr($item->description, 0, 38));
             $tooth = $this->sanitizePdfString($item->tooth_number ?? '-');
             $qty = (string) $item->quantity;
             $unitPrice = number_format($item->unit_price, 2);
             $total = number_format($item->total, 2);
 
-            $stream[] = "BT /F1 9 Tf 50 " . $y . " Td (" . $desc . ") Tj ET";
-            $stream[] = "BT /F1 9 Tf 280 " . $y . " Td (" . $tooth . ") Tj ET";
-            $stream[] = "BT /F1 9 Tf 330 " . $y . " Td (" . $qty . ") Tj ET";
-            $stream[] = "BT /F1 9 Tf 380 " . $y . " Td (" . $unitPrice . ") Tj ET";
-            $stream[] = "BT /F1 9 Tf 470 " . $y . " Td (" . $total . ") Tj ET";
+            // Light horizontal row border
+            $stream[] = "0.88 0.91 0.94 RG";
+            $stream[] = "0.5 w";
+            $stream[] = "40 " . ($y - 4) . " m 555 " . ($y - 4) . " l S";
 
-            $y -= 18;
-        }
+            $stream[] = "0.39 0.45 0.55 rg";
+            $stream[] = "BT /F1 8 Tf 46 " . $y . " Td (" . ($idx + 1) . ") Tj ET";
+            $stream[] = "0.06 0.09 0.16 rg";
+            $stream[] = "BT /F1 8.5 Tf 68 " . $y . " Td (" . $desc . ") Tj ET";
+            $stream[] = "0.20 0.25 0.35 rg";
+            $stream[] = "BT /F1 8 Tf 280 " . $y . " Td (" . $tooth . ") Tj ET";
+            $stream[] = "BT /F1 8 Tf 330 " . $y . " Td (" . $qty . ") Tj ET";
+            $stream[] = "BT /F1 8 Tf 385 " . $y . " Td (" . $unitPrice . ") Tj ET";
+            // Total in bold dark
+            $stream[] = "0.06 0.09 0.16 rg";
+            $stream[] = "BT /F1 8.5 Tf 475 " . $y . " Td (" . $total . ") Tj ET";
 
-        // Totals
-        $y -= 10;
-        $stream[] = "0.8 0.8 0.8 rg";
-        $stream[] = "40 " . ($y + 12) . " 515 1 re f";
-        $stream[] = "0 0 0 rg";
-
-        $subtotal = number_format($quotation->subtotal, 2) . " " . $currency;
-        $discount = number_format($quotation->discount_amount, 2) . " " . $currency;
-        $tax = number_format($quotation->tax_amount, 2) . " " . $currency;
-        $grandTotal = number_format($quotation->total, 2) . " " . $currency;
-
-        $stream[] = "BT /F1 10 Tf 350 " . $y . " Td (Subtotal: " . $subtotal . ") Tj ET";
-        $y -= 16;
-        if ($quotation->discount_amount > 0) {
-            $stream[] = "BT /F1 10 Tf 350 " . $y . " Td (Discount: -" . $discount . ") Tj ET";
             $y -= 16;
         }
-        if ($quotation->tax_amount > 0) {
-            $stream[] = "BT /F1 10 Tf 350 " . $y . " Td (Tax: +" . $tax . ") Tj ET";
-            $y -= 16;
-        }
-        $stream[] = "BT /F1 12 Tf 350 " . $y . " Td (TOTAL: " . $grandTotal . ") Tj ET";
 
-        // Footer note
-        $stream[] = "BT /F1 8 Tf 50 50 Td (This quotation is generated by " . $clinicName . " and is valid until " . $validUntil . ".) Tj ET";
+        // Bottom Grid: Left (Notes & Terms), Right (Totals Box)
+        $subtotal = number_format($quotation->subtotal, 2);
+        $grandTotal = $currency . " " . number_format($quotation->total, 2);
+
+        // Notes & Terms on Left
+        $notesText = $this->sanitizePdfString($quotation->notes ? substr($quotation->notes, 0, 80) : 'Treatment plan estimate');
+        $stream[] = "0.28 0.33 0.41 rg";
+        $stream[] = "BT /F1 8 Tf 40 " . ($y - 8) . " Td (Notes / Clinical Recommendations:) Tj ET";
+        $stream[] = "0.20 0.25 0.35 rg";
+        $stream[] = "BT /F1 8 Tf 40 " . ($y - 19) . " Td (" . $notesText . ") Tj ET";
+
+        $stream[] = "0.28 0.33 0.41 rg";
+        $stream[] = "BT /F1 8 Tf 40 " . ($y - 34) . " Td (Terms & Conditions:) Tj ET";
+        $stream[] = "0.39 0.45 0.55 rg";
+        $stream[] = "BT /F1 7.5 Tf 40 " . ($y - 45) . " Td (1. Quotation is valid for 14 days from date of issue.) Tj ET";
+        $stream[] = "BT /F1 7.5 Tf 40 " . ($y - 55) . " Td (2. Payment terms as agreed upon consultation.) Tj ET";
+
+        // Totals Box on Right
+        $stream[] = "0.98 0.99 0.98 rg"; // #FAFCFB
+        $stream[] = "340 " . ($y - 62) . " 215 58 re f";
+        $stream[] = "0.80 0.84 0.88 RG"; // #CBD5E1
+        $stream[] = "1 w";
+        $stream[] = "340 " . ($y - 62) . " 215 58 re S";
+
+        $stream[] = "0.39 0.45 0.55 rg";
+        $stream[] = "BT /F1 8.5 Tf 352 " . ($y - 20) . " Td (Subtotal:) Tj ET";
+        $stream[] = "0.06 0.09 0.16 rg";
+        $stream[] = "BT /F1 8.5 Tf 460 " . ($y - 20) . " Td (" . $currency . " " . $subtotal . ") Tj ET";
+
+        // Divider in totals box
+        $stream[] = "0.88 0.91 0.94 RG";
+        $stream[] = "0.8 w";
+        $stream[] = "348 " . ($y - 28) . " m 547 " . ($y - 28) . " l S";
+
+        // TOTAL DUE in bold green (#0F766E)
+        $stream[] = "0.06 0.09 0.16 rg";
+        $stream[] = "BT /F1 10 Tf 352 " . ($y - 46) . " Td (TOTAL DUE:) Tj ET";
+        $stream[] = "0.06 0.46 0.43 rg"; // #0F766E Green!
+        $stream[] = "BT /F1 12 Tf 435 " . ($y - 46) . " Td (" . $grandTotal . ") Tj ET";
+
+        // Signatures at bottom of page
+        $stream[] = "0.58 0.64 0.72 RG"; // line
+        $stream[] = "1 w";
+        $stream[] = "40 70 m 230 70 l S";
+        $stream[] = "365 70 m 555 70 l S";
+
+        $stream[] = "0.39 0.45 0.55 rg";
+        $stream[] = "BT /F1 8 Tf 40 58 Td (Authorized Clinician Signature) Tj ET";
+        $stream[] = "BT /F1 8 Tf 365 58 Td (Patient / Client Acceptance Signature) Tj ET";
         $stream[] = "Q";
 
         $content = implode("\n", $stream);

@@ -84,6 +84,13 @@ class QuotationNotificationService
         $defaultMessage = "Dear {$customerName}, your quotation #{$quotation->quotation_number} from {$clinicName} for {$totalFormatted} is ready. Review and approve online here: {$approvalUrl}";
         $messageText = !empty($customMessage) ? "{$customMessage}\n\nReview link: {$approvalUrl}" : $defaultMessage;
 
+        // Email description: do not include the review link since the PDF document is directly attached
+        $defaultEmailMessage = "Dear {$customerName}, please find attached your quotation #{$quotation->quotation_number} from {$clinicName} for {$totalFormatted}.\n\nThank you,\n{$clinicName}";
+        $emailBody = !empty($customMessage) ? $customMessage : $defaultEmailMessage;
+        $emailBody = preg_replace('/(\r?\n)*Review link:\s*[^\s]+/i', '', $emailBody);
+        $emailBody = preg_replace('/(\r?\n)*Review and approve online here:\s*[^\s]+/i', '', $emailBody);
+        $emailBody = trim($emailBody);
+
         // Generate PDF when Email or WhatsApp is selected
         $pdfBinary = null;
         $pdfFileName = "quotation-{$quotation->quotation_number}.pdf";
@@ -131,11 +138,11 @@ class QuotationNotificationService
             }
         }
 
-        // 1. Email Channel (Gmail / Email with PDF attachment and description)
+        // 1. Email Channel (Gmail / Email with PDF attachment and description, without review link)
         if (in_array('email', $channels)) {
             if (!empty($recipientEmail)) {
                 try {
-                    Mail::raw($messageText, function ($m) use ($recipientEmail, $quotation, $clinicName, $pdfBinary, $pdfFileName) {
+                    Mail::raw($emailBody, function ($m) use ($recipientEmail, $quotation, $clinicName, $pdfBinary, $pdfFileName) {
                         $m->to($recipientEmail)
                           ->subject("Quotation #{$quotation->quotation_number} from {$clinicName}");
                         if ($pdfBinary) {

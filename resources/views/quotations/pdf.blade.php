@@ -13,6 +13,36 @@
             margin: 0;
             padding: 30px 36px;
             background-color: #FFFFFF;
+            position: relative;
+        }
+
+        /* Subtle Background Watermark */
+        .watermark-container {
+            position: fixed;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            opacity: 0.055;
+            text-align: center;
+            pointer-events: none;
+            width: 100%;
+        }
+
+        .watermark-logo {
+            max-width: 250px;
+            max-height: 250px;
+            object-fit: contain;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        .watermark-text {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0F172A;
+            letter-spacing: 4px;
+            text-transform: uppercase;
         }
 
         .header {
@@ -299,6 +329,14 @@
     </style>
 </head>
 <body>
+    <!-- Subtle Background Watermark -->
+    <div class="watermark-container">
+        @if(!empty($clinicLogo))
+            <img src="{{ $clinicLogo }}" alt="" class="watermark-logo"><br>
+        @endif
+        <div class="watermark-text">{{ $clinicName }}</div>
+    </div>
+
     <!-- Top Header -->
     <div class="header">
         <div class="clinic-header">

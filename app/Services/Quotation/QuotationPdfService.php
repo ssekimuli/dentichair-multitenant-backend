@@ -229,6 +229,21 @@ class QuotationPdfService
         $stream = [];
         $stream[] = "q";
 
+        // Subtle Watermark in background center (opacity ~0.065 via /GS1)
+        $stream[] = "q";
+        $stream[] = "/GS1 gs";
+        // Logo watermark centered at lower-middle page
+        $stream[] = "q";
+        $stream[] = "210.00 0 0 210.00 192.64 240.00 cm";
+        $stream[] = "/Im1 Do";
+        $stream[] = "Q";
+        // Watermark clinic name text beneath logo
+        $wmText = strtoupper($clinicName);
+        $stream[] = "0.20 0.25 0.30 rg";
+        $wmTextX = max(40, round(297 - (strlen($wmText) * 4.2)));
+        $stream[] = "BT /F1 13 Tf {$wmTextX} 220 Td (" . $wmText . ") Tj ET";
+        $stream[] = "Q";
+
         // Render logo image on top left
         $logoY = 752;
         $stream[] = "q";
@@ -411,14 +426,15 @@ class QuotationPdfService
         $content = implode("\n", $stream);
         $contentLength = strlen($content);
 
-        // Build valid PDF document structure with Image XObject
+        // Build valid PDF document structure with Image XObject and ExtGState (for watermark transparency)
         $objects = [];
         $objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
         $objects[2] = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
-        $objects[3] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> >> >>";
+        $objects[3] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> /ExtGState << /GS1 7 0 R >> >> >>";
         $objects[4] = "<< /Length " . $contentLength . " >>\nstream\n" . $content . "\nendstream";
         $objects[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
         $objects[6] = "<< /Type /XObject /Subtype /Image /Width " . (int)$logoInfo['width'] . " /Height " . (int)$logoInfo['height'] . " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($logoInfo['jpeg']) . " >>\nstream\n" . $logoInfo['jpeg'] . "\nendstream";
+        $objects[7] = "<< /Type /ExtGState /CA 0.065 /ca 0.065 /BM /Normal >>";
 
         $pdf = "%PDF-1.4\n";
         $offsets = [];

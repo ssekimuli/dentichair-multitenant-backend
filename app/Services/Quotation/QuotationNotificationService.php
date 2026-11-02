@@ -85,7 +85,7 @@ class QuotationNotificationService
         $messageText = !empty($customMessage) ? "{$customMessage}\n\nReview link: {$approvalUrl}" : $defaultMessage;
 
         // Email description: do not include the review link since the PDF document is directly attached
-        $defaultEmailMessage = "Dear {$customerName}, please find attached your quotation #{$quotation->quotation_number} from {$clinicName} for {$totalFormatted}.\n\nThank you,\n{$clinicName}";
+        $defaultEmailMessage = "Dear {$customerName}, please find attached your quotation from {$clinicName} for {$totalFormatted}.\n\nThank you,\n{$clinicName}";
         $emailBody = !empty($customMessage) ? $customMessage : $defaultEmailMessage;
         $emailBody = preg_replace('/(\r?\n)*Review link:\s*[^\s]+/i', '', $emailBody);
         $emailBody = preg_replace('/(\r?\n)*Review and approve online here:\s*[^\s]+/i', '', $emailBody);
@@ -109,13 +109,7 @@ class QuotationNotificationService
                 }
             }
 
-            if (!$mediaUrl) {
-                Storage::disk('public')->put("quotations/{$pdfFileName}", $pdfBinary);
-                $mediaUrl = Storage::disk('public')->url("quotations/{$pdfFileName}");
-                if (!str_starts_with($mediaUrl, 'http://') && !str_starts_with($mediaUrl, 'https://')) {
-                    $mediaUrl = url($mediaUrl);
-                }
-            }
+           
         }
 
         $results = [
@@ -179,10 +173,7 @@ class QuotationNotificationService
 
                 // Fallback to text WhatsApp if media dispatch encounters an issue
                 if (isset($res['success']) && !$res['success']) {
-                    Log::warning("sendMediaWhatsApp failed, attempting fallback to standard WhatsApp text", [
-                        'quotation_id' => $quotation->id,
-                        'error' => $res['error'] ?? null,
-                    ]);
+                    
                     $textRes = NotificationService::sendWhatsApp($recipientPhone, $messageText);
                     if (!empty($textRes['success'])) {
                         $res = $textRes;

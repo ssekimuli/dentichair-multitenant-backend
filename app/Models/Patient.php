@@ -214,4 +214,9 @@ class Patient extends Model
         return $this->hasMany(XrayRequest::class);
     }
 
+    public function referrals(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PatientReferral::class)->orderBy('referral_date', 'desc')->orderBy('id', 'desc');
+    }
+
 }

@@ -187,9 +187,51 @@ class SyncController extends Controller
             case 'clinical_records':
                 return $this->processMedicalHistory($operation, $data, $clientId);
 
+            case 'patient_referral':
+            case 'patient_referrals':
+            case 'referral':
+            case 'referrals':
+                return $this->processPatientReferral($operation, $data, $clientId);
+
             default:
                 return ['message' => "Entity {$entity} processed"];
         }
+    }
+
+    protected function processPatientReferral(string $operation, array $data, ?string $clientId): array
+    {
+        $clientUuid = $data['client_uuid'] ?? $data['clientUuid'] ?? $clientId;
+        if ($operation === 'create') {
+            if (!empty($clientUuid)) {
+                $existing = \App\Models\PatientReferral::where('client_uuid', $clientUuid)->first();
+                if ($existing) {
+                    return ['server_id' => $existing->id, 'action' => 'matched_existing'];
+                }
+            }
+            $data['client_uuid'] = $clientUuid;
+            $ref = \App\Models\PatientReferral::create($data);
+            return ['server_id' => $ref->id, 'action' => 'created'];
+        } elseif ($operation === 'update') {
+            $id = $data['id'] ?? null;
+            $ref = ($id && is_numeric($id))
+                ? \App\Models\PatientReferral::find($id)
+                : (!empty($clientUuid) ? \App\Models\PatientReferral::where('client_uuid', $clientUuid)->first() : null);
+            if ($ref) {
+                $ref->update($data);
+                return ['server_id' => $ref->id, 'action' => 'updated'];
+            }
+        } elseif ($operation === 'delete') {
+            $id = $data['id'] ?? null;
+            $ref = ($id && is_numeric($id))
+                ? \App\Models\PatientReferral::find($id)
+                : (!empty($clientUuid) ? \App\Models\PatientReferral::where('client_uuid', $clientUuid)->first() : null);
+            if ($ref) {
+                $deletedId = $ref->id;
+                $ref->delete();
+                return ['server_id' => $deletedId, 'action' => 'deleted'];
+            }
+        }
+        return ['action' => 'skipped'];
     }
 
     protected function processPatient(string $operation, array $data, ?string $clientId): array

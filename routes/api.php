@@ -216,6 +216,16 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::put('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'update']);
     Route::delete('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'destroy']);
 
+    // Patient Referral Notes (HMS Form 032)
+    Route::get('/patient-referrals', [\App\Http\Controllers\PatientReferralController::class, 'index']);
+    Route::post('/patient-referrals', [\App\Http\Controllers\PatientReferralController::class, 'store']);
+    Route::get('/patient-referrals/{id}', [\App\Http\Controllers\PatientReferralController::class, 'show']);
+    Route::put('/patient-referrals/{id}', [\App\Http\Controllers\PatientReferralController::class, 'update']);
+    Route::delete('/patient-referrals/{id}', [\App\Http\Controllers\PatientReferralController::class, 'destroy']);
+    Route::post('/patient-referrals/{id}/send', [\App\Http\Controllers\PatientReferralController::class, 'sendReferral']);
+    Route::get('/patients/{patientId}/referrals', [\App\Http\Controllers\PatientReferralController::class, 'index']);
+    Route::post('/patients/{patientId}/referrals', [\App\Http\Controllers\PatientReferralController::class, 'store']);
+
     // X-Ray / Radiology Requisition Requests
     Route::get('/xray-requests', [\App\Http\Controllers\XrayRequestController::class, 'index']);
     Route::post('/xray-requests', [\App\Http\Controllers\XrayRequestController::class, 'store']);

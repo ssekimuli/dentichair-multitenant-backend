@@ -326,16 +326,19 @@ class PatientReferralController extends Controller
     }
 
     /**
-     * POST /api/patient-referrals/{id}/send
+     * POST /api/patient-referrals/{id?}/send
      * Shares the referral note (and optional generated PDF) via Email or WhatsApp to Patient or Hospital.
      */
-    public function sendReferral(Request $request, $id): JsonResponse
+    public function sendReferral(Request $request, $id = null): JsonResponse
     {
         $this->ensureTableExists();
 
-        $referral = is_numeric($id)
-            ? PatientReferral::with(['patient', 'branch'])->find($id)
-            : PatientReferral::with(['patient', 'branch'])->where('client_uuid', $id)->first();
+        $referral = null;
+        if (!empty($id)) {
+            $referral = is_numeric($id)
+                ? PatientReferral::with(['patient', 'branch'])->find($id)
+                : PatientReferral::with(['patient', 'branch'])->where('client_uuid', $id)->first();
+        }
 
         $validated = $request->validate([
             'channel' => 'required|in:email,whatsapp',
@@ -344,6 +347,12 @@ class PatientReferralController extends Controller
             'custom_message' => 'nullable|string',
             'pdf_base64' => 'nullable|string',
             'file_name' => 'nullable|string',
+            'patient_name' => 'nullable|string',
+            'patient_number' => 'nullable|string',
+            'referred_to' => 'nullable|string',
+            'from_health_unit' => 'nullable|string',
+            'diagnosis' => 'nullable|string',
+            'reason_for_referral' => 'nullable|string',
         ]);
 
         $channel = $validated['channel'];
@@ -353,98 +362,108 @@ class PatientReferralController extends Controller
 
         $settings = class_exists(\App\Models\GlobalSetting::class) ? \App\Models\GlobalSetting::getSettings() : null;
         $clinicName = $referral?->from_health_unit
-            ?: ($settings?->clinic_name ?? config('app.name', 'Dental Clinic'));
+            ?: ($validated['from_health_unit'] ?? ($settings?->clinic_name ?? config('app.name', 'Dental Clinic')));
 
         $patientName = $referral?->patient_name
-            ?: ($referral?->patient ? trim($referral->patient->first_name . ' ' . $referral->patient->last_name) : 'Patient');
-        $referredTo = $referral?->referred_to ?: 'Receiving Hospital / Specialist';
+            ?: ($validated['patient_name'] ?? ($referral?->patient ? trim($referral->patient->first_name . ' ' . $referral->patient->last_name) : 'Patient'));
+        $patientNumber = $referral?->patient_number ?: ($validated['patient_number'] ?? 'N/A');
+        $referredTo = $referral?->referred_to ?: ($validated['referred_to'] ?? 'Receiving Hospital / Specialist');
+        $diagnosis = $referral?->diagnosis ?: ($validated['diagnosis'] ?? 'See attached note');
+        $reasonForReferral = $referral?->reason_for_referral ?: ($validated['reason_for_referral'] ?? 'Specialist evaluation / Management');
+
         $fileName = $validated['file_name'] ?: ('HMS_Form_032_Referral_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $patientName) . '.pdf');
 
         $links = [];
         $mailAttachments = [];
         $uploadedUrl = null;
+        $relPath = null;
         $localTempPath = null;
+        $rawBytes = null;
 
         if (!empty($pdfBase64)) {
-            try {
-                $rawBytes = base64_decode($pdfBase64);
-                if ($rawBytes !== false && strlen($rawBytes) > 0) {
+            $decoded = base64_decode($pdfBase64);
+            if ($decoded !== false && strlen($decoded) > 0) {
+                $rawBytes = $decoded;
+            }
+        }
+
+        try {
+            if ($rawBytes) {
+                // Attach in-memory to email without saving to storage
+                $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromData(
+                    fn () => $rawBytes,
+                    $fileName
+                )->withMime('application/pdf');
+
+                if ($channel === 'whatsapp') {
                     $relPath = 'referrals/' . uniqid('ref_') . '_' . $fileName;
                     Storage::disk('public')->put($relPath, $rawBytes);
                     $localTempPath = storage_path('app/public/' . $relPath);
                     $uploadedUrl = asset('storage/' . $relPath);
+                }
+            }
 
-                    if (file_exists($localTempPath)) {
-                        $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($localTempPath)
-                            ->as($fileName)
-                            ->withMime('application/pdf');
+            if ($channel === 'email') {
+                $subject = "HMS Form 032 Referral Note - {$patientName} (To: {$referredTo})";
+                $viewData = [
+                    'name' => ($validated['recipient_type'] ?? 'patient') === 'hospital' ? $referredTo : $patientName,
+                    'clinicName' => $clinicName,
+                    'links' => $links,
+                    'customMessage' => $customMessage,
+                ];
+
+                try {
+                    $mail = new \App\Mail\GenericMarkdownMail(
+                        'emails.patient-documents',
+                        $viewData,
+                        $subject,
+                        $mailAttachments
+                    );
+                    Mail::to($recipient)->send($mail);
+                } catch (\Throwable $e) {
+                    $err = $e->getMessage();
+                    Log::error("Email send failed for referral: " . $err);
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Mail server error: ' . $err,
+                    ], 500);
+                }
+            }
+
+            if ($channel === 'whatsapp') {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $recipient);
+                $msg = !empty($customMessage)
+                    ? $customMessage
+                    : ("*HMS FORM 032: REFERRAL NOTE*\n"
+                        . "From: {$clinicName}\n"
+                        . "To: {$referredTo}\n"
+                        . "Patient: {$patientName} ({$patientNumber})\n"
+                        . "Diagnosis: {$diagnosis}\n"
+                        . "Reason for Referral: {$reasonForReferral}");
+
+                try {
+                    \App\Services\NotificationService::sendWhatsApp($cleanPhone, $msg);
+                    if ($uploadedUrl) {
+                        \App\Services\NotificationService::sendMediaWhatsApp($cleanPhone, $uploadedUrl, $fileName, "Referral Note - {$patientName}");
                     }
-                    $links[] = [
-                        'name' => $fileName,
-                        'url' => $uploadedUrl,
-                    ];
+                } catch (\Throwable $e) {
+                    Log::warning("WhatsApp referral send warning: " . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                Log::warning('Failed to store referral PDF attachment: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Referral letter dispatched via " . ucfirst($channel) . " to {$recipient}.",
+            ]);
+        } finally {
+            // Automatically clean up and remove any temporary referral PDF from storage
+            if ($relPath && Storage::disk('public')->exists($relPath)) {
+                Storage::disk('public')->delete($relPath);
+            }
+            if ($localTempPath && file_exists($localTempPath)) {
+                @unlink($localTempPath);
             }
         }
-
-        if ($channel === 'email') {
-            $subject = "HMS Form 032 Referral Note - {$patientName} (To: {$referredTo})";
-            $viewData = [
-                'name' => ($validated['recipient_type'] ?? 'patient') === 'hospital' ? $referredTo : $patientName,
-                'clinicName' => $clinicName,
-                'links' => $links,
-                'customMessage' => $customMessage,
-            ];
-
-            try {
-                $mail = new \App\Mail\GenericMarkdownMail(
-                    'emails.patient-documents',
-                    $viewData,
-                    $subject,
-                    $mailAttachments
-                );
-                Mail::to($recipient)->send($mail);
-            } catch (\Throwable $e) {
-                Log::error("Email send failed for referral: " . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Failed to send email: ' . $e->getMessage(),
-                ], 500);
-            }
-        }
-
-        if ($channel === 'whatsapp') {
-            $cleanPhone = preg_replace('/[^0-9]/', '', $recipient);
-            $msg = !empty($customMessage)
-                ? $customMessage
-                : ("*HMS FORM 032: REFERRAL NOTE*\n"
-                    . "From: {$clinicName}\n"
-                    . "To: {$referredTo}\n"
-                    . "Patient: {$patientName} (" . ($referral?->patient_number ?: 'N/A') . ")\n"
-                    . "Diagnosis: " . ($referral?->diagnosis ?: 'See attached note') . "\n"
-                    . "Reason for Referral: " . ($referral?->reason_for_referral ?: 'Further specialist evaluation'));
-
-            if ($uploadedUrl) {
-                $msg .= "\n\nReferral PDF: {$uploadedUrl}";
-            }
-
-            try {
-                \App\Services\NotificationService::sendWhatsApp($cleanPhone, $msg);
-                if ($uploadedUrl) {
-                    \App\Services\NotificationService::sendMediaWhatsApp($cleanPhone, $uploadedUrl, $fileName, "Referral Note - {$patientName}");
-                }
-            } catch (\Throwable $e) {
-                Log::warning("WhatsApp referral send warning: " . $e->getMessage());
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Referral letter dispatched via " . ucfirst($channel) . " to {$recipient}.",
-            'pdf_url' => $uploadedUrl,
-        ]);
     }
 }
 

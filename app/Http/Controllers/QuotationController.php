@@ -303,10 +303,7 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $this->authorize('send', $quotation);
-        Log::info("[Quotation API] POST /quotations/$id/send", [
-            'channels' => $request->input('channels'),
-            'user_id' => $request->user()?->id,
-        ]);
+        
 
         $channels = $request->input('channels', ['email']);
         $recipientOptions = $request->only(['email', 'phone', 'phone_number', 'telephone_number']);
@@ -317,7 +314,6 @@ class QuotationController extends Controller
             $request->user()?->id,
             $recipientOptions
         );
-        Log::info("[Quotation API] Quotation $id dispatched.");
 
         return response()->json([
             'message' => 'Quotation sent successfully.',

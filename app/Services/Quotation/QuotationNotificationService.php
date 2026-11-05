@@ -95,17 +95,23 @@ class QuotationNotificationService
         $pdfBinary = null;
         $pdfFileName = "quotation-{$quotation->quotation_number}.pdf";
         $mediaUrl = null;
+        $r2Path = null;
+        $localRelPath = null;
+        $localTempPath = null;
 
         if (in_array('email', $channels) || in_array('whatsapp', $channels)) {
             $pdfBinary = $this->pdfService->generatePdf($quotation);
 
-            if (config('filesystems.disks.r2.url') && config('filesystems.disks.r2.key')) {
-                try {
-                    $r2Path = "quotations/{$pdfFileName}";
-                    Storage::disk('r2')->put($r2Path, $pdfBinary, 'public');
-                    $mediaUrl = rtrim(config('filesystems.disks.r2.url'), '/') . '/' . $r2Path;
-                } catch (\Throwable $e) {
-                    Log::warning("Failed to store quotation PDF in R2: " . $e->getMessage());
+            // R2 storage is only temporarily used for WhatsApp media dispatch if needed
+            if (in_array('whatsapp', $channels)) {
+                if (config('filesystems.disks.r2.url') && config('filesystems.disks.r2.key')) {
+                    try {
+                        $r2Path = "quotations/{$pdfFileName}";
+                        Storage::disk('r2')->put($r2Path, $pdfBinary, 'public');
+                        $mediaUrl = rtrim(config('filesystems.disks.r2.url'), '/') . '/' . $r2Path;
+                    } catch (\Throwable $e) {
+                        Log::warning("Failed to store quotation PDF in R2: " . $e->getMessage());
+                    }
                 }
             }
 
@@ -134,90 +140,116 @@ class QuotationNotificationService
             }
         }
 
-        // 1. Email Channel (Gmail / Email with PDF attachment and description, without review link)
-        if (in_array('email', $channels)) {
-            if (!empty($recipientEmail)) {
-                try {
-                    Mail::raw($emailBody, function ($m) use ($recipientEmail, $quotation, $clinicName, $pdfBinary, $pdfFileName) {
-                        $m->to($recipientEmail)
-                          ->subject("Quotation- from {$clinicName}");
-                        if ($pdfBinary) {
-                            $m->attachData($pdfBinary, $pdfFileName, ['mime' => 'application/pdf']);
-                        }
-                    });
-                    $results['channels']['email'] = [
-                        'success' => true,
-                        'recipient' => $recipientEmail,
-                        'has_pdf' => true,
-                    ];
-                } catch (\Throwable $e) {
-                    Log::error("Failed to send quotation email: " . $e->getMessage(), ['quotation_id' => $quotation->id]);
-                    $results['channels']['email'] = [
-                        'success' => false,
-                        'recipient' => $recipientEmail,
-                        'error' => $e->getMessage(),
-                    ];
-                }
-            } else {
-                $results['channels']['email'] = ['success' => false, 'error' => 'No email address on file or provided.'];
-            }
-        }
-
-        // 2. WhatsApp Channel (PDF media + description caption)
-        if (in_array('whatsapp', $channels)) {
-            if (!empty($recipientPhone)) {
-                $res = NotificationService::sendMediaWhatsApp(
-                    $recipientPhone,
-                    $mediaUrl,
-                    $pdfFileName,
-                    $messageText
-                );
-
-                // Fallback to text WhatsApp if media dispatch encounters an issue
-                if (isset($res['success']) && !$res['success']) {
-                    
-                    $textRes = NotificationService::sendWhatsApp($recipientPhone, $messageText);
-                    if (!empty($textRes['success'])) {
-                        $res = $textRes;
-                        $res['fallback_to_text'] = true;
+        try {
+            // 1. Email Channel (Gmail / Email with PDF attachment and description, without review link)
+            if (in_array('email', $channels)) {
+                if (!empty($recipientEmail)) {
+                    try {
+                        Mail::raw($emailBody, function ($m) use ($recipientEmail, $quotation, $clinicName, $pdfBinary, $pdfFileName) {
+                            $m->to($recipientEmail)
+                              ->subject("Quotation- from {$clinicName}");
+                            if ($pdfBinary) {
+                                $m->attachData($pdfBinary, $pdfFileName, ['mime' => 'application/pdf']);
+                            }
+                        });
+                        $results['channels']['email'] = [
+                            'success' => true,
+                            'recipient' => $recipientEmail,
+                            'has_pdf' => true,
+                        ];
+                    } catch (\Throwable $e) {
+                        Log::error("Failed to send quotation email: " . $e->getMessage(), ['quotation_id' => $quotation->id]);
+                        $results['channels']['email'] = [
+                            'success' => false,
+                            'recipient' => $recipientEmail,
+                            'error' => $e->getMessage(),
+                        ];
                     }
+                } else {
+                    $results['channels']['email'] = ['success' => false, 'error' => 'No email address on file or provided.'];
                 }
+            }
 
-                $results['channels']['whatsapp'] = array_merge($res, [
-                    'recipient' => $recipientPhone,
-                    'has_pdf' => empty($res['fallback_to_text']),
-                    'media_url' => $mediaUrl,
-                ]);
-            } else {
-                $results['channels']['whatsapp'] = ['success' => false, 'error' => 'No phone number on file or provided.'];
+            // 2. WhatsApp Channel (PDF media + description caption)
+            if (in_array('whatsapp', $channels)) {
+                if (!empty($recipientPhone)) {
+                    $res = NotificationService::sendMediaWhatsApp(
+                        $recipientPhone,
+                        $mediaUrl,
+                        $pdfFileName,
+                        $messageText
+                    );
+
+                    // Fallback to text WhatsApp if media dispatch encounters an issue
+                    if (isset($res['success']) && !$res['success']) {
+                        $textRes = NotificationService::sendWhatsApp($recipientPhone, $messageText);
+                        if (!empty($textRes['success'])) {
+                            $res = $textRes;
+                            $res['fallback_to_text'] = true;
+                        }
+                    }
+
+                    $results['channels']['whatsapp'] = array_merge($res, [
+                        'recipient' => $recipientPhone,
+                        'has_pdf' => empty($res['fallback_to_text']),
+                        'media_url' => $mediaUrl,
+                    ]);
+                } else {
+                    $results['channels']['whatsapp'] = ['success' => false, 'error' => 'No phone number on file or provided.'];
+                }
+            }
+
+            // 3. SMS Channel (Plain text only with quotation description & link, no PDF)
+            if (in_array('sms', $channels)) {
+                if (!empty($recipientPhone)) {
+                    $res = NotificationService::sendSms($recipientPhone, $messageText);
+                    $results['channels']['sms'] = array_merge($res, [
+                        'recipient' => $recipientPhone,
+                        'has_pdf' => false,
+                    ]);
+                } else {
+                    $results['channels']['sms'] = ['success' => false, 'error' => 'No telephone number on file or provided.'];
+                }
+            }
+
+            ActivityLog::log(
+                'Quotation Dispatched',
+                "Quotation #{$quotation->quotation_number} sent to customer via channels: " . implode(', ', $channels),
+                [
+                    'quotation_id' => $quotation->id,
+                    'channels' => $channels,
+                    'email' => $recipientEmail,
+                    'phone' => $recipientPhone,
+                    'approval_url' => $approvalUrl,
+                ]
+            );
+
+            return $results;
+        } finally {
+            // Automatically clean up and remove quotation PDF from storage (R2, public, local) immediately after sending
+            if ($r2Path) {
+                try {
+                    if (Storage::disk('r2')->exists($r2Path)) {
+                        Storage::disk('r2')->delete($r2Path);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Could not delete quotation PDF from R2: " . $e->getMessage());
+                }
+            }
+
+            if ($localRelPath) {
+                try {
+                    if (Storage::disk('public')->exists($localRelPath)) {
+                        Storage::disk('public')->delete($localRelPath);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Could not delete quotation PDF from public storage: " . $e->getMessage());
+                }
+            }
+
+            if ($localTempPath && file_exists($localTempPath)) {
+                @unlink($localTempPath);
             }
         }
-
-        // 3. SMS Channel (Plain text only with quotation description & link, no PDF)
-        if (in_array('sms', $channels)) {
-            if (!empty($recipientPhone)) {
-                $res = NotificationService::sendSms($recipientPhone, $messageText);
-                $results['channels']['sms'] = array_merge($res, [
-                    'recipient' => $recipientPhone,
-                    'has_pdf' => false,
-                ]);
-            } else {
-                $results['channels']['sms'] = ['success' => false, 'error' => 'No telephone number on file or provided.'];
-            }
-        }
-
-        ActivityLog::log(
-            'Quotation Dispatched',
-            "Quotation #{$quotation->quotation_number} sent to customer via channels: " . implode(', ', $channels),
-            [
-                'quotation_id' => $quotation->id,
-                'channels' => $channels,
-                'email' => $recipientEmail,
-                'phone' => $recipientPhone,
-                'approval_url' => $approvalUrl,
-            ]
-        );
-
-        return $results;
     }
 }

@@ -219,6 +219,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Patient Referral Notes (HMS Form 032)
     Route::get('/patient-referrals', [\App\Http\Controllers\PatientReferralController::class, 'index']);
     Route::post('/patient-referrals', [\App\Http\Controllers\PatientReferralController::class, 'store']);
+    Route::post('/patient-referrals/send', [\App\Http\Controllers\PatientReferralController::class, 'sendReferral']);
     Route::get('/patient-referrals/{id}', [\App\Http\Controllers\PatientReferralController::class, 'show']);
     Route::put('/patient-referrals/{id}', [\App\Http\Controllers\PatientReferralController::class, 'update']);
     Route::delete('/patient-referrals/{id}', [\App\Http\Controllers\PatientReferralController::class, 'destroy']);

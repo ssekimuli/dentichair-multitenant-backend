@@ -73,6 +73,34 @@ class SyncController extends Controller
         return $table;
     }
 
+    /**
+     * Invoices queued offline can be missing columns the invoices table requires
+     * (due_date, branch_id). The sync path inserts without validation, so fill
+     * them here: due date falls back to the issue date (or today), and branch
+     * falls back to the patient's branch (or the first branch).
+     */
+    private function withInvoiceDefaults(array $data): array
+    {
+        if (empty($data['due_date'])) {
+            try {
+                $data['due_date'] = !empty($data['issue_date'])
+                    ? \Carbon\Carbon::parse($data['issue_date'])->toDateString()
+                    : now()->toDateString();
+            } catch (\Throwable $e) {
+                $data['due_date'] = now()->toDateString();
+            }
+        }
+
+        if (empty($data['branch_id'])) {
+            $patientBranch = !empty($data['patient_id'])
+                ? \App\Models\Patient::whereKey($data['patient_id'])->value('branch_id')
+                : null;
+            $data['branch_id'] = $patientBranch ?? \App\Models\Branch::query()->value('id');
+        }
+
+        return $data;
+    }
+
     public function push(Request $request)
     {
         $changes = $request->input('changes', []);
@@ -134,6 +162,9 @@ class SyncController extends Controller
                 }
 
                 if ($operation === 'create') {
+                    if ($table === 'invoices') {
+                        $data = $this->withInvoiceDefaults($data);
+                    }
                     $serverId = DB::table($table)->insertGetId(array_merge($data, [
                         'created_at' => now(),
                         'updated_at' => now(),

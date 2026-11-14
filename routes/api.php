@@ -210,6 +210,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Medical / Dental History Records
     Route::get('/medical-histories', [\App\Http\Controllers\MedicalHistoryController::class, 'all']);
       Route::get('/patients/{patientId}/medical-histories', [\App\Http\Controllers\MedicalHistoryController::class, 'index']);
+    Route::get('/patients/{patientId}/medical-histories/latest', [\App\Http\Controllers\MedicalHistoryController::class, 'latest']);
     Route::post('/patients/{patientId}/medical-histories', [\App\Http\Controllers\MedicalHistoryController::class, 'store']);
     Route::get('/medical-histories/{medicalHistory}', [\App\Http\Controllers\MedicalHistoryController::class, 'show']);
     Route::get('/medical-histories/{medicalHistory}/print', [\App\Http\Controllers\MedicalHistoryController::class, 'print']);

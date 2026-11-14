@@ -125,6 +125,37 @@ class MedicalHistoryController extends Controller
     }
 
     /**
+     * Get the patient's most recent medical history.
+     * GET /api/patients/{patientId}/medical-histories/latest
+     *
+     * "Most recent" = latest date, then latest created record for that date.
+     */
+    public function latest(string|int $patientId): JsonResponse
+    {
+        $record = MedicalHistory::with([
+            'patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit',
+            'patient.branch:id,name',
+            'doctor:id,name',
+        ])
+            ->where('patient_id', $patientId)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No medical history found for this patient.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $record,
+        ]);
+    }
+
+    /**
      * Store a newly created medical history for a patient.
      * POST /api/patients/{patientId}/medical-histories
      */

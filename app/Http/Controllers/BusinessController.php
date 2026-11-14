@@ -137,28 +137,31 @@ class BusinessController extends Controller
             $globalSetting->save();
 
             // 3. Create or Get Branch
-            $branch = \App\Models\Branch::firstOrCreate([
-                'name' => $request->branch_name,
-            ]);
+            $branch = \App\Models\Branch::firstOrCreate(
+                ['name' => $request->branch_name],
+                ['address' => $request->input('branch_address', '')]
+            );
 
             // 4. Create or Update Employee (SuperAdmin)
             $password = \Illuminate\Support\Str::random(10);
-            $employee = \App\Models\Employee::updateOrCreate(
-                ['email' => $request->email],
-                [
-                    'name' => $request->name,
-                    'role' => 'Super Admin', 
-                    'role_id' => 1,
-                    'status' => 'Active',
-                    'branch_id' => $branch->id,
-                    'password' => \Illuminate\Support\Facades\Hash::make($password),
-                ]
-            );
+            $employee = \App\Models\Employee::firstOrNew(['email' => $request->email]);
+            $employee->fill([
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'role' => 'Super Admin',
+                'role_id' => 1,
+                'status' => 'Active',
+                'branch_id' => $branch->id,
+                'password' => \Illuminate\Support\Facades\Hash::make($password),
+            ]);
 
-            if ($employee->wasRecentlyCreated) {
+            // salary and hire_date are required columns with no default.
+            if (! $employee->exists) {
+                $employee->salary = 0;
                 $employee->hire_date = now();
-                $employee->save();
             }
+
+            $employee->save();
 
             // 5. Send Welcome Email and SMS
             $message = \App\Services\NotificationService::getWelcomeMessage(

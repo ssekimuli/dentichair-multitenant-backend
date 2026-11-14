@@ -1775,6 +1775,10 @@ class PatientController extends Controller
                 $tp = $patient->treatmentPlans()->create($treatmentData);
                 $created[] = $tp;
 
+                if ($tp->status === 'Completed') {
+                    $this->recordCompletedTreatmentInMedicalHistory($patient, $tp);
+                }
+
                 if (!empty($validated['condition']) && !empty($t)) {
                     $existingRecord = $patient->dentalRecords()
                         ->where('tooth_id', $t)
@@ -1973,6 +1977,33 @@ class PatientController extends Controller
      * @param string $treatmentId Treatment ID
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * When a treatment plan is completed, append it to today's medical history
+     * (the one created today) under treatment_given. Does nothing if no
+     * medical history was created today.
+     */
+    private function recordCompletedTreatmentInMedicalHistory(Patient $patient, $treatment): ?\App\Models\MedicalHistory
+    {
+        $medicalHistory = \App\Models\MedicalHistory::where('patient_id', $patient->id)
+            ->whereDate('created_at', now()->toDateString())
+            ->latest('id')
+            ->first();
+
+        if (!$medicalHistory) {
+            return null;
+        }
+
+        $line = $treatment->procedure . (!empty($treatment->tooth) ? " (tooth {$treatment->tooth})" : '');
+        $existing = (string) $medicalHistory->treatment_given;
+
+        if (!str_contains($existing, $line)) {
+            $medicalHistory->treatment_given = trim($existing === '' ? $line : $existing . "\n" . $line);
+            $medicalHistory->save();
+        }
+
+        return $medicalHistory;
+    }
+
     public function updateTreatmentStatus(Request $request, $patientId, $treatmentId)
     {
         $patient = Patient::find($patientId);
@@ -1993,9 +2024,10 @@ class PatientController extends Controller
 
         $treatment->update(['status' => $validated['status']]);
 
-        $medicalHistory = \App\Models\MedicalHistory::where('patient_id', $patient->id)
-            ->whereDate('date', $treatment->date)
-            ->first();
+        $medicalHistory = null;
+        if ($validated['status'] === 'Completed') {
+            $medicalHistory = $this->recordCompletedTreatmentInMedicalHistory($patient, $treatment);
+        }
 
         return response()->json([
             'message' => 'Treatment plan status updated successfully.',

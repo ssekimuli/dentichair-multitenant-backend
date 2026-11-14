@@ -582,6 +582,78 @@ class EmployeeController extends Controller
         }
     }
 
+    /**
+     * Block Employee
+     *
+     * Sets the employee's status to Blocked, revokes all their active tokens
+     * (so they are logged out everywhere) and prevents future logins.
+     * Super Admin only. A Super Admin cannot block their own account.
+     *
+     * @authenticated
+     *
+     * @urlParam id string required The employee's ID. Example: 5
+     *
+     * @response 200 {
+     *   "message": "Employee blocked successfully.",
+     *   "data": { "id": 5, "status": "Blocked" }
+     * }
+     * @response 403 { "message": "Unauthorized. Super Admin access required." }
+     * @response 422 { "message": "You cannot block your own account." }
+     */
+    public function block($id)
+    {
+        return $this->setEmployeeBlockState($id, true);
+    }
+
+    /**
+     * Unblock Employee
+     *
+     * Sets a blocked employee's status back to Active so they can log in again.
+     * Super Admin only.
+     *
+     * @authenticated
+     *
+     * @urlParam id string required The employee's ID. Example: 5
+     *
+     * @response 200 {
+     *   "message": "Employee unblocked successfully.",
+     *   "data": { "id": 5, "status": "Active" }
+     * }
+     * @response 403 { "message": "Unauthorized. Super Admin access required." }
+     */
+    public function unblock($id)
+    {
+        return $this->setEmployeeBlockState($id, false);
+    }
+
+    private function setEmployeeBlockState($id, bool $block)
+    {
+        $actor = auth()->user();
+        if (!$actor || !$actor->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
+        }
+
+        $employee = Employee::find($id);
+        if (!$employee) {
+            return response()->json(['message' => 'Employee not found.'], 404);
+        }
+
+        if ($block && (int) $employee->id === (int) $actor->id) {
+            return response()->json(['message' => 'You cannot block your own account.'], 422);
+        }
+
+        $employee->update(['status' => $block ? 'Blocked' : 'Active']);
+
+        if ($block) {
+            $employee->tokens()->delete();
+        }
+
+        return response()->json([
+            'message' => $block ? 'Employee blocked successfully.' : 'Employee unblocked successfully.',
+            'data' => ['id' => $employee->id, 'status' => $employee->status],
+        ]);
+    }
+
     public function getDoctors(Request $request)
     {
         $query = Employee::with(['branch'])->whereIn('role', [

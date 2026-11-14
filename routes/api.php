@@ -279,6 +279,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
     // Employees
     Route::post('/employees/{id}/resend-password', [EmployeeController::class, 'resendPassword']);
+    Route::post('/employees/{id}/block', [EmployeeController::class, 'block']);
+    Route::post('/employees/{id}/unblock', [EmployeeController::class, 'unblock']);
     Route::apiResource('employees', EmployeeController::class);
     Route::get('/doctors', [EmployeeController::class, 'getDoctors']);
     Route::post('/attendance', [ManagementController::class, 'markAttendance']);

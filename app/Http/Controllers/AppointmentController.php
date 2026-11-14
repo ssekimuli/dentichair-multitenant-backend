@@ -94,8 +94,30 @@ class AppointmentController extends Controller
     }
 
     /**
+     * Get Appointment
+     *
+     * Retrieve a single appointment. The response includes the patient's phone as a
+     * top-level `patient_phone` field, plus the patient, doctor and branch.
+     *
+     * @param string $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show($id)
+    {
+        $appointment = Appointment::with(['patient', 'doctor', 'branch'])->find($id);
+
+        if (! $appointment) {
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        return response()->json(array_merge($appointment->toArray(), [
+            'patient_phone' => $appointment->patient?->phone,
+        ]));
+    }
+
+    /**
      * Create Appointment
-     * 
+     *
      * Schedule a new appointment for a patient. Automatically generates a unique token number
      * and sets initial status to "Scheduled".
      * 

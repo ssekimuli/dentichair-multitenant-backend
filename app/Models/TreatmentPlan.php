@@ -60,6 +60,7 @@ class TreatmentPlan extends Model
 
             self::syncInvoiceForTreatmentPlan($treatmentPlan);
             self::syncMedicalHistoryForTreatmentPlan($treatmentPlan);
+            self::syncPendingPlanLinesForPatientAndDate($treatmentPlan->patient_id, $treatmentPlan->date);
 
             /*
              * If the patient or treatment date changed, recalculate
@@ -88,6 +89,7 @@ class TreatmentPlan extends Model
                 $treatmentPlan->patient_id,
                 $treatmentPlan->date
             );
+            self::syncPendingPlanLinesForPatientAndDate($treatmentPlan->patient_id, $treatmentPlan->date);
         });
     }
 
@@ -637,6 +639,52 @@ class TreatmentPlan extends Model
     /**
      * Synchronize medical history for a treatment plan.
      */
+    /**
+     * Make sure medical_histories.treatment_plan lists every treatment plan item
+     * for the patient on that date (pending and completed). Existing lines,
+     * including free text, are kept; missing item lines are added.
+     */
+    public static function syncPendingPlanLinesForPatientAndDate($patientId, $date): void
+    {
+        if (!$patientId || !$date) {
+            return;
+        }
+
+        $formattedDate = Carbon::parse($date)->format('Y-m-d');
+
+        $medHistory = MedicalHistory::where('patient_id', $patientId)
+            ->whereDate('date', $formattedDate)
+            ->first();
+
+        if (!$medHistory) {
+            return;
+        }
+
+        $plans = self::query()
+            ->where('patient_id', $patientId)
+            ->whereDate('date', $formattedDate)
+            ->orderBy('id')
+            ->get();
+
+        $lineFor = fn (self $tp) => '- ' . trim($tp->procedure ?? '')
+            . (!empty($tp->tooth) ? " (Tooth #{$tp->tooth})" : '');
+
+        $allPlanLines = $plans->map($lineFor)->all();
+
+        $existingLines = array_values(array_filter(
+            preg_split('/\r\n|\r|\n/', (string) $medHistory->treatment_plan),
+            fn ($l) => trim($l) !== ''
+        ));
+
+        $newPlan = implode("\n", array_values(array_unique(array_merge($existingLines, $allPlanLines))));
+        $newPlan = $newPlan === '' ? null : $newPlan;
+
+        if ($medHistory->treatment_plan !== $newPlan) {
+            $medHistory->treatment_plan = $newPlan;
+            $medHistory->saveQuietly();
+        }
+    }
+
     public static function syncMedicalHistoryForTreatmentPlan(
         TreatmentPlan $treatmentPlan
     ): void {
@@ -693,7 +741,7 @@ class TreatmentPlan extends Model
                     } else {
                         $lines = array_filter(
                             preg_split('/\r\n|\r|\n/', (string) $medHistory->treatment_given),
-                            fn($l) => !str_starts_with(trim($l), '-')
+                            fn($l) => trim($l) !== '' && !str_starts_with(trim($l), '-')
                         );
                         $medHistory->treatment_given = !empty($lines) ? implode("\n", $lines) : null;
                         $medHistory->saveQuietly();

@@ -209,6 +209,8 @@ class MedicalHistoryController extends Controller
             }
         }
 
+        // Pending plan items were just created and may have updated treatment_plan.
+        $record->refresh();
         $record->load(['patient:id,first_name,last_name,gender,date_of_birth,phone,email,address,branch_id,next_visit', 'patient.branch:id,name']);
 
         return response()->json([

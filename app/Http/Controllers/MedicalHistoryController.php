@@ -149,6 +149,8 @@ class MedicalHistoryController extends Controller
             'doctor_id' => 'nullable|integer',
             'next_visit' => 'nullable|date',
             'medical_history' => 'nullable|string',
+            'treatment_ids' => 'nullable|array',
+            'treatment_ids.*' => 'integer',
         ]);
 
         // Idempotency: Return existing record if client_uuid has already been processed
@@ -166,13 +168,33 @@ class MedicalHistoryController extends Controller
 
         $nextVisit = $request->input('next_visit');
         $patientHistory = $request->input('medical_history');
-        unset($validated['next_visit'], $validated['medical_history']);
+        $treatmentIds = $request->input('treatment_ids', []);
+        unset($validated['next_visit'], $validated['medical_history'], $validated['treatment_ids']);
 
         $validated['patient_id'] = $patientId;
         $validated['date'] = $validated['date'] ?? now()->toDateString();
         $validated['consent'] = $request->has('consent') ? (bool)$request->input('consent') : true;
 
         $record = MedicalHistory::create($validated);
+
+        // Treatments selected by the doctor (from the treatments catalog) become
+        // Pending treatment plan items for this patient, dated with this record.
+        if (!empty($treatmentIds)) {
+            $patient = \App\Models\Patient::find($patientId);
+            $catalog = \App\Models\Treatment::whereIn('id', $treatmentIds)->get();
+
+            foreach ($catalog as $item) {
+                \App\Models\TreatmentPlan::create([
+                    'patient_id' => $patientId,
+                    'procedure' => $item->procedure,
+                    'cost' => $item->cost,
+                    'date' => $record->date,
+                    'status' => 'Pending',
+                    'doctor_id' => $record->doctor_id,
+                    'branch_id' => $patient?->branch_id,
+                ]);
+            }
+        }
 
         if ($request->has('next_visit') || $request->has('medical_history')) {
             $patient = Patient::find($patientId);

@@ -1,3 +1,4 @@
+
 <?php
 
 namespace Database\Seeders;
@@ -7,15 +8,21 @@ use Illuminate\Database\Seeder;
 
 class BranchSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
         $branches = [
-            ['id' => 1, 'name' => 'Downtown Clinic', 'address' => '123 Main St, Cityville'],
-            ['id' => 2, 'name' => 'Uptown Dental', 'address' => '456 Oak Ave, Townburg'],
+            [
+                'id' => 1,
+                'name' => 'RUBAGA DENTAL SURGERY',
+                'address' => 'Rubaga',
+            ],
         ];
 
         foreach ($branches as $branch) {
-            Branch::updateOrCreate(['id' => $branch['id']], $branch);
+            Branch::updateOrCreate(
+                ['id' => $branch['id']],
+                $branch
+            );
         }
     }
 }

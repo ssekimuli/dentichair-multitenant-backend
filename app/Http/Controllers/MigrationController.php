@@ -41,7 +41,7 @@ class MigrationController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xlsx',
-            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,invoice,invoices,insurance,claim,client,clients,lab_order,lab_orders,medical_history,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment'
+            'section' => 'required|string|in:employees,patients,appointments,clinical,financial,invoice,invoices,insurance,claim,client,clients,lab_order,lab_orders,medical_history,payroll,leave_request,staff_advance,insurance_company,insurance_package,insurance_coverage,insurance_policy,odontogram,periodontal,orthodontic,endodontic,payment,expense,expenses,treatment_plan,treatment_plans'
         ]);
 
         $section = $request->input('section');
@@ -231,7 +231,7 @@ class MigrationController extends Controller
             $this->processPatientChunk($chunk, $result, $now);
         } elseif ($section === 'appointments') {
             $this->processAppointmentChunk($chunk, $result, $now);
-        } elseif ($section === 'clinical') {
+        } elseif ($section === 'clinical' || $section === 'treatment_plan' || $section === 'treatment_plans') {
             $this->processClinicalChunk($chunk, $result, $now);
         } elseif ($section === 'financial' || $section === 'invoice' || $section === 'invoices') {
             $this->processFinancialChunk($chunk, $result, $now);
@@ -269,6 +269,8 @@ class MigrationController extends Controller
             $this->processEndodonticChunk($chunk, $result, $now);
         } elseif ($section === 'payment') {
             $this->processPaymentChunk($chunk, $result, $now);
+        } elseif ($section === 'expense' || $section === 'expenses') {
+            $this->processExpenseChunk($chunk, $result, $now);
         }
 
         return $result;
@@ -1901,6 +1903,116 @@ class MigrationController extends Controller
      * payments - and the financial row's own initial paid-amount guess -
      * never double-count.
      */
+    /**
+     * Expenses: one expenses row per CSV row. Category names are matched
+     * case-insensitively to an existing expense_categories row for the branch,
+     * and created there if missing. A row whose branch, date, amount,
+     * description and category all match an existing expense is updated in
+     * place, so re-running an import does not duplicate it.
+     */
+    private function processExpenseChunk($chunk, &$result, $now)
+    {
+        foreach ($chunk as $item) {
+            $rowNumber = $item['rowNumber'];
+            $record = $item['data'];
+
+            $rawDate = $this->getRecordValue($record, ['date', 'expensedate', 'expense_date', 'transactiondate']);
+            if (empty($rawDate)) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'date',
+                    'value' => null,
+                    'reason' => 'Date is required'
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $dateValidation = $this->validateDate($rawDate, true);
+            if (!$dateValidation['valid']) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'date',
+                    'value' => $rawDate,
+                    'reason' => $dateValidation['reason']
+                ];
+                $result['failed']++;
+                continue;
+            }
+            $date = date('Y-m-d', strtotime($rawDate));
+
+            $amount = $this->getRecordValue($record, ['amount', 'expenseamount', 'expense_amount', 'cost', 'total']);
+            if (!is_numeric($amount) || (float) $amount < 0) {
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'amount',
+                    'value' => $amount,
+                    'reason' => 'Amount is required and must be a non-negative number'
+                ];
+                $result['failed']++;
+                continue;
+            }
+
+            $branchId = (int) ($this->getRecordValue($record, ['branchid', 'branch_id']) ?? 1);
+            // expenses.description is NOT NULL, so a missing value is stored as ''.
+            $description = (string) ($this->getRecordValue($record, ['description', 'details', 'note', 'notes', 'item', 'expense']) ?? '');
+            $categoryName = trim((string) $this->getRecordValue($record, ['category', 'expensecategory', 'expense_category', 'type']));
+
+            $categoryId = null;
+            if ($categoryName !== '') {
+                $categoryId = DB::table('expense_categories')
+                    ->where('branch_id', $branchId)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($categoryName)])
+                    ->value('id');
+
+                if (!$categoryId) {
+                    $categoryId = DB::table('expense_categories')->insertGetId([
+                        'name' => $categoryName,
+                        'branch_id' => $branchId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
+            }
+
+            $row = [
+                'branch_id' => $branchId,
+                'expense_category_id' => $categoryId,
+                'category' => $categoryName !== '' ? $categoryName : null,
+                'date' => $date,
+                'description' => $description,
+                'amount' => round((float) $amount, 2),
+                'updated_at' => $now,
+            ];
+
+            try {
+                $existing = DB::table('expenses')
+                    ->where('branch_id', $branchId)
+                    ->whereDate('date', $date)
+                    ->where('amount', $row['amount'])
+                    ->when($categoryId, fn ($q) => $q->where('expense_category_id', $categoryId), fn ($q) => $q->whereNull('expense_category_id'))
+                    ->where('description', $description)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('expenses')->where('id', $existing->id)->update($row);
+                } else {
+                    $row['created_at'] = $now;
+                    DB::table('expenses')->insert($row);
+                }
+                $result['imported']++;
+            } catch (\Exception $e) {
+                Log::error('Expense import error: ' . $e->getMessage());
+                $result['errors'][] = [
+                    'row' => $rowNumber,
+                    'field' => 'amount',
+                    'value' => $amount,
+                    'reason' => 'Failed to save expense'
+                ];
+                $result['failed']++;
+            }
+        }
+    }
+
     private function processPaymentChunk($chunk, &$result, $now)
     {
         $claimNumbers = [];

@@ -161,6 +161,85 @@ return [
             ],
         ],
 
+        'treatment_plans' => [
+            'model' => \App\Models\TreatmentPlan::class,
+            'label' => 'Treatment Plans',
+            'description' => 'Patient treatment plans: proposed and completed procedures with cost, tooth and date',
+            'permission' => null,
+            'tenant_column' => 'branch_id',
+            'unique_by' => ['id'],
+            'default_unique_by' => 'id',
+            'excluded_columns' => ['invoice_id', 'restorative_record_id', 'appointment_id', 'token_number'],
+            'defaults' => [
+                'status' => 'Proposed',
+                'cost' => 0.00,
+            ],
+            'aliases' => [
+                'patient_id' => [
+                    'patient id', 'patient_id', 'patient', 'patient number', 'patient_no', 'client_id',
+                ],
+                'procedure' => [
+                    'procedure', 'treatment', 'treatment name', 'procedure name', 'treatment plan', 'service',
+                ],
+                'cost' => [
+                    'cost', 'amount', 'price', 'fee', 'charge', 'total',
+                ],
+                'tooth' => [
+                    'tooth', 'tooth number', 'tooth_number', 'tooth no', 'tooth_no', 'teeth',
+                ],
+                'date' => [
+                    'date', 'treatment date', 'plan date', 'visit date', 'entry date',
+                ],
+                'notes' => [
+                    'notes', 'note', 'remarks', 'comments', 'clinical note',
+                ],
+            ],
+            'custom_rules' => [
+                'patient_id' => 'required|integer|exists:patients,id',
+                'procedure' => 'required|string|max:255',
+                'cost' => 'nullable|numeric|min:0',
+                'tooth' => 'nullable|integer|min:1|max:48',
+                'status' => 'nullable|in:Proposed,Completed,proposed,completed',
+                'date' => 'nullable|date',
+            ],
+        ],
+
+        'payroll' => [
+            'model' => \App\Models\Payroll::class,
+            'label' => 'Payroll',
+            'description' => 'Employee payroll records: gross pay, deductions, net pay and pay period',
+            'permission' => 'manage_employees',
+            'tenant_column' => 'branch_id',
+            'unique_by' => ['id'],
+            'default_unique_by' => 'id',
+            'excluded_columns' => [],
+            'defaults' => [
+                'status' => 'Pending',
+                'approval_status' => 'Approved',
+                'deductions' => 0.00,
+            ],
+            'aliases' => [
+                'employee_id' => ['employee id', 'employee_id', 'employee', 'staff id', 'staff_id'],
+                'employee_name' => ['employee name', 'staff name', 'name', 'full name'],
+                'pay_period' => ['pay period', 'period', 'payroll period', 'month'],
+                'gross_pay' => ['gross pay', 'gross', 'gross salary', 'basic pay'],
+                'net_pay' => ['net pay', 'net', 'take home', 'take-home', 'net salary'],
+                'pay_date' => ['pay date', 'payment date', 'paid on', 'date paid'],
+                'approval_status' => ['approval status', 'approval', 'approved'],
+            ],
+            'custom_rules' => [
+                'employee_id' => 'required|integer|exists:employees,id',
+                'employee_name' => 'required|string|max:255',
+                'pay_period' => 'required|string|max:255',
+                'gross_pay' => 'required|numeric|min:0',
+                'deductions' => 'nullable|numeric|min:0',
+                'net_pay' => 'nullable|numeric',
+                'pay_date' => 'nullable|date',
+                'status' => 'nullable|in:Paid,Pending,paid,pending',
+                'approval_status' => 'nullable|in:Pending,Approved,Rejected',
+            ],
+        ],
+
         'lab_services' => [
             'model' => \App\Models\LabService::class,
             'label' => 'Lab Services',

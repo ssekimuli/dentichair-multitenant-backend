@@ -32,6 +32,8 @@ class ImportValidationService
             $mappedData = $this->resolveInvoicePatient($mappedData, $branchId, $rawData);
         } elseif ($table === 'laboratory_orders') {
             $mappedData = $this->resolveLabOrderClient($mappedData, $branchId, $rawData);
+        } elseif ($table === 'appointments') {
+            $mappedData = $this->resolveAppointmentPatient($mappedData, $branchId, $rawData);
         }
 
         $columns = $this->schemaService->getImportableColumns($table);
@@ -180,6 +182,61 @@ class ImportValidationService
         }
 
         return $normalized;
+    }
+
+    /**
+     * Resolve patient for appointments from the Contact / Phone column.
+     * If an existing patient matches the phone number, link the appointment to that patient
+     * (and fill patient_name when the file did not supply one). Patients are never created here.
+     * If no patient matches, patient_id stays null so the row fails validation with a clear message.
+     */
+    protected function resolveAppointmentPatient(array $mappedData, ?int $branchId = null, array $rawData = []): array
+    {
+        $contact = $mappedData['contact']
+            ?? $mappedData['phone']
+            ?? $mappedData['patient_contact']
+            ?? $mappedData['patient_phone']
+            ?? null;
+
+        // Fall back to an unmapped raw phone column in the file
+        if (empty($contact) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['contact', 'phone', 'telephone', 'mobile', 'patient contact', 'patient phone', 'patient_contact', 'patient_phone', 'cell phone', 'phone number', 'contact number', 'contacts', 'tel'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $contact = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
+        $matchedPatient = null;
+
+        // An explicit, existing patient ID mapped to patient_id takes priority
+        $patientIdVal = $mappedData['patient_id'] ?? null;
+        if (is_numeric($patientIdVal) && DB::table('patients')->where('id', (int)$patientIdVal)->exists()) {
+            $matchedPatient = DB::table('patients')->where('id', (int)$patientIdVal)->first();
+        } elseif (!empty($contact)) {
+            $matchedPatient = $this->findPatientByPhone((string)$contact, $branchId);
+        }
+
+        if ($matchedPatient) {
+            $mappedData['patient_id'] = (int)$matchedPatient->id;
+            if (empty($mappedData['patient_name'])) {
+                $mappedData['patient_name'] = trim("{$matchedPatient->first_name} {$matchedPatient->last_name}");
+            }
+        } else {
+            $mappedData['patient_id'] = null;
+        }
+
+        // Contact is only used for lookup; it is not a column on appointments
+        unset(
+            $mappedData['contact'], $mappedData['phone'],
+            $mappedData['patient_contact'], $mappedData['patient_phone']
+        );
+
+        return $mappedData;
     }
 
     /**

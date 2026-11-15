@@ -102,7 +102,19 @@ return [
                 'status' => 'Scheduled',
                 'time' => '09:00',
             ],
+            'aliases' => [
+                'contact' => [
+                    'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
+                    'cell phone', 'phone number', 'contact number', 'contacts', 'tel', 'patient_phone', 'patient_contact',
+                ],
+                'patient_name' => [
+                    'patient name', 'patient_name', 'name', 'full name', 'client name', 'client', 'patient',
+                ],
+            ],
             'custom_rules' => [
+                // Must resolve to an existing patient (via patient_id or the Contact / Phone column)
+                'patient_id' => 'required|integer|exists:patients,id',
+                'contact' => 'nullable|string',
                 'date' => 'required|date',
                 'status' => 'nullable|string',
             ],

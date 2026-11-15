@@ -206,7 +206,7 @@ class ImportSchemaService
         }
 
         // Virtual columns for foreign key resolution
-        if ($table === 'medical_histories' || $table === 'invoices') {
+        if (in_array($table, ['medical_histories', 'invoices', 'appointments'], true)) {
             if (!isset($importable['contact'])) {
                 $importable['contact'] = [
                     'name' => 'contact',
@@ -229,7 +229,7 @@ class ImportSchemaService
             }
         }
 
-        if (($table === 'medical_histories' || $table === 'invoices') && isset($importable['patient_id'])) {
+        if (in_array($table, ['medical_histories', 'invoices', 'appointments'], true) && isset($importable['patient_id'])) {
             $importable['patient_id']['required'] = false;
             $importable['patient_id']['nullable'] = true;
             $importable['patient_id']['has_default'] = true; // tells proposeMapping it is covered

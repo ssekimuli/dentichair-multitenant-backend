@@ -311,6 +311,12 @@ class AppointmentController extends Controller
         ]);
 
         $oldStatus = $appointment->status;
+        $oldSlot = [
+            'date' => $appointment->date?->toDateString(),
+            'time' => $appointment->time,
+            'doctor_id' => $appointment->doctor_id,
+            'branch_id' => $appointment->branch_id,
+        ];
         $appointment->update($validated);
 
         if (isset($validated['status']) && $oldStatus !== $appointment->status) {
@@ -335,7 +341,93 @@ class AppointmentController extends Controller
             }
         }
 
+        $newSlot = [
+            'date' => $appointment->date?->toDateString(),
+            'time' => $appointment->time,
+            'doctor_id' => $appointment->doctor_id,
+            'branch_id' => $appointment->branch_id,
+        ];
+        if ($newSlot !== $oldSlot) {
+            $this->notifyRescheduled($appointment, $oldSlot);
+        }
+
         return response()->json($appointment->load(['patient', 'doctor', 'branch']));
+    }
+
+    /**
+     * Notify the patient (and the doctor, if reachable) that an appointment's
+     * date, time, doctor or branch changed.
+     *
+     * Patient: email always (unless disabled in settings), SMS/WhatsApp only when
+     * enabled in settings and balance allows. Doctor: email only.
+     *
+     * @param Appointment $appointment Appointment after the update
+     * @param array $oldSlot Previous date/time/doctor_id/branch_id
+     * @return void
+     */
+    private function notifyRescheduled(Appointment $appointment, array $oldSlot)
+    {
+        $appointment->load(['patient', 'doctor', 'branch']);
+
+        $settings = \App\Models\GlobalSetting::getSettings();
+        $prefs = $settings?->notifications['appointments_rescheduled'] ?? [];
+        $sendEmail = $prefs['email'] ?? true;
+        $sendSms = $settings && ($prefs['sms'] ?? false);
+        $sendWa = $settings && ($prefs['whatsapp'] ?? false);
+        $clinicName = $settings?->clinic_name ?? 'Our Clinic';
+
+        $oldDate = $oldSlot['date'] ?? '-';
+        $oldTime = $oldSlot['time'] ?? '-';
+        $newDate = $appointment->date?->toDateString() ?? '-';
+        $newTime = $appointment->time ?? '-';
+
+        $patient = $appointment->patient;
+        $patientName = $patient ? trim($patient->first_name . ' ' . $patient->last_name) : ($appointment->patient_name ?? 'Patient');
+
+        $viewData = [
+            'recipientName' => $patientName,
+            'forDoctor' => false,
+            'patientName' => $patientName,
+            'tokenNumber' => $appointment->token_number,
+            'doctorName' => $appointment->doctor_name,
+            'treatment' => $appointment->treatment,
+            'oldDate' => $oldDate,
+            'oldTime' => $oldTime,
+            'newDate' => $newDate,
+            'newTime' => $newTime,
+            'clinicName' => $clinicName,
+        ];
+        $subject = 'Appointment Rescheduled - ' . $clinicName;
+
+        if ($sendEmail && $patient && $patient->email) {
+            try {
+                Mail::to($patient->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-rescheduled', $viewData, $subject));
+            } catch (\Exception $e) {
+                logger()->error("Failed to send reschedule email to patient: " . $e->getMessage());
+            }
+        }
+
+        $smsText = "Dear {$patientName}, your appointment at {$clinicName} has been rescheduled from {$oldDate} at {$oldTime} to {$newDate} at {$newTime}. Token: {$appointment->token_number}.";
+
+        if ($sendSms && $patient && $patient->phone && $settings->deductSms()) {
+            \App\Services\NotificationService::sendSms($patient->phone, $smsText);
+        }
+
+        if ($sendWa && $patient && $patient->phone && $settings->isWhatsappActive()) {
+            \App\Services\NotificationService::sendWhatsApp($patient->phone, $smsText);
+        }
+
+        $doctor = $appointment->doctor;
+        if ($doctor && $doctor->email) {
+            try {
+                Mail::to($doctor->email)->send(new \App\Mail\GenericMarkdownMail('emails.appointment-rescheduled', array_merge($viewData, [
+                    'recipientName' => $doctor->name ?? $appointment->doctor_name,
+                    'forDoctor' => true,
+                ]), 'Appointment Rescheduled - ' . $clinicName));
+            } catch (\Exception $e) {
+                logger()->error("Failed to send reschedule email to doctor: " . $e->getMessage());
+            }
+        }
     }
 
     /**

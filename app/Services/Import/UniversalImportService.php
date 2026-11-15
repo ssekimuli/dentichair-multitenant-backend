@@ -488,6 +488,18 @@ class UniversalImportService
                                 unset($data[$preserveCol]);
                                 continue;
                             }
+                            // Date of birth given as a word ("Adult", "Child"): keep the stored date of birth and age
+                            if ($preserveCol === 'date_of_birth') {
+                                $dobHeader = $fieldToHeaderMap['date_of_birth'] ?? null;
+                                $rawDob = ($dobHeader !== null && isset($rawData[$dobHeader])) ? (string)$rawData[$dobHeader] : '';
+                                if ($this->validationService->ageForDateOfBirthWord($rawDob) !== null) {
+                                    unset($data['date_of_birth']);
+                                    if (!isset($fieldToHeaderMap['age'])) {
+                                        unset($data['age']);
+                                    }
+                                    continue;
+                                }
+                            }
                             if (isset($tableDefaults[$preserveCol]) && $data[$preserveCol] === $tableDefaults[$preserveCol]) {
                                 $header = $fieldToHeaderMap[$preserveCol] ?? null;
                                 if ($header === null || !isset($rawData[$header]) || trim((string)$rawData[$header]) === '') {
@@ -513,6 +525,10 @@ class UniversalImportService
                         }
 
                         DB::table($table)->where('id', $existing->id)->update($cleanData);
+
+                        if ($table === 'patients' && array_key_exists('next_visit', $cleanData)) {
+                            $this->scheduleNextVisitAppointment((int)$existing->id, $cleanData['next_visit'], $branchId);
+                        }
 
                         if ($table === 'laboratory_orders') {
                             $this->handleLabOrderInvoice($existing->id, $cleanData, $data, $branchId, $now);
@@ -651,6 +667,10 @@ class UniversalImportService
                     }
 
                     $insertedId = DB::table($table)->insertGetId($cleanData);
+
+                    if ($table === 'patients') {
+                        $this->scheduleNextVisitAppointment((int)$insertedId, $cleanData['next_visit'] ?? null, $branchId);
+                    }
 
                     if ($table === 'laboratory_orders') {
                         $this->handleLabOrderInvoice($insertedId, $cleanData, $data, $branchId, $now);
@@ -821,7 +841,7 @@ class UniversalImportService
         // 1. Explicit update_key match if configured and present in $data
         if (!empty($updateKey) && !empty($data[$updateKey]) && Schema::hasColumn($table, $updateKey)) {
             if (in_array($updateKey, ['phone', 'contact', 'telephone', 'mobile'], true)) {
-                $found = $this->findRecordByPhone($table, (string)$data[$updateKey], $updateKey, $tenantColumn, $branchId);
+                $found = $this->findRecordByPhone($table, (string)$data[$updateKey], $updateKey, $tenantColumn, $branchId, $this->personForPhoneMatch($table, $data));
                 if ($found) {
                     return $found;
                 }
@@ -854,7 +874,7 @@ class UniversalImportService
         }
 
         if ($phoneCol && !empty($phoneVal)) {
-            $found = $this->findRecordByPhone($table, (string)$phoneVal, $phoneCol, $tenantColumn, $branchId);
+            $found = $this->findRecordByPhone($table, (string)$phoneVal, $phoneCol, $tenantColumn, $branchId, $this->personForPhoneMatch($table, $data));
             if ($found) {
                 return $found;
             }
@@ -887,6 +907,21 @@ class UniversalImportService
     }
 
     /**
+     * For patient imports, the name a phone match must agree with. Null for other tables.
+     */
+    protected function personForPhoneMatch(string $table, array $data): ?array
+    {
+        if ($table !== 'patients') {
+            return null;
+        }
+
+        return [
+            'first_name' => $data['first_name'] ?? null,
+            'last_name' => $data['last_name'] ?? null,
+        ];
+    }
+
+    /**
      * Find record by contact/phone with international & local format resilience.
      */
     protected function findRecordByPhone(
@@ -894,7 +929,8 @@ class UniversalImportService
         string $phoneVal,
         string $phoneCol,
         ?string $tenantColumn,
-        ?int $branchId
+        ?int $branchId,
+        ?array $person = null
     ): ?object {
         $raw = trim($phoneVal);
         $digits = preg_replace('/\D+/', '', $raw);
@@ -930,14 +966,60 @@ class UniversalImportService
 
         // Try within current branch first
         if ($tenantColumn && $branchId && Schema::hasColumn($table, $tenantColumn)) {
-            $branchMatch = $buildPhoneQuery()->where($tenantColumn, $branchId)->first();
+            $branchMatch = $this->firstPhoneMatch($buildPhoneQuery()->where($tenantColumn, $branchId), $person);
             if ($branchMatch) {
                 return $branchMatch;
             }
         }
 
         // Try globally across table
-        return $buildPhoneQuery()->first();
+        return $this->firstPhoneMatch($buildPhoneQuery(), $person);
+    }
+
+    /**
+     * Return the first phone match. When a person is given (patient imports), only a record
+     * with the same name counts, so relatives sharing one phone number stay separate patients.
+     */
+    protected function firstPhoneMatch($query, ?array $person): ?object
+    {
+        if ($person === null) {
+            return $query->first();
+        }
+
+        foreach ($query->get() as $row) {
+            if ($this->isSamePersonName($row, $person)) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Names must match when both sides have one. Blank names and the default last name "Patient"
+     * count as unknown, so they don't prevent a match.
+     */
+    protected function isSamePersonName(object $row, array $person): bool
+    {
+        $norm = fn ($v) => strtolower(trim(preg_replace('/\s+/', ' ', (string)$v)));
+
+        // "Imported" is the config default for a blank first name: it means the name is unknown
+        $incFirst = $norm($person['first_name'] ?? '');
+        $recFirst = $norm($row->first_name ?? '');
+        if ($incFirst === '' || $recFirst === '' || $incFirst === 'imported' || $recFirst === 'imported') {
+            return true;
+        }
+        if ($incFirst !== $recFirst) {
+            return false;
+        }
+
+        $incLast = $norm($person['last_name'] ?? '');
+        $recLast = $norm($row->last_name ?? '');
+        if ($incLast === '' || $recLast === '' || $incLast === 'patient' || $recLast === 'patient') {
+            return true;
+        }
+
+        return $incLast === $recLast;
     }
 
     /**
@@ -1018,6 +1100,52 @@ class UniversalImportService
         fclose($handle);
 
         return $csvContent;
+    }
+
+    /**
+     * Create an appointment for a patient's next visit date, the same way AutoScheduleNextVisits does.
+     * Skipped when there is no date, the date is already past, or an appointment exists on that date.
+     */
+    protected function scheduleNextVisitAppointment(int $patientId, $nextVisit, ?int $branchId): void
+    {
+        if (empty($nextVisit)) {
+            return;
+        }
+
+        $date = Carbon::parse((string)$nextVisit)->toDateString();
+        if ($date < now()->toDateString()) {
+            return;
+        }
+
+        $patient = DB::table('patients')->where('id', $patientId)->first();
+        if (!$patient) {
+            return;
+        }
+
+        $exists = DB::table('appointments')
+            ->where('patient_id', $patientId)
+            ->whereDate('date', $date)
+            ->exists();
+        if ($exists) {
+            return;
+        }
+
+        $branch = $patient->branch_id ?? $branchId;
+        $doctor = DB::table('employees')->where('branch_id', $branch)->where('status', 'Active')->first()
+            ?? DB::table('employees')->where('status', 'Active')->first();
+
+        \App\Models\Appointment::create([
+            'patient_name' => trim($patient->first_name . ' ' . $patient->last_name),
+            'patient_id' => $patientId,
+            'doctor_name' => $doctor->name ?? null,
+            'doctor_id' => $doctor->id ?? null,
+            'treatment' => 'Routine Checkup',
+            'status' => 'Scheduled',
+            'date' => $date,
+            'time' => '09:00 AM',
+            'branch_id' => $branch,
+            'token_number' => 'T' . Str::upper(Str::random(6)),
+        ]);
     }
 
     /**

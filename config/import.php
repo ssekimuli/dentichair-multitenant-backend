@@ -32,6 +32,7 @@ return [
             ],
             'aliases' => [
                 'last_visit' => ['date', 'visit date', 'last visit', 'last visit date', 'attendance date', 'seen on', 'date of visit', 'visit_date'],
+                'next_visit' => ['next visit', 'next visit date', 'next_visit', 'next appointment', 'next appointment date', 'follow up', 'follow-up date', 'follow up date', 'return date', 'next date'],
                 'first_name' => ['name', 'patient name', 'full name'],
                 'phone' => ['contact', 'contact number', 'phone number', 'telephone', 'mobile', 'tel', 'contacts', 'patient contact', 'phone_number'],
                 'history' => ['procedure', 'treatment', 'notes', 'medical history', 'procedure name'],
@@ -42,6 +43,7 @@ return [
                 'status' => 'nullable|in:Active,Inactive,active,inactive',
                 'date_of_birth' => 'nullable|date',
                 'last_visit' => 'nullable|date',
+                'next_visit' => 'nullable|date',
                 'phone' => 'nullable|string',
                 'history' => 'nullable|string',
             ],
@@ -100,9 +102,18 @@ return [
             'excluded_columns' => ['confirmation_token'],
             'defaults' => [
                 'status' => 'Scheduled',
-                'time' => '09:00',
+                'time' => '09:00 AM',
             ],
             'aliases' => [
+                'date' => [
+                    'date', 'appointment date', 'appointment_date', 'day',
+                ],
+                'time' => [
+                    'time', 'heure', 'appointment time', 'appointment_time', 'hour', 'start time', 'rdv',
+                ],
+                'treatment' => [
+                    'service', 'services', 'treatment', 'procedure', 'reason', 'visit type', 'appointment type',
+                ],
                 'contact' => [
                     'contact', 'phone', 'patient contact', 'patient phone', 'telephone', 'mobile',
                     'cell phone', 'phone number', 'contact number', 'contacts', 'tel', 'patient_phone', 'patient_contact',

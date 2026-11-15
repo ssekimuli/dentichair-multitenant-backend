@@ -41,6 +41,18 @@ class ImportValidationService
         $defaults = $tableConfig['defaults'] ?? [];
         $tenantColumn = $tableConfig['tenant_column'] ?? null;
 
+        // "Adult" / "Child" in Date of Birth: store the age (Adult 18, child under 18) and
+        // set the date of birth to today minus that age, as the app does for age-only records.
+        if ($table === 'patients' && isset($mappedData['date_of_birth']) && is_string($mappedData['date_of_birth'])) {
+            $wordAge = $this->ageForDateOfBirthWord($mappedData['date_of_birth']);
+            if ($wordAge !== null) {
+                if (empty($mappedData['age'])) {
+                    $mappedData['age'] = $wordAge;
+                }
+                $mappedData['date_of_birth'] = now()->subYears($wordAge)->format('Y-m-d');
+            }
+        }
+
         $normalized = [];
 
         // Resolve common destination aliases if raw alias keys were passed in mappedData
@@ -68,6 +80,16 @@ class ImportValidationService
             // Normalize phone/contact fields (e.g. Excel trimmed 700111222 -> 0700111222)
             if (($colName === 'phone' || $colName === 'contact') && is_scalar($value)) {
                 $value = $this->normalizePhoneNumber((string)$value);
+            }
+
+            // Normalize appointment time to "10:00 AM" (e.g. "10:00 (30min)" -> "10:00 AM")
+            if ($table === 'appointments' && $colName === 'time' && is_string($value) && $value !== '') {
+                $value = $this->parseAppointmentTime($value) ?? $value;
+            }
+
+            // Normalize gender to Male / Female / Other (e.g. M, f, woman -> Male, Female, Female)
+            if ($colName === 'gender' && is_string($value) && $value !== '') {
+                $value = $this->normalizeGender($value);
             }
 
             // Apply defaults if empty
@@ -109,7 +131,10 @@ class ImportValidationService
                         break;
 
                     case 'date':
-                        $value = $this->parseDateValue($value);
+                        // Invoice dates and patient dates of birth use the stricter day/month parser
+                        $value = ($table === 'invoices' || $colName === 'date_of_birth')
+                            ? $this->parseInvoiceDate($value)
+                            : $this->parseDateValue($value);
                         break;
 
                     case 'datetime':
@@ -218,7 +243,12 @@ class ImportValidationService
         if (is_numeric($patientIdVal) && DB::table('patients')->where('id', (int)$patientIdVal)->exists()) {
             $matchedPatient = DB::table('patients')->where('id', (int)$patientIdVal)->first();
         } elseif (!empty($contact)) {
-            $matchedPatient = $this->findPatientByPhone((string)$contact, $branchId);
+            // Name is used too, so a relative sharing the phone number is not linked by mistake
+            $match = $this->matchPatientByPhone((string)$contact, $branchId, $mappedData['patient_name'] ?? null);
+            $matchedPatient = $match['patient'];
+            if ($match['ambiguous']) {
+                $mappedData['_ambiguous_patient'] = (string)$contact;
+            }
         }
 
         if ($matchedPatient) {
@@ -330,7 +360,12 @@ class ImportValidationService
         if ($explicitPatientId) {
             $matchedPatient = DB::table('patients')->where('id', $explicitPatientId)->first();
         } elseif (!empty($contact)) {
-            $matchedPatient = $this->findPatientByPhone((string)$contact, $branchId);
+            // Name is used too, so a relative sharing the phone number is not billed by mistake
+            $match = $this->matchPatientByPhone((string)$contact, $branchId, $patientName ?: null);
+            $matchedPatient = $match['patient'];
+            if ($match['ambiguous']) {
+                $mappedData['_ambiguous_patient'] = (string)$contact;
+            }
         }
 
         if ($matchedPatient) {
@@ -725,14 +760,7 @@ class ImportValidationService
 
         // Normalize gender value to match enum('Male','Female','Other')
         if (!empty($demographics['gender'])) {
-            $genderVal = strtolower($demographics['gender']);
-            if (in_array($genderVal, ['m', 'male', 'boy', 'man'], true)) {
-                $demographics['gender'] = 'Male';
-            } elseif (in_array($genderVal, ['f', 'female', 'girl', 'woman'], true)) {
-                $demographics['gender'] = 'Female';
-            } elseif (in_array($genderVal, ['other', 'o', 'x', 'non-binary'], true)) {
-                $demographics['gender'] = 'Other';
-            }
+            $demographics['gender'] = $this->normalizeGender((string)$demographics['gender']);
         }
 
         // FIX: parse age numerically ("27.0" -> 27) instead of stripping non-digits ("27.0" -> 270)
@@ -757,12 +785,19 @@ class ImportValidationService
             $this->syncPatientDemographics((int)$currId, $demographics);
         } else {
             // Automatically find or create the patient so this record is ALWAYS imported
-            $mappedData['patient_id'] = $this->findOrCreatePatientForMedicalHistory(
+            $resolvedId = $this->findOrCreatePatientForMedicalHistory(
                 $contact ? (string)$contact : null,
                 $patientName ? (string)$patientName : null,
                 $demographics,
                 $branchId
             );
+            if ($resolvedId === 0) {
+                // Ambiguous: several patients share this contact and name. Flag the row instead of guessing.
+                $mappedData['patient_id'] = null;
+                $mappedData['_ambiguous_patient'] = (string)$contact;
+            } else {
+                $mappedData['patient_id'] = $resolvedId;
+            }
         }
 
         // Clean up virtual contact, name, and demographic fields so they don't reach database insert
@@ -797,12 +832,16 @@ class ImportValidationService
         array $demographics,
         ?int $branchId = null
     ): int {
-        // 1. If contact exists, try resilient phone lookup first
+        // 1. If contact exists, look up by phone AND name, so relatives sharing a phone stay separate.
+        //    Returns 0 when more than one patient fits; the caller flags that row.
         if (!empty($contact)) {
-            $patient = $this->findPatientByPhone($contact, $branchId);
-            if ($patient) {
-                $this->syncPatientDemographics((int)$patient->id, $demographics);
-                return (int)$patient->id;
+            $match = $this->matchPatientByPhone($contact, $branchId, $patientName ?: null);
+            if ($match['ambiguous']) {
+                return 0;
+            }
+            if ($match['patient']) {
+                $this->syncPatientDemographics((int)$match['patient']->id, $demographics);
+                return (int)$match['patient']->id;
             }
         }
 
@@ -962,7 +1001,29 @@ class ImportValidationService
 
         // FIX: "700111222.0" must not become "7001112220"
         $raw = $this->stripFloatSuffix($phoneVal);
-        $digits = preg_replace('/\D+/', '', $raw);
+
+        // Drop bracketed notes such as "(D.A)" or "[mother]"; keep digit-only brackets like "(0700)"
+        $raw = preg_replace_callback('/[\(\[]([^\)\]]*)[\)\]]/', function ($m) {
+            return preg_match('/[A-Za-z]/', $m[1]) ? ' ' : $m[0];
+        }, $raw);
+        $raw = str_replace(['(', ')', '[', ']'], ' ', $raw);
+
+        // Use the first phone number in the cell: "0701862015 / 0750123456" -> "0701862015",
+        // "Tel: 0701-862-015" -> "0701-862-015". Stops at letters or any other separator.
+        if (!preg_match('/\+?\d[\d\s\-\.]*\d|\+?\d/', $raw, $m)) {
+            return null;
+        }
+
+        // Keep digits only: removes spaces, +, -, dots and any other symbols
+        $digits = preg_replace('/\D+/', '', $m[0]);
+        if ($digits === '') {
+            return null;
+        }
+
+        // Local numbers are 10 digits; an extra trailing digit (e.g. "0701862015 2") is dropped
+        if ($digits[0] === '0' && strlen($digits) > 10) {
+            $digits = substr($digits, 0, 10);
+        }
 
         // 9 digits without leading zero (e.g. 700111222 -> 0700111222)
         if (strlen($digits) === 9 && in_array($digits[0], ['7', '3', '4'], true)) {
@@ -974,19 +1035,34 @@ class ImportValidationService
             return '0' . substr($digits, 3);
         }
 
-        return $raw;
+        // Other international numbers keep their "+" (e.g. +44 20 7946 0000 -> +442079460000)
+        if (str_starts_with(trim($m[0]), '+')) {
+            return '+' . $digits;
+        }
+
+        return $digits;
     }
 
     /**
      * Resilient lookup for a patient by phone number across standard Ugandan & international formats.
      */
-    public function findPatientByPhone(string $phoneVal, ?int $branchId = null): ?object
+    public function findPatientByPhone(string $phoneVal, ?int $branchId = null, ?string $name = null): ?object
+    {
+        return $this->matchPatientByPhone($phoneVal, $branchId, $name)['patient'];
+    }
+
+    /**
+     * Phone lookup that also reports ambiguity. Returns ['patient' => object|null, 'ambiguous' => bool].
+     * Ambiguous means more than one patient fits (same phone, and the name cannot tell them apart),
+     * so no patient is chosen and the caller should flag the row for review.
+     */
+    public function matchPatientByPhone(string $phoneVal, ?int $branchId = null, ?string $name = null): array
     {
         $raw = $this->stripFloatSuffix($phoneVal);
         $digits = preg_replace('/\D+/', '', $raw);
 
         if (strlen($digits) < 6) {
-            return null;
+            return ['patient' => null, 'ambiguous' => false];
         }
 
         $candidates = [$raw, $digits];
@@ -1012,14 +1088,42 @@ class ImportValidationService
             });
         };
 
-        if ($branchId) {
-            $branchMatch = $buildPhoneQuery()->where('branch_id', $branchId)->first();
-            if ($branchMatch) {
-                return $branchMatch;
+        // Keep only patients whose name contains every word of the given name (order-insensitive),
+        // so a relative sharing the phone number is not picked by mistake.
+        $wanted = ($name !== null && trim($name) !== '') ? $this->nameWords($name) : null;
+        $filter = function ($rows) use ($wanted) {
+            if ($wanted === null) {
+                return $rows->values();
             }
+            return $rows->filter(function ($patient) use ($wanted) {
+                $have = $this->nameWords(trim($patient->first_name . ' ' . $patient->last_name));
+                return empty(array_diff($wanted, $have));
+            })->values();
+        };
+
+        // Current branch first, then the whole table
+        $rows = collect();
+        if ($branchId) {
+            $rows = $filter($buildPhoneQuery()->where('branch_id', $branchId)->get());
+        }
+        if ($rows->isEmpty()) {
+            $rows = $filter($buildPhoneQuery()->get());
         }
 
-        return $buildPhoneQuery()->first();
+        if ($rows->isEmpty()) {
+            return ['patient' => null, 'ambiguous' => false];
+        }
+        if ($rows->count() > 1) {
+            return ['patient' => null, 'ambiguous' => true];
+        }
+
+        return ['patient' => $rows->first(), 'ambiguous' => false];
+    }
+
+    /** Lowercase name words, for order-insensitive name comparison. */
+    protected function nameWords(string $name): array
+    {
+        return array_values(array_filter(preg_split('/[\s]+/', strtolower(trim($name))) ?: []));
     }
 
     /**
@@ -1134,6 +1238,19 @@ class ImportValidationService
 
         $errors = [];
 
+        // Several patients share this contact and the name does not tell them apart: flag, do not guess
+        if (!empty($normalizedRow['_ambiguous_patient'])) {
+            $contact = $normalizedRow['_ambiguous_patient'];
+            $errors[] = [
+                'row_number' => $rowNumber,
+                'source_column' => $fieldToHeaderMap['patient_id'] ?? $fieldToHeaderMap['contact'] ?? 'Contact',
+                'destination_field' => 'patient_id',
+                'error_code' => 'PATIENT_AMBIGUOUS',
+                'error_message' => "More than one patient has contact '{$contact}' and this name. Add the patient ID to this row or correct the name, then import again.",
+            ];
+            unset($normalizedRow['_ambiguous_patient']);
+        }
+
         // Check if an unresolved contact was recorded during normalization
         if (!empty($normalizedRow['_unresolved_patient_contact'])) {
             $contact = $normalizedRow['_unresolved_patient_contact'];
@@ -1167,6 +1284,176 @@ class ImportValidationService
         }
 
         return $errors;
+    }
+
+    /**
+     * When a date of birth cell holds a life-stage word instead of a date, return the age to store.
+     * Adult -> 18, child / minor -> 10, teen -> 15, infant / baby / toddler -> 2. Null for anything else.
+     */
+    public function ageForDateOfBirthWord(string $value): ?int
+    {
+        $word = strtolower(trim($value));
+
+        if (in_array($word, ['adult', 'adults', 'senior', 'seniors', 'elderly'], true)) {
+            return 18;
+        }
+        if (in_array($word, ['child', 'children', 'kid', 'kids', 'minor', 'minors'], true)) {
+            return 10;
+        }
+        if (in_array($word, ['teen', 'teens', 'teenager', 'teenagers', 'youth'], true)) {
+            return 15;
+        }
+        if (in_array($word, ['infant', 'infants', 'baby', 'babies', 'toddler', 'toddlers'], true)) {
+            return 2;
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract the start time from an appointment time cell and format it as "hh:mm AM/PM".
+     * Ignores notes such as "(30min)". Without AM/PM, hours 1-6 are read as PM (clinic hours),
+     * 7-11 as AM, 12 as PM, and 13-23 as 24-hour time. Returns null when no time is found.
+     */
+    public function parseAppointmentTime(string $value): ?string
+    {
+        if (!preg_match('/(\d{1,2})[:.](\d{2})\s*([ap])\.?\s*m?\.?/i', $value, $m)
+            && !preg_match('/(\d{1,2})[:.](\d{2})/', $value, $m)) {
+            return null;
+        }
+
+        $hour = (int)$m[1];
+        $minute = (int)$m[2];
+        if ($hour > 23 || $minute > 59) {
+            return null;
+        }
+
+        $meridiem = isset($m[3]) && $m[3] !== '' ? strtoupper($m[3]) : null;
+
+        if ($meridiem === null) {
+            if ($hour === 0 || ($hour >= 13 && $hour <= 23)) {
+                $meridiem = 'PM';
+            } elseif ($hour === 12) {
+                $meridiem = 'PM';
+            } elseif ($hour >= 1 && $hour <= 6) {
+                $meridiem = 'PM';
+            } else {
+                $meridiem = 'AM';
+            }
+        } else {
+            $meridiem = $meridiem === 'A' ? 'AM' : 'PM';
+        }
+
+        if ($hour > 12) {
+            $hour -= 12;
+        }
+        if ($hour === 0) {
+            $hour = 12;
+        }
+
+        return sprintf('%02d:%02d %s', $hour, $minute, $meridiem);
+    }
+
+    /**
+     * Convert common gender spellings and codes to Male, Female or Other.
+     * Unrecognized values are returned unchanged so validation can report them.
+     */
+    public function normalizeGender(string $value): string
+    {
+        $clean = strtolower(trim($value));
+        $clean = preg_replace('/\s+/', ' ', $clean);
+
+        if (in_array($clean, ['m', 'male', 'man', 'men', 'boy', 'mr', 'he'], true)) {
+            return 'Male';
+        }
+
+        if (in_array($clean, ['f', 'female', 'woman', 'women', 'girl', 'mrs', 'miss', 'ms', 'she'], true)) {
+            return 'Female';
+        }
+
+        if (in_array($clean, ['other', 'o', 'x', 'non-binary', 'nonbinary', 'non binary', 'nb', 'prefer not to say'], true)) {
+            return 'Other';
+        }
+
+        return trim($value);
+    }
+
+    /**
+     * Convert any supported invoice date format to Y-m-d (e.g. 1995-05-12).
+     *
+     * Supported: 1995-05-12, 1995/05/12, 1995.05.12, 19950512, 12/05/1995, 12-05-1995,
+     * 12.05.1995, 12 05 1995, 12/05/95, 12 May 1995, 12-May-1995, May 12, 1995,
+     * "Fri, 12 May 1995", dates with a trailing time, and Excel serial numbers.
+     * Numeric day/month/year values are read day-first (12/05/1995 = 12 May 1995).
+     * Unparseable values are returned unchanged so the row validator reports them.
+     */
+    protected function parseInvoiceDate($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value)->format('Y-m-d');
+        }
+
+        $str = trim((string)$value);
+        if ($str === '') {
+            return null;
+        }
+
+        // Excel serial date (days since 1899-12-30)
+        if (preg_match('/^\d+(\.\d+)?$/', $str) && (float)$str >= 1000 && (float)$str < 60000 && strlen($str) < 8) {
+            return Carbon::create(1899, 12, 30)->addDays((int)floor((float)$str))->format('Y-m-d');
+        }
+
+        // Drop weekday prefix ("Fri, ", "Sat ") and trailing time ("14:30", "2:05 pm")
+        $str = preg_replace('/^(mon|tue|wed|thu|fri|sat|sun)[a-z]*[,.]?\s+/i', '', $str);
+        $str = preg_replace('/[T\s]*\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*([ap]\.?m\.?)?\s*$/i', '', $str);
+        $str = trim($str);
+
+        // Compact yyyymmdd
+        if (preg_match('/^(\d{4})(\d{2})(\d{2})$/', $str, $m)) {
+            return $this->validDateOrOriginal((int)$m[1], (int)$m[2], (int)$m[3], $value);
+        }
+
+        // Year first: 1995-05-12, 1995/05/12, 1995.05.12, 1995-5-12
+        if (preg_match('/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/', $str, $m)) {
+            return $this->validDateOrOriginal((int)$m[1], (int)$m[2], (int)$m[3], $value);
+        }
+
+        // Day first numeric: 12/05/1995, 12-05-1995, 12.05.1995, 12 05 1995, 12/05/95
+        if (preg_match('/^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4}|\d{2})$/', $str, $m)) {
+            $year = (int)$m[3];
+            if (strlen($m[3]) === 2) {
+                $year = $year >= 50 ? 1900 + $year : 2000 + $year;
+            }
+            return $this->validDateOrOriginal($year, (int)$m[2], (int)$m[1], $value);
+        }
+
+        // Month names: 12 May 1995, 12-May-1995, 12/May/1995, May 12, 1995, 12th May 1995
+        try {
+            $parsed = Carbon::parse(preg_replace('/[\/.\-]+/', ' ', $str));
+            if ($parsed->year > 1900 && $parsed->year < 2100) {
+                return $parsed->format('Y-m-d');
+            }
+        } catch (\Throwable $e) {
+            // Fall through
+        }
+
+        return (string)$value;
+    }
+
+    /**
+     * Return a Y-m-d string for a real calendar date, otherwise the original value.
+     */
+    protected function validDateOrOriginal(int $year, int $month, int $day, $original): string
+    {
+        if ($year < 1900 || $year > 2100 || !checkdate($month, $day, $year)) {
+            return (string)$original;
+        }
+
+        return sprintf('%04d-%02d-%02d', $year, $month, $day);
     }
 
     /**

@@ -51,7 +51,17 @@ class SpreadsheetReaderService
         }
 
         // Must be xlsx or xls
-        $tempCsvPath = tempnam(sys_get_temp_dir(), 'univ_imp_') . '.csv';
+        // tempnam() creates a bare file; remove it and use a .csv name, then clean up the CSV at the end
+        $tempBase = tempnam(sys_get_temp_dir(), 'univ_imp_');
+        $tempCsvPath = $tempBase . '.csv';
+        if ($tempBase !== false) {
+            @unlink($tempBase);
+        }
+        register_shutdown_function(static function () use ($tempCsvPath) {
+            if (is_file($tempCsvPath)) {
+                @unlink($tempCsvPath);
+            }
+        });
         $pythonScript = base_path('app/Utils/excel_to_csv.py');
         $pythonBin = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
 

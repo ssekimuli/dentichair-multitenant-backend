@@ -137,6 +137,32 @@ class PatientActivationTest extends TestCase
     }
 
     /** @test */
+    public function pending_activation_searches_name_phone_and_email()
+    {
+        $amina = Patient::create([
+            'first_name' => 'Amina', 'last_name' => 'Nakato', 'phone' => '0772555101',
+            'email' => 'amina.n@example.com', 'age' => 28, 'date_of_birth' => now()->subYears(28)->format('Y-m-d'),
+            'status' => 'Inactive', 'registration_source' => 'web_self_register', 'branch_id' => $this->branch->id,
+        ]);
+        $brian = Patient::create([
+            'first_name' => 'Brian', 'last_name' => 'Ochieng', 'phone' => '0701999222',
+            'age' => 35, 'date_of_birth' => now()->subYears(35)->format('Y-m-d'),
+            'status' => 'Inactive', 'registration_source' => 'web_booking', 'branch_id' => $this->branch->id,
+        ]);
+
+        $search = fn (string $term) => collect($this->actingAs($this->employee)
+            ->getJson('/api/patients/pending-activation?search=' . urlencode($term))
+            ->json('data'))->pluck('id')->all();
+
+        $this->assertEquals([$amina->id], $search('amina'));
+        $this->assertEquals([$brian->id], $search('0701999'));
+        $this->assertEquals([$amina->id], $search('amina.n@example'));
+        $this->assertEquals([$brian->id], $search('Ochieng'));
+        $this->assertEquals([], $search('nobody-matches'));
+        $this->assertEquals([], $search('%'));
+    }
+
+    /** @test */
     public function activate_sets_the_patient_active()
     {
         $patient = $this->makePatient('Waiting', 'web_booking');

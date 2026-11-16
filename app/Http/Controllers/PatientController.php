@@ -494,12 +494,14 @@ class PatientController extends Controller
      *
      * @queryParam branch_id integer Optional. Filter by branch.
      * @queryParam registration_source string Optional. web_booking or web_self_register.
+     * @queryParam search string Optional. Matches first name, last name, phone or email.
      * @queryParam per_page integer Optional. Results per page (1-100). Default 20.
      */
     public function pendingActivation(Request $request)
     {
         $request->validate([
             'registration_source' => 'nullable|in:web_booking,web_self_register',
+            'search' => 'nullable|string|max:100',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
@@ -515,12 +517,31 @@ class PatientController extends Controller
             $query->where('registration_source', $request->registration_source);
         }
 
+        if ($request->filled('search')) {
+            $term = '%' . addcslashes(trim($request->search), '%_\\') . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('phone', 'like', $term)
+                    ->orWhere('email', 'like', $term);
+            });
+        }
+
         $patients = $query
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->paginate((int) $request->input('per_page', 20));
 
-        return response()->json($patients);
+        return response()->json([
+            'message' => 'Pending patients retrieved successfully.',
+            'data' => $patients->items(),
+            'meta' => [
+                'current_page' => $patients->currentPage(),
+                'last_page' => $patients->lastPage(),
+                'per_page' => $patients->perPage(),
+                'total' => $patients->total(),
+            ],
+        ]);
     }
 
     /**

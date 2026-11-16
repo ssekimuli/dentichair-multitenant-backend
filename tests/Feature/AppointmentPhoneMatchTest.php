@@ -99,6 +99,37 @@ class AppointmentPhoneMatchTest extends TestCase
     }
 
     /** @test */
+    public function unknown_phone_creates_the_patient_and_links_the_appointment()
+    {
+        $this->assertEquals(0, \App\Models\Patient::count());
+
+        $result = $this->importRows([
+            ['AHMED SIDIA*', '+256 772 555 101'],
+        ]);
+
+        $this->assertEquals(['imported' => 1, 'failed' => 0], $result);
+
+        $patient = Patient::first();
+        $this->assertNotNull($patient);
+        $this->assertEquals('0772555101', $patient->phone);
+        $this->assertEquals('AHMED', $patient->first_name);
+        $this->assertEquals('SIDIA', $patient->last_name);
+        $this->assertEquals($patient->id, Appointment::first()->patient_id);
+    }
+
+    /** @test */
+    public function second_row_with_same_new_phone_links_to_the_patient_created_by_the_first()
+    {
+        $result = $this->importRows([
+            ['Amina Nakato', '+256772555102'],
+            ['Amina Nakato', '0772555102'],
+        ]);
+
+        $this->assertEquals(['imported' => 2, 'failed' => 0], $result);
+        $this->assertEquals(1, Patient::count());
+    }
+
+    /** @test */
     public function shared_phone_is_resolved_by_name()
     {
         $ikhlas = $this->makePatient('Ikhlas', 'Ali', '0700111222');

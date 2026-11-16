@@ -122,10 +122,10 @@ class UniversalImportAppointmentsTest extends TestCase
     }
 
     /** @test */
-    public function it_rejects_appointment_row_when_phone_matches_no_patient()
+    public function it_creates_patient_when_phone_matches_no_patient()
     {
         $csv = "NAME,PHONE,DATE,TIME,TREATMENT\n";
-        $csv .= "Stranger,+256799999999,2026-08-15,10:00,Cleaning\n";
+        $csv .= "Stranger Person,+256799999999,2026-08-15,10:00,Cleaning\n";
 
         $file = UploadedFile::fake()->createWithContent('appointments_unmatched.csv', $csv);
 
@@ -147,12 +147,14 @@ class UniversalImportAppointmentsTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'data' => [
-                    'imported' => 0,
-                    'failed' => 1,
+                    'imported' => 1,
+                    'failed' => 0,
                 ],
             ]);
 
-        $this->assertDatabaseCount('appointments', 0);
-        $this->assertDatabaseCount('patients', 0);
+        $patient = \App\Models\Patient::where('phone', '0799999999')->first();
+        $this->assertNotNull($patient);
+        $this->assertEquals('Stranger', $patient->first_name);
+        $this->assertEquals(1, \App\Models\Appointment::where('patient_id', $patient->id)->count());
     }
 }

@@ -212,8 +212,9 @@ class ImportValidationService
     /**
      * Resolve patient for appointments from the Contact / Phone column.
      * If an existing patient matches the phone number, link the appointment to that patient
-     * (and fill patient_name when the file did not supply one). Patients are never created here.
-     * If no patient matches, patient_id stays null so the row fails validation with a clear message.
+     * (and fill patient_name when the file did not supply one). If no patient has that phone or
+     * email, a patient is created from the row. If the phone fits several patients, the row is
+     * flagged instead of guessing.
      */
     protected function resolveAppointmentPatient(array $mappedData, ?int $branchId = null, array $rawData = []): array
     {
@@ -277,6 +278,15 @@ class ImportValidationService
             $emailQuery = DB::table('patients')->whereRaw('LOWER(email) = ?', [mb_strtolower($email)]);
             $matchedPatient = ($branchId ? (clone $emailQuery)->where('branch_id', $branchId)->first() : null)
                 ?? $emailQuery->first();
+        }
+
+        // Nobody has this phone or email yet: create the patient from the row. Not when the phone
+        // fits several patients (ambiguous), since the row would then be linked to a guess.
+        if (!$matchedPatient && !empty($contact) && empty($mappedData['_ambiguous_patient'])) {
+            $newPatientId = $this->createPatientFromPhone((string) $contact, $mappedData['patient_name'] ?? null, $branchId);
+            if ($newPatientId) {
+                $matchedPatient = DB::table('patients')->where('id', $newPatientId)->first();
+            }
         }
 
         if ($matchedPatient) {
@@ -849,6 +859,57 @@ class ImportValidationService
         }
 
         return $mappedData;
+    }
+
+    /**
+     * Create a patient for a phone number that no patient has yet (appointment import).
+     * The phone is the identity; the name only fills first and last name. Returns null when the
+     * phone is not a usable number.
+     */
+    public function createPatientFromPhone(string $contact, ?string $patientName, ?int $branchId = null): ?int
+    {
+        $phone = $this->normalizePhoneNumber($contact);
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+        if (strlen($digits) < 6) {
+            return null;
+        }
+
+        // Keep letters, spaces, apostrophes and hyphens: "AHMED*" -> "AHMED"
+        $cleanName = trim(preg_replace("/[^\p{L}\s'\-]+/u", ' ', (string) $patientName));
+        if ($cleanName !== '') {
+            $parts = preg_split('/\s+/', $cleanName, 2);
+            $firstName = $parts[0];
+            $lastName = $parts[1] ?? 'Patient';
+        } else {
+            $firstName = 'Patient';
+            $lastName = substr($digits, -4);
+        }
+
+        $targetBranchId = $branchId ?: 1;
+        if (!DB::table('branches')->where('id', $targetBranchId)->exists()) {
+            $targetBranchId = (int) (DB::table('branches')->value('id') ?? 1);
+        }
+
+        $now = now();
+        $patientData = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'phone' => $phone,
+            'email' => null,
+            'gender' => 'Other',
+            // date_of_birth is required and the sheet has none: same placeholder the other importers use
+            'date_of_birth' => '1999-01-01',
+            'status' => 'Active',
+            'branch_id' => $targetBranchId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        if (Schema::hasColumn('patients', 'client_uuid')) {
+            $patientData['client_uuid'] = (string) Str::uuid();
+        }
+
+        return (int) DB::table('patients')->insertGetId($patientData);
     }
 
     /**

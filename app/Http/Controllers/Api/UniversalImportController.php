@@ -260,6 +260,92 @@ class UniversalImportController extends Controller
      *
      * GET /api/import/jobs/{id}/errors
      */
+    /**
+     * Search the patients, invoices and appointments an import created, to verify them.
+     */
+    public function records(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+        $job = ImportJob::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'success' => false,
+                'message' => "Import job '{$id}' not found.",
+            ], 404);
+        }
+
+        if ($user && $job->user_id && $job->user_id !== $user->id && $user->branch_id && $job->branch_id !== $user->branch_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access to this import job.',
+            ], 403);
+        }
+
+        $query = trim((string) $request->query('q', ''));
+        $results = $this->importService->searchJobRecords($job, $query);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Imported records retrieved.',
+            'data' => [
+                'job_id' => $job->id,
+                'query' => $query,
+                'tables' => $results,
+            ],
+        ]);
+    }
+
+    /**
+     * Undo an import: remove the invoices it created so the file can be imported again.
+     */
+    public function undo(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+        $job = ImportJob::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'success' => false,
+                'message' => "Import job '{$id}' not found.",
+            ], 404);
+        }
+
+        if ($user && $job->user_id && $job->user_id !== $user->id && $user->branch_id && $job->branch_id !== $user->branch_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access to this import job.',
+            ], 403);
+        }
+
+        try {
+            $result = $this->importService->undoImport($job);
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some of these records are used by other records (for example payments), so nothing was removed.',
+            ], 409);
+        }
+
+        $invoices = $result['deleted']['invoices'] ?? 0;
+        $appointments = $result['deleted']['appointments'] ?? 0;
+
+        return response()->json([
+            'success' => true,
+            'message' => "Removed {$invoices} invoice(s) and {$appointments} appointment(s) from this import.",
+            'data' => [
+                'job_id' => $job->id,
+                'deleted' => $result['deleted'],
+                'status' => 'undone',
+            ],
+        ]);
+    }
+
     public function jobErrors(Request $request, string $id): JsonResponse
     {
         $user = $request->user();

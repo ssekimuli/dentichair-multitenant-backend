@@ -238,6 +238,27 @@ class ImportValidationService
 
         $matchedPatient = null;
 
+        // An email in the contact column, or a separate email column, identifies the patient too
+        $email = null;
+        if (!empty($contact) && str_contains((string)$contact, '@')) {
+            $email = trim((string)$contact);
+            $contact = null;
+        }
+        if ($email === null) {
+            $email = $mappedData['email'] ?? $mappedData['patient_email'] ?? null;
+        }
+        if (empty($email) && !empty($rawData)) {
+            foreach ($rawData as $headerKey => $headerVal) {
+                $cleanKey = strtolower(trim((string)$headerKey));
+                if (in_array($cleanKey, ['email', 'e-mail', 'patient email', 'patient_email', 'email address'], true)) {
+                    if (!empty($headerVal) && is_scalar($headerVal)) {
+                        $email = trim((string)$headerVal);
+                        break;
+                    }
+                }
+            }
+        }
+
         // An explicit, existing patient ID mapped to patient_id takes priority
         $patientIdVal = $mappedData['patient_id'] ?? null;
         if (is_numeric($patientIdVal) && DB::table('patients')->where('id', (int)$patientIdVal)->exists()) {
@@ -249,6 +270,13 @@ class ImportValidationService
             if ($match['ambiguous']) {
                 $mappedData['_ambiguous_patient'] = (string)$contact;
             }
+        }
+
+        // No phone match: try the email, scoped to the branch first
+        if (!$matchedPatient && !empty($email)) {
+            $emailQuery = DB::table('patients')->whereRaw('LOWER(email) = ?', [mb_strtolower($email)]);
+            $matchedPatient = ($branchId ? (clone $emailQuery)->where('branch_id', $branchId)->first() : null)
+                ?? $emailQuery->first();
         }
 
         if ($matchedPatient) {

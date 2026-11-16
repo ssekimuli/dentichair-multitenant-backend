@@ -67,14 +67,14 @@ class UniversalImportService
         $fullPath = Storage::disk($tempDisk)->path($storedPath);
 
         // Inspect headers and sample rows
-        $headers = $this->reader->getHeaders($fullPath, $sheet);
+        $headers = $this->reader->getHeaders($fullPath, $sheet, $table);
         if (empty($headers)) {
             Storage::disk($tempDisk)->delete($storedPath);
             throw new \InvalidArgumentException('Unable to parse file headers. The file may be empty or corrupted.');
         }
 
-        $totalRows = $this->reader->countRows($fullPath, $sheet);
-        $sampleRows = $this->reader->getPreviewRows($fullPath, 5, $sheet);
+        $totalRows = $this->reader->countRows($fullPath, $sheet, $table);
+        $sampleRows = $this->reader->getPreviewRows($fullPath, 5, $sheet, $table);
         $analysis = $this->mappingService->proposeMapping($headers, $table);
 
         $effectiveBranchId = $branchId ?: ($user?->branch_id ?? null);
@@ -164,7 +164,7 @@ class UniversalImportService
             $tempDir = Config::get('import.temp_directory', 'imports');
             $storedPath = $file->store($tempDir, $tempDisk);
             $fullPath = Storage::disk($tempDisk)->path($storedPath);
-            $totalRows = $this->reader->countRows($fullPath, $params['sheet'] ?? null);
+            $totalRows = $this->reader->countRows($fullPath, $params['sheet'] ?? null, $table);
 
             $importJob = ImportJob::create([
                 'user_id' => $user?->id,
@@ -366,7 +366,8 @@ class UniversalImportService
                         'failed_count' => $failedCount,
                     ]);
                 },
-                $job->sheet_name
+                $job->sheet_name,
+                $table
             );
 
             if ($hasAtomicFailure) {
@@ -527,7 +528,7 @@ class UniversalImportService
                         DB::table($table)->where('id', $existing->id)->update($cleanData);
 
                         if ($table === 'patients' && array_key_exists('next_visit', $cleanData)) {
-                            $this->scheduleNextVisitAppointment((int)$existing->id, $cleanData['next_visit'], $branchId);
+                            $this->scheduleNextVisitAppointment((int)$existing->id, $cleanData['next_visit'], $branchId, $jobId);
                         }
 
                         if ($table === 'laboratory_orders') {
@@ -668,8 +669,13 @@ class UniversalImportService
 
                     $insertedId = DB::table($table)->insertGetId($cleanData);
 
+                    // Remember created rows so this import can be undone later
+                    if (in_array($table, ['patients', 'invoices', 'appointments'], true)) {
+                        $this->recordCreatedRecord($jobId, $table, (int) $insertedId);
+                    }
+
                     if ($table === 'patients') {
-                        $this->scheduleNextVisitAppointment((int)$insertedId, $cleanData['next_visit'] ?? null, $branchId);
+                        $this->scheduleNextVisitAppointment((int)$insertedId, $cleanData['next_visit'] ?? null, $branchId, $jobId);
                     }
 
                     if ($table === 'laboratory_orders') {
@@ -838,6 +844,31 @@ class UniversalImportService
         ?string $tenantColumn,
         ?int $branchId
     ): ?object {
+        // 0. Appointments: the same patient on the same day is the same appointment, so update it
+        if ($table === 'appointments' && !empty($data['patient_id']) && !empty($data['date'])) {
+            try {
+                $appointmentDate = Carbon::parse((string) $data['date'])->toDateString();
+            } catch (\Throwable) {
+                $appointmentDate = null;
+            }
+
+            if ($appointmentDate) {
+                $query = DB::table('appointments')
+                    ->where('patient_id', (int) $data['patient_id'])
+                    ->whereDate('date', $appointmentDate);
+                if ($tenantColumn && $branchId && Schema::hasColumn($table, $tenantColumn)) {
+                    $scoped = (clone $query)->where($tenantColumn, $branchId)->first();
+                    if ($scoped) {
+                        return $scoped;
+                    }
+                }
+                $record = $query->first();
+                if ($record) {
+                    return $record;
+                }
+            }
+        }
+
         // 1. Explicit update_key match if configured and present in $data
         if (!empty($updateKey) && !empty($data[$updateKey]) && Schema::hasColumn($table, $updateKey)) {
             if (in_array($updateKey, ['phone', 'contact', 'telephone', 'mobile'], true)) {
@@ -1063,6 +1094,122 @@ class UniversalImportService
     /**
      * Generate CSV content with formula injection defense for downloading error report.
      */
+    /**
+     * Search the rows an import job created, so the user can check what was imported.
+     * Returns up to 50 matches per table. Only rows created by this job are searched.
+     *
+     * @return array<string,array{total:int,rows:array<int,array<string,mixed>>}>
+     */
+    public function searchJobRecords(ImportJob $job, string $query = ''): array
+    {
+        $views = [
+            'patients' => [
+                'columns' => ['id', 'first_name', 'last_name', 'phone', 'email', 'gender', 'age', 'last_visit', 'next_visit'],
+                'search' => ['first_name', 'last_name', 'phone', 'email'],
+            ],
+            'invoices' => [
+                'columns' => ['id', 'receipt_number', 'patient_name', 'issue_date', 'amount', 'paid_amount', 'status'],
+                'search' => ['receipt_number', 'patient_name', 'status'],
+            ],
+            'appointments' => [
+                'columns' => ['id', 'patient_name', 'date', 'time', 'treatment', 'status'],
+                'search' => ['patient_name', 'treatment', 'status'],
+            ],
+        ];
+
+        $results = [];
+        foreach ($views as $table => $view) {
+            $ids = DB::table('import_job_records')
+                ->where('import_job_id', $job->id)
+                ->where('table_name', $table)
+                ->where('action', 'created')
+                ->pluck('record_id')
+                ->all();
+
+            $base = DB::table($table)->whereIn('id', $ids);
+            if ($query !== '') {
+                $term = '%' . addcslashes($query, '%_\\') . '%';
+                $base->where(function ($q) use ($view, $term) {
+                    foreach ($view['search'] as $column) {
+                        $q->orWhere($column, 'like', $term);
+                    }
+                });
+            }
+
+            $total = (clone $base)->count();
+            $rows = $base->orderBy('id')->limit(50)->get($view['columns'])
+                ->map(fn ($row) => (array) $row)
+                ->all();
+
+            $results[$table] = ['total' => $total, 'rows' => $rows];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Remove the invoices and appointments an import created, so the file can be imported again.
+     * Only rows created by this job are removed; rows it updated are left alone, and patients are never deleted.
+     * Runs in one transaction: if the database refuses a delete, nothing is removed.
+     *
+     * @return array{deleted:array<string,int>}
+     */
+    public function undoImport(ImportJob $job): array
+    {
+        if ($job->status === 'undone') {
+            throw new \InvalidArgumentException('This import has already been undone.');
+        }
+
+        if ($job->status !== 'completed') {
+            throw new \InvalidArgumentException("Only completed imports can be undone (current status: {$job->status}).");
+        }
+
+        $createdIds = fn (string $table) => DB::table('import_job_records')
+            ->where('import_job_id', $job->id)
+            ->where('table_name', $table)
+            ->where('action', 'created')
+            ->pluck('record_id')
+            ->all();
+
+        $appointmentIds = $createdIds('appointments');
+        $invoiceIds = $createdIds('invoices');
+
+        if (empty($appointmentIds) && empty($invoiceIds)) {
+            throw new \InvalidArgumentException('This import did not create any invoices or appointments that can be undone.');
+        }
+
+        $deleted = DB::transaction(function () use ($job, $appointmentIds, $invoiceIds) {
+            $counts = ['appointments' => 0, 'invoices' => 0];
+
+            if ($appointmentIds) {
+                $counts['appointments'] = DB::table('appointments')->whereIn('id', $appointmentIds)->delete();
+            }
+
+            if ($invoiceIds) {
+                // Insurance claims are kept; they are only unlinked from the removed invoices
+                if (Schema::hasTable('insurance_claims')) {
+                    DB::table('insurance_claims')->whereIn('invoice_id', $invoiceIds)->update(['invoice_id' => null]);
+                }
+                if (Schema::hasTable('invoice_treatments')) {
+                    DB::table('invoice_treatments')->whereIn('invoice_id', $invoiceIds)->delete();
+                }
+                if (Schema::hasTable('invoice_other_charges')) {
+                    DB::table('invoice_other_charges')->whereIn('invoice_id', $invoiceIds)->delete();
+                }
+
+                $counts['invoices'] = DB::table('invoices')->whereIn('id', $invoiceIds)->delete();
+            }
+
+            DB::table('import_job_records')->where('import_job_id', $job->id)->delete();
+
+            $job->update(['status' => 'undone', 'imported_count' => 0]);
+
+            return $counts;
+        });
+
+        return ['deleted' => $deleted];
+    }
+
     public function generateErrorReportCsv(ImportJob $job): string
     {
         $handle = fopen('php://temp', 'r+');
@@ -1106,7 +1253,7 @@ class UniversalImportService
      * Create an appointment for a patient's next visit date, the same way AutoScheduleNextVisits does.
      * Skipped when there is no date, the date is already past, or an appointment exists on that date.
      */
-    protected function scheduleNextVisitAppointment(int $patientId, $nextVisit, ?int $branchId): void
+    protected function scheduleNextVisitAppointment(int $patientId, $nextVisit, ?int $branchId, ?string $jobId = null): void
     {
         if (empty($nextVisit)) {
             return;
@@ -1134,7 +1281,7 @@ class UniversalImportService
         $doctor = DB::table('employees')->where('branch_id', $branch)->where('status', 'Active')->first()
             ?? DB::table('employees')->where('status', 'Active')->first();
 
-        \App\Models\Appointment::create([
+        $appointment = \App\Models\Appointment::create([
             'patient_name' => trim($patient->first_name . ' ' . $patient->last_name),
             'patient_id' => $patientId,
             'doctor_name' => $doctor->name ?? null,
@@ -1145,6 +1292,26 @@ class UniversalImportService
             'time' => '09:00 AM',
             'branch_id' => $branch,
             'token_number' => 'T' . Str::upper(Str::random(6)),
+        ]);
+
+        $this->recordCreatedRecord($jobId, 'appointments', (int) $appointment->id);
+    }
+
+    /**
+     * Remember a row this import job created, so the job can be undone later.
+     */
+    protected function recordCreatedRecord(?string $jobId, string $table, int $recordId): void
+    {
+        if (!$jobId) {
+            return;
+        }
+
+        DB::table('import_job_records')->insert([
+            'import_job_id' => $jobId,
+            'table_name' => $table,
+            'record_id' => $recordId,
+            'action' => 'created',
+            'created_at' => now(),
         ]);
     }
 

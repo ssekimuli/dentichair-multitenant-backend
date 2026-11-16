@@ -41,8 +41,26 @@ class SpreadsheetReaderService
     /**
      * Convert Excel file to CSV if needed and return path to CSV.
      * If the file is already CSV/TXT, returns the original path.
+     * Clinic visit ledgers are rewritten into a flat patients layout (see ClinicLedgerNormalizer).
+     * A returned path that differs from $filePath is a temp file the caller deletes.
      */
-    public function ensureCsv(string $filePath, ?string $sheet = null): string
+    public function ensureCsv(string $filePath, ?string $sheet = null, ?string $table = null): string
+    {
+        $csvPath = $this->convertToCsv($filePath, $sheet);
+
+        $normalized = (new ClinicLedgerNormalizer())->normalize($csvPath, $this->detectDelimiter($csvPath), $table);
+        if ($normalized === null) {
+            return $csvPath;
+        }
+
+        if ($csvPath !== $filePath && is_file($csvPath)) {
+            @unlink($csvPath);
+        }
+
+        return $normalized;
+    }
+
+    protected function convertToCsv(string $filePath, ?string $sheet = null): string
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
@@ -104,9 +122,9 @@ class SpreadsheetReaderService
     /**
      * Get headers from file.
      */
-    public function getHeaders(string $filePath, ?string $sheet = null): array
+    public function getHeaders(string $filePath, ?string $sheet = null, ?string $table = null): array
     {
-        $csvPath = $this->ensureCsv($filePath, $sheet);
+        $csvPath = $this->ensureCsv($filePath, $sheet, $table);
         $delimiter = $this->detectDelimiter($csvPath);
 
         $handle = fopen($csvPath, 'r');
@@ -144,9 +162,9 @@ class SpreadsheetReaderService
     /**
      * Get preview sample rows from file.
      */
-    public function getPreviewRows(string $filePath, int $limit = 5, ?string $sheet = null): array
+    public function getPreviewRows(string $filePath, int $limit = 5, ?string $sheet = null, ?string $table = null): array
     {
-        $csvPath = $this->ensureCsv($filePath, $sheet);
+        $csvPath = $this->ensureCsv($filePath, $sheet, $table);
         $delimiter = $this->detectDelimiter($csvPath);
 
         $handle = fopen($csvPath, 'r');
@@ -212,9 +230,9 @@ class SpreadsheetReaderService
     /**
      * Count total data rows in the file (excluding header and trailing empty rows).
      */
-    public function countRows(string $filePath, ?string $sheet = null): int
+    public function countRows(string $filePath, ?string $sheet = null, ?string $table = null): int
     {
-        $csvPath = $this->ensureCsv($filePath, $sheet);
+        $csvPath = $this->ensureCsv($filePath, $sheet, $table);
         $delimiter = $this->detectDelimiter($csvPath);
 
         $handle = fopen($csvPath, 'r');
@@ -249,9 +267,9 @@ class SpreadsheetReaderService
      * Process file in chunks, calling callback for each batch of rows.
      * Each row yielded to callback is an associative array: [row_number, headers, values_by_header].
      */
-    public function processChunks(string $filePath, int $chunkSize, callable $callback, ?string $sheet = null): void
+    public function processChunks(string $filePath, int $chunkSize, callable $callback, ?string $sheet = null, ?string $table = null): void
     {
-        $csvPath = $this->ensureCsv($filePath, $sheet);
+        $csvPath = $this->ensureCsv($filePath, $sheet, $table);
         $delimiter = $this->detectDelimiter($csvPath);
 
         $handle = fopen($csvPath, 'r');

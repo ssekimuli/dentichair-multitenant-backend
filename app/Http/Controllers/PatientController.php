@@ -91,7 +91,12 @@ class PatientController extends Controller
             });
         }
 
-        $patients = $query->latest()->paginate($request->input('per_page', 10));
+        // Most recent last visit first; patients with no last visit go last
+        $patients = $query
+            ->orderByRaw('CASE WHEN last_visit IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('last_visit')
+            ->latest()
+            ->paginate($request->input('per_page', 10));
 
         return response()->json([
             'message' => 'Patients retrieved successfully.',
@@ -122,7 +127,12 @@ class PatientController extends Controller
             $query->where('gender', $request->gender);
         }
 
-        $patients = $query->latest()->get();
+        // Most recent last visit first; patients with no last visit go last
+        $patients = $query
+            ->orderByRaw('CASE WHEN last_visit IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('last_visit')
+            ->latest()
+            ->get();
 
         return response()->json([
             'message' => 'Patients retrieved successfully.',
@@ -491,6 +501,35 @@ class PatientController extends Controller
         ]);
 
         $patient->next_visit = $request->next_visit;
+        $patient->save();
+
+        return response()->json($patient->load([
+            'dentalRecords',
+            'treatmentPlans',
+            'images',
+            'softTissueRecords',
+            'orthodonticRecords',
+            'endodonticRecords',
+            'branch'
+        ]));
+    }
+
+    /**
+     * Set only the patient's last visit date (PUT /patients/{id}/last-visit).
+     */
+    public function updateLastVisit(Request $request, $id)
+    {
+        $patient = Patient::find($id);
+
+        if (!$patient) {
+            return response()->json(['message' => 'Patient not found'], 404);
+        }
+
+        $request->validate([
+            'last_visit' => 'required|date',
+        ]);
+
+        $patient->last_visit = $request->last_visit;
         $patient->save();
 
         return response()->json($patient->load([

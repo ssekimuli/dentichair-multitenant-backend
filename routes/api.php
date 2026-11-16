@@ -105,6 +105,8 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
         Route::post('/execute', [\App\Http\Controllers\Api\UniversalImportController::class, 'execute']);
         Route::get('/jobs/{id}', [\App\Http\Controllers\Api\UniversalImportController::class, 'jobStatus']);
         Route::get('/jobs/{id}/errors', [\App\Http\Controllers\Api\UniversalImportController::class, 'jobErrors']);
+        Route::post('/jobs/{id}/undo', [\App\Http\Controllers\Api\UniversalImportController::class, 'undo']);
+        Route::get('/jobs/{id}/records', [\App\Http\Controllers\Api\UniversalImportController::class, 'records']);
         Route::get('/jobs/{id}/errors/download', [\App\Http\Controllers\Api\UniversalImportController::class, 'downloadErrors']);
         Route::get('/history', [\App\Http\Controllers\Api\UniversalImportController::class, 'history']);
     });
@@ -138,6 +140,7 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     // Patients
     Route::apiResource('patients', PatientController::class);
     Route::put('/patients/{id}/next-visit', [PatientController::class, 'updateNextVisit']);
+    Route::put('/patients/{id}/last-visit', [PatientController::class, 'updateLastVisit']);
     Route::get('/patients-list', [PatientController::class, 'patientList']);
     Route::get('/patients/{id}/invoices', [PatientController::class, 'getInvoices']);
     Route::post('/patients/{id}/avatar', [PatientController::class, 'updateAvatar']);

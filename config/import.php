@@ -427,7 +427,8 @@ return [
                     'patient id', 'patient_id', 'patient number', 'patient_no', 'client_id'
                 ],
                 'procedure' => [
-                    'treatment', 'procedure', 'treatment name', 'procedure name', 'service', 'item'
+                    'treatment', 'procedure', 'treatment name', 'procedure name', 'service', 'item',
+                    'description'
                 ],
                 'patient_name' => [
                     'patient name', 'name', 'full name', 'patient_name', 'client name', 'client',

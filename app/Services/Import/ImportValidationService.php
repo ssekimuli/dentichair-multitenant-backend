@@ -1129,23 +1129,31 @@ class ImportValidationService
             })->values();
         };
 
-        // Current branch first, then the whole table
+        // Patients with this phone: current branch first, then the whole table
         $rows = collect();
         if ($branchId) {
-            $rows = $filter($buildPhoneQuery()->where('branch_id', $branchId)->get());
+            $rows = $buildPhoneQuery()->where('branch_id', $branchId)->get();
         }
         if ($rows->isEmpty()) {
-            $rows = $filter($buildPhoneQuery()->get());
+            $rows = $buildPhoneQuery()->get();
         }
 
         if ($rows->isEmpty()) {
             return ['patient' => null, 'ambiguous' => false];
         }
-        if ($rows->count() > 1) {
-            return ['patient' => null, 'ambiguous' => true];
+
+        // One patient has this phone: that is the patient, whatever name the sheet gives
+        if ($rows->count() === 1) {
+            return ['patient' => $rows->first(), 'ambiguous' => false];
         }
 
-        return ['patient' => $rows->first(), 'ambiguous' => false];
+        // Several patients share the phone (e.g. relatives): the name decides between them
+        $byName = $filter($rows);
+        if ($byName->count() === 1) {
+            return ['patient' => $byName->first(), 'ambiguous' => false];
+        }
+
+        return ['patient' => null, 'ambiguous' => $byName->count() > 1];
     }
 
     /**

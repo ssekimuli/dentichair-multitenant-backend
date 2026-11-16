@@ -1032,25 +1032,23 @@ class UniversalImportService
      */
     protected function isSamePersonName(object $row, array $person): bool
     {
-        $norm = fn ($v) => strtolower(trim(preg_replace('/\s+/', ' ', (string)$v)));
+        // Placeholders are not names: "Imported" (blank first name default) and "Patient" (blank last name default)
+        $placeholders = ['imported', 'patient'];
+        $words = function (string $name) use ($placeholders): array {
+            return array_values(array_diff($this->validationService->nameWords($name), $placeholders));
+        };
 
-        // "Imported" is the config default for a blank first name: it means the name is unknown
-        $incFirst = $norm($person['first_name'] ?? '');
-        $recFirst = $norm($row->first_name ?? '');
-        if ($incFirst === '' || $recFirst === '' || $incFirst === 'imported' || $recFirst === 'imported') {
-            return true;
-        }
-        if ($incFirst !== $recFirst) {
-            return false;
-        }
+        $incoming = $words(trim(($person['first_name'] ?? '') . ' ' . ($person['last_name'] ?? '')));
+        $existing = $words(trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? '')));
 
-        $incLast = $norm($person['last_name'] ?? '');
-        $recLast = $norm($row->last_name ?? '');
-        if ($incLast === '' || $recLast === '' || $incLast === 'patient' || $recLast === 'patient') {
+        // Unknown on either side does not block a match
+        if (empty($incoming) || empty($existing)) {
             return true;
         }
 
-        return $incLast === $recLast;
+        // Every word of the incoming name must appear in the stored name. Titles ("MS"), symbols
+        // ("AHMED*") and word order do not matter; a different person sharing the phone does not match.
+        return empty(array_diff($incoming, $existing));
     }
 
     /**

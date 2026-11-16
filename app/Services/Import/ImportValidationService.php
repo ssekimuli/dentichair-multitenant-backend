@@ -1148,10 +1148,20 @@ class ImportValidationService
         return ['patient' => $rows->first(), 'ambiguous' => false];
     }
 
-    /** Lowercase name words, for order-insensitive name comparison. */
-    protected function nameWords(string $name): array
+    /**
+     * Lowercase name words for order-insensitive comparison. Punctuation and symbols are dropped
+     * ("AHMED*" -> "ahmed") and honorifics are ignored ("MS IKHLAS" -> "ikhlas").
+     */
+    public function nameWords(string $name): array
     {
-        return array_values(array_filter(preg_split('/[\s]+/', strtolower(trim($name))) ?: []));
+        static $honorifics = ['ms', 'mrs', 'mr', 'miss', 'dr', 'mama', 'mzee', 'sr', 'jr'];
+
+        $words = preg_split('/[^\p{L}]+/u', mb_strtolower(trim($name))) ?: [];
+
+        return array_values(array_filter(
+            $words,
+            fn ($word) => $word !== '' && !in_array($word, $honorifics, true)
+        ));
     }
 
     /**

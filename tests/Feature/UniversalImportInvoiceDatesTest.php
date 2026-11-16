@@ -48,6 +48,43 @@ class UniversalImportInvoiceDatesTest extends TestCase
     }
 
     /** @test */
+    public function it_accepts_ordinal_day_invoice_dates_from_clinic_sheets()
+    {
+        $rows = [
+            ['1st/11/2026', '2026-11-01'],
+            ['2nd/11/2026', '2026-11-02'],
+            ['3rd 11 2026', '2026-11-03'],
+            ['23th/01/2026', '2026-01-23'],
+            ['21st/11/2026', '2026-11-21'],
+        ];
+
+        $csv = "AMOUNT,DATE\n";
+        foreach ($rows as $i => [$date]) {
+            $csv .= (200 + $i) . ',"' . $date . "\"\n";
+        }
+
+        $file = UploadedFile::fake()->createWithContent('ordinal_dates.csv', $csv);
+
+        $response = $this->actingAs($this->employee)
+            ->postJson('/api/import/execute', [
+                'file' => $file,
+                'table' => 'invoices',
+                'mode' => 'insert',
+                'async' => false,
+                'mapping' => [
+                    'AMOUNT' => 'amount',
+                    'DATE' => 'issue_date',
+                ],
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['data' => ['imported' => count($rows), 'failed' => 0]]);
+
+        $dates = Invoice::orderBy('amount')->pluck('issue_date')->map(fn ($d) => substr((string)$d, 0, 10))->all();
+        $this->assertEquals(array_column($rows, 1), $dates);
+    }
+
+    /** @test */
     public function it_converts_mixed_invoice_date_formats_to_year_month_day()
     {
         $rows = [

@@ -1440,6 +1440,9 @@ class ImportValidationService
         $str = preg_replace('/[T\s]*\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*([ap]\.?m\.?)?\s*$/i', '', $str);
         $str = trim($str);
 
+        // Ordinal day suffix: "1st/11/2026", "2nd 11 2026", "23th/01/2026" -> "1/11/2026"
+        $str = preg_replace('/^(\d{1,2})(?:st|nd|rd|th)(?=[\/\-. ])/i', '$1', $str);
+
         // Compact yyyymmdd
         if (preg_match('/^(\d{4})(\d{2})(\d{2})$/', $str, $m)) {
             return $this->validDateOrOriginal((int)$m[1], (int)$m[2], (int)$m[3], $value);

@@ -138,6 +138,10 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     Route::apiResource('clients', App\Http\Controllers\ClientController::class);
 
     // Patients
+    // Declared before apiResource so "pending-activation" is not matched as a patient id.
+    Route::get('/patients/pending-activation', [PatientController::class, 'pendingActivation']);
+    Route::patch('/patients/{id}/activate', [PatientController::class, 'activate']);
+    Route::post('/patients/activate', [PatientController::class, 'bulkActivate']);
     Route::apiResource('patients', PatientController::class);
     Route::put('/patients/{id}/next-visit', [PatientController::class, 'updateNextVisit']);
     Route::put('/patients/{id}/last-visit', [PatientController::class, 'updateLastVisit']);

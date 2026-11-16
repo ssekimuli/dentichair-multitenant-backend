@@ -75,7 +75,8 @@ class PatientRegistrationController extends Controller
             'age' => $validated['age'],
             'nationality' => $validated['nationality'],
             'branch_id' => $validated['branch_id'],
-            'status' => 'Active',
+            'status' => 'Inactive',
+            'registration_source' => 'web_self_register',
         ]);
 
         return redirect()->route('patient.registration.confirmation', $patient->id)

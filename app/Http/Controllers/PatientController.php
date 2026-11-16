@@ -488,6 +488,104 @@ class PatientController extends Controller
      * @param string $id Patient ID
      * @return \Illuminate\Http\JsonResponse
      */
+    /**
+     * List patients created through the public booking or self-registration forms that
+     * are still inactive (waiting for staff to activate them). Newest first.
+     *
+     * @queryParam branch_id integer Optional. Filter by branch.
+     * @queryParam registration_source string Optional. web_booking or web_self_register.
+     * @queryParam per_page integer Optional. Results per page (1-100). Default 20.
+     */
+    public function pendingActivation(Request $request)
+    {
+        $request->validate([
+            'registration_source' => 'nullable|in:web_booking,web_self_register',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $query = Patient::with('branch')
+            ->where('status', 'Inactive')
+            ->whereNotNull('registration_source');
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('registration_source')) {
+            $query->where('registration_source', $request->registration_source);
+        }
+
+        $patients = $query
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 20));
+
+        return response()->json($patients);
+    }
+
+    /**
+     * Activate a patient (sets status to Active). Safe to call on a patient that is already active.
+     */
+    public function activate($id)
+    {
+        $patient = Patient::with('branch')->find($id);
+
+        if (!$patient) {
+            return response()->json(['message' => 'Patient not found'], 404);
+        }
+
+        if ($patient->status !== 'Active') {
+            $patient->status = 'Active';
+            $patient->save();
+        }
+
+        return response()->json($patient);
+    }
+
+    /**
+     * Activate several patients at once.
+     *
+     * Returns which ids were activated, which were already active, and which do not exist.
+     *
+     * @bodyParam ids integer[] required The patient ids to activate (1-500). Example: [12, 15, 18]
+     */
+    public function bulkActivate(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => 'required|array|min:1|max:500',
+            'ids.*' => 'required|integer',
+        ]);
+
+        $ids = array_values(array_unique(array_map('intval', $data['ids'])));
+
+        $existingIds = Patient::whereIn('id', $ids)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $notFound = array_values(array_diff($ids, $existingIds));
+
+        $alreadyActive = Patient::whereIn('id', $existingIds)
+            ->where('status', 'Active')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $toActivate = array_values(array_diff($existingIds, $alreadyActive));
+
+        if (!empty($toActivate)) {
+            Patient::whereIn('id', $toActivate)->update([
+                'status' => 'Active',
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'activated' => count($toActivate),
+            'already_active' => count($alreadyActive),
+            'not_found' => count($notFound),
+            'activated_ids' => $toActivate,
+            'already_active_ids' => $alreadyActive,
+            'not_found_ids' => $notFound,
+        ]);
+    }
+
     public function updateNextVisit(Request $request, $id)
     {
         $patient = Patient::find($id);

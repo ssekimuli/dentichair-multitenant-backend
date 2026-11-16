@@ -1440,8 +1440,7 @@ class ImportValidationService
         $str = preg_replace('/[T\s]*\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*([ap]\.?m\.?)?\s*$/i', '', $str);
         $str = trim($str);
 
-        // Ordinal day suffix: "1st/11/2026", "2nd 11 2026", "23th/01/2026" -> "1/11/2026"
-        $str = preg_replace('/^(\d{1,2})(?:st|nd|rd|th)(?=[\/\-. ])/i', '$1', $str);
+        $str = $this->stripDateNoise($str);
 
         // Compact yyyymmdd
         if (preg_match('/^(\d{4})(\d{2})(\d{2})$/', $str, $m)) {
@@ -1476,6 +1475,18 @@ class ImportValidationService
     }
 
     /**
+     * Remove wording that stops a date parsing: ordinal suffixes ("1st", "23rd", "4th"),
+     * commas and extra spaces. "May 1st, 2026" -> "May 1 2026", "1st/11/2026" -> "1/11/2026".
+     */
+    protected function stripDateNoise(string $str): string
+    {
+        $str = preg_replace('/\b(\d{1,2})(?:st|nd|rd|th)\b/i', '$1', $str);
+        $str = str_replace(',', ' ', $str);
+
+        return trim(preg_replace('/\s+/', ' ', $str));
+    }
+
+    /**
      * Return a Y-m-d string for a real calendar date, otherwise the original value.
      */
     protected function validDateOrOriginal(int $year, int $month, int $day, $original): string
@@ -1506,6 +1517,8 @@ class ImportValidationService
                 // Fall through
             }
         }
+
+        $value = $this->stripDateNoise((string)$value);
 
         // Try standard formats
         $formats = ['Y-m-d', 'd/m/Y', 'm/d/Y', 'Y/m/d', 'd-m-Y', 'm-d-Y', 'd.m.Y', 'Y.m.d'];

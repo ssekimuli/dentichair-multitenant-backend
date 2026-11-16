@@ -85,6 +85,47 @@ class UniversalImportInvoiceDatesTest extends TestCase
     }
 
     /** @test */
+    public function it_accepts_common_invoice_date_variants()
+    {
+        $rows = [
+            ['May 1st, 2026', '2026-05-01'],
+            ['1st May 2026', '2026-05-01'],
+            ['Sunday, 1st November 2026', '2026-11-01'],
+            ['Nov. 3, 2026', '2026-11-03'],
+            ['01-Nov-26', '2026-11-01'],
+            ['2026-Nov-01', '2026-11-01'],
+            ['1st.Nov.2026', '2026-11-01'],
+            ['2026-11-1', '2026-11-01'],
+            ['11/1/2026 9:30 am', '2026-01-11'],
+        ];
+
+        $csv = "AMOUNT,DATE\n";
+        foreach ($rows as $i => [$date]) {
+            $csv .= (300 + $i) . ',"' . $date . "\"\n";
+        }
+
+        $file = UploadedFile::fake()->createWithContent('date_variants.csv', $csv);
+
+        $response = $this->actingAs($this->employee)
+            ->postJson('/api/import/execute', [
+                'file' => $file,
+                'table' => 'invoices',
+                'mode' => 'insert',
+                'async' => false,
+                'mapping' => [
+                    'AMOUNT' => 'amount',
+                    'DATE' => 'issue_date',
+                ],
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['data' => ['imported' => count($rows), 'failed' => 0]]);
+
+        $dates = Invoice::orderBy('amount')->pluck('issue_date')->map(fn ($d) => substr((string)$d, 0, 10))->all();
+        $this->assertEquals(array_column($rows, 1), $dates);
+    }
+
+    /** @test */
     public function it_converts_mixed_invoice_date_formats_to_year_month_day()
     {
         $rows = [

@@ -31,6 +31,7 @@ class Patient extends Model
     'last_visit',
     'next_visit',
     'status',
+    'registration_source',
     'branch_id',
     'history',
     'occlusal_records',

@@ -62,6 +62,14 @@ class BookAppointmentController extends Controller
             ],
         ]);
 
+        // Optional fields may be omitted entirely; default them so the create below never reads a missing key
+        $validated = array_merge([
+            'email' => null,
+            'address' => null,
+            'gender' => null,
+            'nationality' => null,
+        ], $validated);
+
         // Calculate date_of_birth from age
         $dateOfBirth = Carbon::now()->subYears($validated['age'])->format('Y-m-d');
 
@@ -97,7 +105,8 @@ class BookAppointmentController extends Controller
                 'gender' => $validated['gender'],
                 'date_of_birth' => $dateOfBirth,
                 'age' => $validated['age'],
-                'status' => 'Active',
+                'status' => 'Inactive',
+                'registration_source' => 'web_booking',
                 'branch_id' => $validated['branch_id'],
                 'nationality' => $validated['nationality'],
             ]);

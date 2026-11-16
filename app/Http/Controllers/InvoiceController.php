@@ -991,8 +991,9 @@ class InvoiceController extends Controller
     /**
      * Delete Invoice
      * 
-     * Permanently delete an invoice and all associated treatments, charges, and transactions.
-     * Use with caution as this action cannot be undone.
+     * Soft-delete an invoice and remove its treatments and charges. The invoice is excluded from
+     * all income totals (Reports, Accounting monthly finances, income records) immediately.
+     * Restores medicine stock. Its payment transactions are kept on record.
      * 
      * @authenticated
      * 
@@ -1017,35 +1018,40 @@ class InvoiceController extends Controller
                 return response()->json(['error' => 'Invoice not found'], 404);
             }
 
-            // Delete associated treatment plans so they are not re-billed when billing again on the same date
-            \App\Models\TreatmentPlan::whereIn('invoice_id', [$invoice->id, 'inv' . $invoice->id])->delete();
+            // All-or-nothing: if any step fails, stock and records stay as they were,
+            // so a retry cannot restore medicine stock twice.
+            \Illuminate\Support\Facades\DB::transaction(function () use ($invoice) {
+                // Delete associated treatment plans so they are not re-billed when billing again on the same date
+                \App\Models\TreatmentPlan::whereIn('invoice_id', [$invoice->id, 'inv' . $invoice->id])->delete();
 
-            if ($invoice->patient_id && $invoice->issue_date) {
-                \App\Models\TreatmentPlan::where('patient_id', $invoice->patient_id)
-                    ->whereDate('date', $invoice->issue_date)
-                    ->where(function ($q) use ($invoice) {
-                        $q->whereNull('invoice_id')
-                          ->orWhereIn('invoice_id', ['', (string) $invoice->id, 'inv' . $invoice->id]);
-                    })
-                    ->delete();
-            }
+                if ($invoice->patient_id && $invoice->issue_date) {
+                    \App\Models\TreatmentPlan::where('patient_id', $invoice->patient_id)
+                        ->whereDate('date', $invoice->issue_date)
+                        ->where(function ($q) use ($invoice) {
+                            $q->whereNull('invoice_id')
+                              ->orWhereIn('invoice_id', ['', (string) $invoice->id, 'inv' . $invoice->id]);
+                        })
+                        ->delete();
+                }
 
-            // Delete invoice line items
-            $invoice->treatments()->delete();
-            $invoice->otherCharges()->delete();
+                // Delete invoice line items
+                $invoice->treatments()->delete();
+                $invoice->otherCharges()->delete();
 
-            // Restore medicine stock
-            $medicines = $invoice->medicines ?? [];
-            foreach ($medicines as $med) {
-                if (isset($med['medicine_unit_id']) && isset($med['quantity'])) {
-                    $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
-                    if ($medUnit) {
-                        $medUnit->increment('stock_quantity', $med['quantity']);
+                // Restore medicine stock
+                $medicines = $invoice->medicines ?? [];
+                foreach ($medicines as $med) {
+                    if (isset($med['medicine_unit_id']) && isset($med['quantity'])) {
+                        $medUnit = \App\Models\MedicineUnit::find($med['medicine_unit_id']);
+                        if ($medUnit) {
+                            $medUnit->increment('stock_quantity', $med['quantity']);
+                        }
                     }
                 }
-            }
 
-            $invoice->delete();
+                // Soft delete: the invoice drops out of every income total (all of them filter deleted_at)
+                $invoice->delete();
+            });
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {

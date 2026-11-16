@@ -1214,8 +1214,14 @@ class ManagementController extends Controller
             $endDate = $today->copy()->endOfMonth();
         }
 
+        // Revenue = cash collected (paid_amount) on non-cancelled invoices.
+        // Must match getReportsOverview() so both screens report the same total revenue.
         $incomeQuery = Invoice::query()
             ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereNotIn(DB::raw('LOWER(status)'), ['deleted', 'cancelled', 'void']);
+            })
             ->whereBetween('issue_date', [$startDate, $endDate])
             ->when($hasBranch, fn($q) => $q->where('branch_id', $branchId));
 
@@ -1251,12 +1257,12 @@ class ManagementController extends Controller
                         $q->where('category', $category);
                     }
                 })
-                ->sum(DB::raw('CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END'));
+                ->sum('paid_amount');
             $incomeByCategory[$category] = number_format($categoryIncome, 2, '.', '');
         }
 
         $incomeByMonth = $incomeQuery
-            ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as month, SUM(CASE WHEN paid_amount > 0 THEN paid_amount ELSE amount END) as income")
+            ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as month, SUM(paid_amount) as income")
             ->groupBy('month')
             ->orderBy('month')
             ->get()

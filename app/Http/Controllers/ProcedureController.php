@@ -90,7 +90,17 @@ class ProcedureController extends Controller
             return response()->json(['error' => 'Procedure not found'], 404);
         }
 
-        $procedure->delete();
+        try {
+            $procedure->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // SQLSTATE 23000 = integrity constraint: still referenced (e.g. by an insurance rule)
+            if (($e->errorInfo[0] ?? null) === '23000') {
+                return response()->json([
+                    'message' => 'This procedure is in use (for example by an insurance rule) and cannot be deleted.',
+                ], 409);
+            }
+            throw $e;
+        }
 
         return response()->json(['message' => 'Procedure deleted successfully']);
     }

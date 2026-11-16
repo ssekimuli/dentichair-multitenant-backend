@@ -372,6 +372,7 @@ class EmployeeController extends Controller
             'name' => 'sometimes|string',
             'avatar' => 'nullable|string',
             'email' => 'sometimes|email|unique:employees,email,' . $id,
+            'phone' => 'sometimes|nullable|string|max:20',
             'role_id' => 'nullable|exists:role_permissions,id',
             'salary' => 'sometimes|numeric',
             'hire_date' => 'sometimes|date',

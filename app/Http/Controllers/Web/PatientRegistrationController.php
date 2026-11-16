@@ -23,7 +23,7 @@ class PatientRegistrationController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:patients,email',
-            'phone' => 'required|string|max:20|unique:patients,phone',
+            'phone' => 'nullable|string|max:20|unique:patients,phone',
             'address' => 'nullable|string|max:255',
             'gender' => 'nullable|in:Male,Female,Other',
             'age' => 'required|integer|min:1|max:150',
@@ -31,22 +31,36 @@ class PatientRegistrationController extends Controller
             'branch_id' => 'required|exists:branches,id',
         ]);
 
+        // Optional contact/demographic fields may be omitted entirely; default them so later reads are safe
+        $validated = array_merge([
+            'email' => null,
+            'phone' => null,
+            'address' => null,
+            'gender' => null,
+            'nationality' => null,
+        ], $validated);
+
         // Calculate date_of_birth from age
         $dateOfBirth = Carbon::now()->subYears($validated['age'])->format('Y-m-d');
 
-        // Check if patient already exists by phone or email
-        $existingPatient = Patient::where('phone', $validated['phone'])
-            ->orWhere(function ($query) use ($validated) {
-                if (!empty($validated['email'])) {
-                    $query->where('email', $validated['email']);
-                }
-            })
-            ->first();
+        // Check if patient already exists by phone or email.
+        // Only match on the fields actually provided: a null phone must never match other patients without one.
+        if (!empty($validated['phone']) || !empty($validated['email'])) {
+            $existingPatient = Patient::where(function ($query) use ($validated) {
+                    if (!empty($validated['phone'])) {
+                        $query->orWhere('phone', $validated['phone']);
+                    }
+                    if (!empty($validated['email'])) {
+                        $query->orWhere('email', $validated['email']);
+                    }
+                })
+                ->first();
 
-        if ($existingPatient) {
-            return back()
-                ->withErrors(['phone' => 'A patient with this phone number or email already exists.'])
-                ->withInput();
+            if ($existingPatient) {
+                return back()
+                    ->withErrors(['phone' => 'A patient with this phone number or email already exists.'])
+                    ->withInput();
+            }
         }
 
         // Create patient

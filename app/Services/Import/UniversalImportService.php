@@ -531,6 +531,10 @@ class UniversalImportService
                             $this->scheduleNextVisitAppointment((int)$existing->id, $cleanData['next_visit'], $branchId, $jobId);
                         }
 
+                        if ($table === 'patients') {
+                            $this->createMedicalHistoryFromPatientRow((int)$existing->id, $cleanData);
+                        }
+
                         if ($table === 'laboratory_orders') {
                             $this->handleLabOrderInvoice($existing->id, $cleanData, $data, $branchId, $now);
                         }
@@ -676,6 +680,7 @@ class UniversalImportService
 
                     if ($table === 'patients') {
                         $this->scheduleNextVisitAppointment((int)$insertedId, $cleanData['next_visit'] ?? null, $branchId, $jobId);
+                        $this->createMedicalHistoryFromPatientRow((int)$insertedId, $cleanData);
                     }
 
                     if ($table === 'laboratory_orders') {
@@ -1245,6 +1250,50 @@ class UniversalImportService
         fclose($handle);
 
         return $csvContent;
+    }
+
+    /**
+     * Record the procedure from a patient import row as a medical history for that patient, dated
+     * on the row's last visit (or today). Skipped when there is no procedure, or when the same
+     * procedure is already recorded on that date, so re-importing the file does not duplicate it.
+     */
+    protected function createMedicalHistoryFromPatientRow(int $patientId, array $cleanData): void
+    {
+        $procedure = trim((string) ($cleanData['history'] ?? ''));
+        if ($procedure === '' || !Schema::hasTable('medical_histories')) {
+            return;
+        }
+
+        $date = !empty($cleanData['last_visit'])
+            ? Carbon::parse($cleanData['last_visit'])->toDateString()
+            : now()->toDateString();
+
+        $alreadyRecorded = DB::table('medical_histories')
+            ->where('patient_id', $patientId)
+            ->whereDate('date', $date)
+            ->where('treatment_given', $procedure)
+            ->exists();
+        if ($alreadyRecorded) {
+            return;
+        }
+
+        $now = now();
+        $record = [
+            'patient_id' => $patientId,
+            'date' => $date,
+            // chief_complaint is required; the sheet only gives the procedure
+            'chief_complaint' => 'Routine Consultation',
+            'treatment_given' => $procedure,
+            'consent' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        if (Schema::hasColumn('medical_histories', 'client_uuid')) {
+            $record['client_uuid'] = (string) Str::uuid();
+        }
+
+        DB::table('medical_histories')->insert($record);
     }
 
     /**

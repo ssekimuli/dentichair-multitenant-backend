@@ -124,7 +124,17 @@ class TreatmentPlan extends Model
         DB::transaction(function () use ($patientId, $date) {
             $formattedDate = Carbon::parse($date)->format('Y-m-d');
 
-            $patient = Patient::find($patientId);
+            /*
+             * Lock the patient row so concurrent syncs for the same patient
+             * run one at a time. Without this, two requests that both find no
+             * invoice for the day each insert one, producing duplicate invoices.
+             * (lockForUpdate() on the invoice query cannot help here because
+             * there is no existing invoice row to lock yet.)
+             */
+            $patient = Patient::query()
+                ->whereKey($patientId)
+                ->lockForUpdate()
+                ->first();
 
             if (!$patient) {
                 return;

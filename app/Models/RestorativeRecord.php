@@ -14,6 +14,12 @@ class RestorativeRecord extends Model
     use LogsActivity;
     use HasFactory;
 
+    /**
+     * Set to true before saving to skip the automatic treatment plan entry.
+     * Used for chart markings, which are recorded in medical history instead.
+     */
+    public bool $skipTreatmentPlan = false;
+
     protected $fillable = [
         'patient_id',
         'tooth_id',
@@ -44,6 +50,10 @@ class RestorativeRecord extends Model
     protected static function booted(): void
     {
         static::created(function (RestorativeRecord $record) {
+            if ($record->skipTreatmentPlan) {
+                return;
+            }
+
             $record->createTreatmentPlanEntry();
         });
 

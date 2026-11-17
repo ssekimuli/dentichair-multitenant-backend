@@ -103,77 +103,85 @@ class RestorativeRecordController extends Controller
         ]);
 
         $created = [];
-
-        // Locate or create today's invoice once for all records
-        $invoice = \App\Models\Invoice::where('patient_id', $patient->id)
-            ->whereDate('issue_date', today())
-            ->where('branch_id', $patient->branch_id)
-            ->whereIn('status', ['Pending', 'Overdue'])
-            ->first();
+        $markingLines = [];
 
         foreach ($request->records as $item) {
             $procedureCost = $item['procedure_cost'] ?? 0;
-            $materialCost  = $item['material_cost']  ?? 0;
-            $otherCharges  = $item['other_charges']  ?? 0;
-            $totalCost     = $procedureCost + $materialCost + $otherCharges;
 
-            // Mirror store() fallback: if all costs are 0 but a generic cost was sent, use it
-            if ($totalCost == 0 && !empty($item['cost']) && $item['cost'] > 0) {
+            // Mirror store() fallback: if no procedure cost was sent but a generic cost was, keep it
+            if ($procedureCost == 0 && !empty($item['cost']) && $item['cost'] > 0) {
                 $procedureCost = $item['cost'];
-                $totalCost     = $procedureCost;
             }
 
-            $record = $patient->restorativeRecords()->create([
+            // Chart markings are recorded in medical history only. They never create
+            // a treatment plan or an invoice, whatever costs are sent.
+            $record = $patient->restorativeRecords()->make([
                 'tooth_id'       => $item['tooth_id'],
                 'surface'        => $item['surface'],
                 'material'       => $item['material'],
                 'notes'          => $item['notes'] ?? null,
                 'procedure_cost' => $procedureCost,
-                'material_cost'  => $materialCost,
-                'other_charges'  => $otherCharges,
+                'material_cost'  => $item['material_cost'] ?? 0,
+                'other_charges'  => $item['other_charges'] ?? 0,
             ]);
+            $record->skipTreatmentPlan = true;
+            $record->save();
 
-            if ($totalCost > 0) {
-                if (!$invoice) {
-                    $invoice = \App\Models\Invoice::create([
-                        'patient_name' => $patient->first_name . ' ' . $patient->last_name,
-                        'patient_id'   => $patient->id,
-                        'amount'       => 0,
-                        'paid_amount'  => 0,
-                        'status'       => 'Pending',
-                        'issue_date'   => today(),
-                        'due_date'     => today()->addDays(30),
-                        'branch_id'    => $patient->branch_id,
-                        'category'     => 'procedure-income',
-                    ]);
-                }
-
-                $invoice->increment('amount', $totalCost);
-
-                if ($procedureCost > 0) {
-                    $invoice->treatments()->create([
-                        'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' (' . $record->surface . ' - ' . $record->material . ') - Procedure',
-                        'cost'      => $procedureCost,
-                    ]);
-                }
-                if ($materialCost > 0) {
-                    $invoice->treatments()->create([
-                        'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' - Material',
-                        'cost'      => $materialCost,
-                    ]);
-                }
-                if ($otherCharges > 0) {
-                    $invoice->treatments()->create([
-                        'procedure' => 'Restoration Tooth #' . $record->tooth_id . ' - Other Charges',
-                        'cost'      => $otherCharges,
-                    ]);
-                }
+            $line = "- Tooth #{$record->tooth_id} ({$record->surface}): {$record->material}";
+            if (!empty(trim($record->notes ?? ''))) {
+                $line .= ': ' . trim($record->notes);
             }
+            $markingLines[] = $line;
 
             $created[] = $record;
         }
 
+        $this->addMarkingsToMedicalHistory($patient, $markingLines);
+
         return response()->json($created, 201);
+    }
+
+    /**
+     * Add chart marking lines to the patient's medical history for today,
+     * under intra_oral_exam. Existing lines are kept and duplicates are skipped.
+     */
+    private function addMarkingsToMedicalHistory(Patient $patient, array $lines): void
+    {
+        if (empty($lines)) {
+            return;
+        }
+
+        $date = now()->toDateString();
+
+        $history = \App\Models\MedicalHistory::where('patient_id', $patient->id)
+            ->whereDate('date', $date)
+            ->first();
+
+        if (!$history) {
+            $history = \App\Models\MedicalHistory::create([
+                'patient_id'      => $patient->id,
+                'date'            => $date,
+                'chief_complaint' => 'Dental chart marking',
+                'consent'         => true,
+            ]);
+        }
+
+        $existing = array_values(array_filter(
+            preg_split('/\r\n|\r|\n/', (string) $history->intra_oral_exam),
+            fn ($l) => trim($l) !== ''
+        ));
+
+        $newLines = array_values(array_filter(
+            array_unique($lines),
+            fn ($l) => !in_array($l, $existing, true)
+        ));
+
+        if (empty($newLines)) {
+            return;
+        }
+
+        $history->intra_oral_exam = implode("\n", array_merge($existing, $newLines));
+        $history->saveQuietly();
     }
 
 

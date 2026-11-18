@@ -106,6 +106,33 @@ class InvoiceCreateFromDesktopTest extends TestCase
     }
 
     /** @test */
+    public function it_adds_patient_invoice_procedures_to_medical_history()
+    {
+        $patient = Patient::create([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john.doe@example.com',
+            'date_of_birth' => '1990-01-01',
+            'branch_id' => $this->branch->id,
+            'status' => 'Active',
+        ]);
+
+        $response = $this->actingAs($this->employee)->postJson(
+            '/api/invoices',
+            $this->desktopPayload(['patient_id' => $patient->id])
+        );
+        $response->assertStatus(201);
+
+        $history = \App\Models\MedicalHistory::where('patient_id', $patient->id)
+            ->whereDate('date', '2026-11-18')
+            ->first();
+
+        $this->assertNotNull($history, 'No medical history entry was created for the invoice procedures.');
+        $this->assertStringContainsString('Amalgam Filling', (string) $history->treatment_given);
+        $this->assertStringContainsString('Composite Filling', (string) $history->treatment_given);
+    }
+
+    /** @test */
     public function it_creates_an_invoice_for_a_client_and_stores_client_id()
     {
         $client = Client::create(['name' => 'Acme Labs']);

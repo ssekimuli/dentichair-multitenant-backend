@@ -561,6 +561,16 @@ class InvoiceController extends Controller
                 \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d')
             );
             $invoice->refresh();
+
+            // Treatment plans above were saved quietly, which skips the model
+            // events that normally write the medical history. Sync it explicitly
+            // so the invoice procedures appear in the patient's medical history.
+            if (!empty($validated['treatments'])) {
+                \App\Models\TreatmentPlan::syncMedicalHistoryForPatientAndDate(
+                    $invoice->patient_id,
+                    \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d')
+                );
+            }
         }
 
         $invoice->load(['treatments', 'otherCharges', 'patient', 'branch', 'transactions', 'laboratoryOrder.client']);

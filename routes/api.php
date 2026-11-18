@@ -370,6 +370,12 @@ Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
     
     // Update role permissions (Super Admin only)
     Route::put('/settings/roles/{role_id}', [RolePermissionController::class, 'updateRolePermissions']);
+
+    // Add and/or remove individual permissions on a role (Super Admin only)
+    Route::patch('/settings/roles/{role_id}/permissions', [RolePermissionController::class, 'changeRolePermissions']);
+
+    // All permission strings in use across roles (Super Admin only)
+    Route::get('/settings/permissions', [RolePermissionController::class, 'listPermissions']);
     
     // Get role by ID (Super Admin only)
     Route::get('/settings/roles/{role_id}', [RolePermissionController::class, 'getRoleById']);

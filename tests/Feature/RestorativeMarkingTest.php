@@ -75,6 +75,27 @@ class RestorativeMarkingTest extends TestCase
     }
 
     /** @test */
+    public function chart_markings_remain_visible_in_tooth_history(): void
+    {
+        [$patient, $doctor] = $this->setUpPatientAndDoctor();
+
+        $this->actingAs($doctor)->postJson("/api/patients/{$patient->id}/restorative-records/batch", [
+            'records' => [
+                ['tooth_id' => 16, 'surface' => 'DM', 'material' => 'Filling Surface Marking', 'notes' => 'Location view marked'],
+            ],
+        ])->assertStatus(201);
+
+        $response = $this->actingAs($doctor)->getJson("/api/patients/{$patient->id}/tooth/16/history");
+
+        $response->assertOk();
+        $entries = collect($response->json('history'));
+        $marking = $entries->firstWhere('type', 'Marking');
+        $this->assertNotNull($marking, 'Chart marking should appear in tooth history');
+        $this->assertEquals('DM', $marking['surface']);
+        $this->assertEquals('Filling Surface Marking', $marking['details']);
+    }
+
+    /** @test */
     public function single_restorative_record_still_creates_treatment_plan(): void
     {
         // The single-record endpoint is unchanged; only the batch marking path opts out.

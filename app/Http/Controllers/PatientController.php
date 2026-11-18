@@ -2826,8 +2826,23 @@ class PatientController extends Controller
         // Get treatments for this tooth
         $treatments = $patient->treatmentPlans()->where('tooth', $toothId)->get();
 
+        // Get chart markings (surface records) for this tooth
+        $restorativeRecords = $patient->restorativeRecords()->where('tooth_id', $toothId)->get();
+
         // Combine and sort by date
         $history = collect();
+
+        foreach ($restorativeRecords as $record) {
+            $history->push([
+                'id' => 'restorative_' . $record->id,
+                'type' => 'Marking',
+                'date' => $record->created_at->toIso8601String(),
+                'details' => $record->material,
+                'surface' => $record->surface,
+                'notes' => $record->notes,
+                'user' => 'System',
+            ]);
+        }
 
         foreach ($dentalRecords as $record) {
             $history->push([

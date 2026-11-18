@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\RolePermission;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @group Roles & Permissions Management
@@ -133,7 +135,7 @@ class RolePermissionController extends Controller
         }
 
         $role->update([
-            'permissions' => $request->permissions,
+            'permissions' => self::normalizePermissions($request->permissions),
         ]);
 
         return response()->json([
@@ -268,14 +270,88 @@ class RolePermissionController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|unique:role_permissions,name|max:255',
+            'permissions' => 'nullable|array',
+            'permissions.*' => self::PERMISSION_RULE,
         ]);
 
         $role = RolePermission::create([
             'name' => $validated['name'],
-            'permissions' => [],
+            'permissions' => self::normalizePermissions($validated['permissions'] ?? []),
         ]);
 
         return response()->json($role, 201);
+    }
+
+    /**
+     * Add and/or remove individual permissions on a role without replacing the whole list.
+     *
+     * @param Request $request
+     * @param int $role_id
+     * @return JsonResponse
+     */
+    public function changeRolePermissions(Request $request, int $role_id): JsonResponse
+    {
+        // Check if user has Super Admin role
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
+        }
+
+        $validated = $request->validate([
+            'add' => 'nullable|array|required_without:remove',
+            'add.*' => self::PERMISSION_RULE,
+            'remove' => 'nullable|array|required_without:add',
+            'remove.*' => 'string|max:100',
+        ]);
+
+        $role = RolePermission::find($role_id);
+
+        if (!$role) {
+            return response()->json(['message' => 'Role not found'], 404);
+        }
+
+        $current = $role->permissions ?? [];
+        $remaining = array_diff($current, $validated['remove'] ?? []);
+
+        $role->update([
+            'permissions' => self::normalizePermissions(array_merge($remaining, $validated['add'] ?? [])),
+        ]);
+
+        return response()->json([
+            'message' => 'Permissions updated successfully',
+            'data' => $role,
+        ]);
+    }
+
+    /**
+     * List every permission string currently used by any role.
+     *
+     * @return JsonResponse
+     */
+    public function listPermissions(): JsonResponse
+    {
+        // Check if user has Super Admin role
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Unauthorized. Super Admin access required.'], 403);
+        }
+
+        $permissions = RolePermission::pluck('permissions')
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        return response()->json(['data' => $permissions]);
+    }
+
+    /**
+     * Permission strings look like "patients:read" or "quotations.view".
+     */
+    private const PERMISSION_RULE = ['string', 'max:100', 'regex:/^[a-z_]+[:.][a-z_]+$/'];
+
+    private static function normalizePermissions(array $permissions): array
+    {
+        return array_values(array_unique(array_filter(array_map('trim', $permissions))));
     }
 
     public function updateRoleName(Request $request, int $role_id): JsonResponse
@@ -295,9 +371,18 @@ class RolePermissionController extends Controller
             return response()->json(['message' => 'Role not found'], 404);
         }
 
-        $role->update([
-            'name' => $validated['name'],
-        ]);
+        $oldName = $role->name;
+
+        DB::transaction(function () use ($role, $validated, $oldName) {
+            $role->update([
+                'name' => $validated['name'],
+            ]);
+
+            // Employees store their role by name, so keep them attached to the renamed role.
+            if ($oldName !== $validated['name']) {
+                Employee::where('role', $oldName)->update(['role' => $validated['name']]);
+            }
+        });
 
         return response()->json($role);
     }

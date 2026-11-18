@@ -133,6 +133,47 @@ class InvoiceCreateFromDesktopTest extends TestCase
     }
 
     /** @test */
+    public function it_completes_matching_pending_plan_for_the_day_instead_of_duplicating()
+    {
+        $patient = Patient::create([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john.doe@example.com',
+            'date_of_birth' => '1990-01-01',
+            'branch_id' => $this->branch->id,
+            'status' => 'Active',
+        ]);
+
+        // Doctor planned the amalgam filling today; the composite was not planned.
+        $planned = \App\Models\TreatmentPlan::create([
+            'patient_id' => $patient->id,
+            'procedure' => 'amalgam filling',
+            'cost' => 100000,
+            'status' => 'Proposed',
+            'date' => '2026-11-18',
+        ]);
+
+        $response = $this->actingAs($this->employee)->postJson(
+            '/api/invoices',
+            $this->desktopPayload(['patient_id' => $patient->id])
+        );
+        $response->assertStatus(201);
+
+        // The planned plan is completed and reused, not duplicated.
+        $planned->refresh();
+        $this->assertSame('Completed', $planned->status);
+        $this->assertSame('150000.00', (string) $planned->cost);
+        $this->assertSame(1, \App\Models\TreatmentPlan::where('patient_id', $patient->id)
+            ->whereRaw('LOWER(procedure) = ?', ['amalgam filling'])
+            ->count());
+
+        // Only one invoice for the day, holding both procedures.
+        $this->assertSame(1, Invoice::where('patient_id', $patient->id)->count());
+        $this->assertSame(2, \App\Models\TreatmentPlan::where('patient_id', $patient->id)
+            ->where('status', 'Completed')->count());
+    }
+
+    /** @test */
     public function it_creates_an_invoice_for_a_client_and_stores_client_id()
     {
         $client = Client::create(['name' => 'Acme Labs']);

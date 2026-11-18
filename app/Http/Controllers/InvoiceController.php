@@ -505,12 +505,21 @@ class InvoiceController extends Controller
         }
 
         if (isset($validated['treatments'])) {
+            $claimedPlanIds = [];
             foreach ($validated['treatments'] as $treatment) {
                 // Link or create a corresponding completed treatment plan if patient exists
                 if ($invoice->patient_id) {
                     $tp = null;
                     if (!empty($treatment['procedure_id'])) {
                         $tp = \App\Models\TreatmentPlan::find($treatment['procedure_id']);
+                    }
+                    // Billing a procedure that the doctor already planned for this same day:
+                    // reuse that pending plan so it is completed instead of billed twice.
+                    if (!$tp && empty($treatment['procedure_id'])) {
+                        $tp = $this->findPendingPlanForTreatment($invoice, $treatment, $claimedPlanIds);
+                        if ($tp) {
+                            $claimedPlanIds[] = $tp->id;
+                        }
                     }
                     if (!$tp) {
                         $tp = new \App\Models\TreatmentPlan([
@@ -618,6 +627,32 @@ class InvoiceController extends Controller
         }
 
         return response()->json($invoice, 201);
+    }
+
+    /**
+     * Find a planned (Proposed / In Progress) treatment for this patient on the
+     * invoice date whose procedure name matches the billed procedure. Names are
+     * compared case-insensitively. Plans already claimed by this request are skipped.
+     */
+    private function findPendingPlanForTreatment(Invoice $invoice, array $treatment, array $claimedPlanIds): ?\App\Models\TreatmentPlan
+    {
+        $wanted = mb_strtolower(trim((string) ($treatment['procedure'] ?? '')));
+        if ($wanted === '') {
+            return null;
+        }
+
+        $candidates = \App\Models\TreatmentPlan::query()
+            ->where('patient_id', $invoice->patient_id)
+            ->whereDate('date', \Carbon\Carbon::parse($invoice->issue_date)->format('Y-m-d'))
+            ->whereRaw("LOWER(status) IN ('proposed', 'in progress')")
+            ->whereNotIn('id', $claimedPlanIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        return $candidates->first(
+            fn ($plan) => mb_strtolower(trim((string) $plan->procedure)) === $wanted
+        );
     }
 
     /**

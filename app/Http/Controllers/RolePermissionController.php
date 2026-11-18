@@ -134,6 +134,10 @@ class RolePermissionController extends Controller
             return response()->json(['message' => 'Role not found'], 404);
         }
 
+        if ($locked = self::protectedRoleViolation($role)) {
+            return $locked;
+        }
+
         $role->update([
             'permissions' => self::normalizePermissions($request->permissions),
         ]);
@@ -309,6 +313,10 @@ class RolePermissionController extends Controller
             return response()->json(['message' => 'Role not found'], 404);
         }
 
+        if ($locked = self::protectedRoleViolation($role)) {
+            return $locked;
+        }
+
         $current = $role->permissions ?? [];
         $remaining = array_diff($current, $validated['remove'] ?? []);
 
@@ -349,9 +357,29 @@ class RolePermissionController extends Controller
      */
     private const PERMISSION_RULE = ['string', 'max:100', 'regex:/^[a-z_]+[:.][a-z_]+$/'];
 
+    /**
+     * The Super Admin role is the one that manages everything else.
+     * Its permissions cannot be changed through the API.
+     */
+    private const PROTECTED_ROLE = 'Super Admin';
+
     private static function normalizePermissions(array $permissions): array
     {
         return array_values(array_unique(array_filter(array_map('trim', $permissions))));
+    }
+
+    /**
+     * Return a 403 response if the role's permissions are locked.
+     */
+    private static function protectedRoleViolation(RolePermission $role): ?JsonResponse
+    {
+        if ($role->name !== self::PROTECTED_ROLE) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'The Super Admin role\'s permissions cannot be changed.',
+        ], 403);
     }
 
     public function updateRoleName(Request $request, int $role_id): JsonResponse

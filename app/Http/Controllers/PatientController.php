@@ -2482,15 +2482,15 @@ class PatientController extends Controller
      * Add Orthodontic Record
      *
      * Add a new orthodontic treatment record for a patient.
-     * When treatment_phase is 'initial', it automatically generates an invoice in billing
-     * and logs a treatment plan entry in the patient's medical history.
+     * Any treatment phase with an amount above 0 automatically generates an invoice in billing.
+     * When treatment_phase is 'initial', it also logs a treatment plan entry in the patient's medical history.
      *
      * @authenticated
      *
      * @urlParam patientId string required The patient's ID. Example: 1
      * @bodyParam appliance string required Orthodontic appliance used. Example: Braces
      * @bodyParam treatment_phase string Treatment phase (Initial, Active, Finishing, Retention). Example: Initial
-     * @bodyParam amount number Total estimated treatment cost for the initial phase. Example: 1500000
+     * @bodyParam amount number Treatment cost for this phase (creates a billing invoice when above 0). Example: 1500000
      * @bodyParam period string Estimated duration/period of treatment. Example: 18 Months
      * @bodyParam procedures string Planned procedures across the treatment period.
      *
@@ -2612,9 +2612,6 @@ class PatientController extends Controller
     protected function processOrthodonticInitialPhase(Patient $patient, OrthodonticRecord $record, array $validated)
     {
         $phase = strtolower($validated['treatment_phase'] ?? $record->treatment_phase ?? '');
-        if ($phase !== 'initial') {
-            return;
-        }
 
         $amount = floatval($validated['amount'] ?? $record->amount ?? 0);
         $period = $validated['period'] ?? $record->period ?? '';
@@ -2625,7 +2622,7 @@ class PatientController extends Controller
         $notes = $validated['notes'] ?? $record->notes ?? '';
         $nextGoals = $validated['next_visit_goals'] ?? $record->next_visit_goals ?? '';
 
-        // 1. BILLING INVOICE (generated when treatment phase is initial and amount > 0)
+        // 1. BILLING INVOICE (generated for any treatment phase when amount > 0; each record keeps its own invoice)
         if ($amount > 0) {
             $invoice = null;
             if ($record->invoice_id) {
@@ -2646,6 +2643,9 @@ class PatientController extends Controller
             }
 
             $procedureName = 'Comprehensive Orthodontic Treatment - ' . $appliance;
+            if ($phase !== '' && $phase !== 'initial') {
+                $procedureName .= ' - ' . ucfirst($phase) . ' Phase';
+            }
             if (!empty($period)) {
                 $procedureName .= ' (' . $period . ')';
             }
@@ -2671,7 +2671,7 @@ class PatientController extends Controller
                 $invoice->treatments()->create([
                     'procedure' => $procedureName,
                     'cost'      => $amount,
-                    'notes'     => !empty($procedures) ? $procedures : 'Initial phase orthodontic contract fee',
+                    'notes'     => !empty($procedures) ? $procedures : (ucfirst($phase ?: 'Orthodontic') . ' phase orthodontic contract fee'),
                 ]);
 
                 $record->invoice_id = $invoice->id;
@@ -2695,6 +2695,12 @@ class PatientController extends Controller
                     }
                 }
             }
+        }
+
+        // Medical history is only logged for the initial phase; other phases just keep their invoice.
+        if ($phase !== 'initial') {
+            $record->saveQuietly();
+            return;
         }
 
         // 2. MEDICAL HISTORY RECORD (Record in medical history when treatment phase is initial)

@@ -105,6 +105,39 @@ class RolePermissionApiTest extends TestCase
     }
 
     /** @test */
+    public function super_admin_role_permissions_cannot_be_changed(): void
+    {
+        $superAdminRole = RolePermission::where('name', 'Super Admin')->first();
+        $before = $superAdminRole->permissions;
+
+        $this->actingAs($this->admin)->putJson("/api/settings/roles/{$superAdminRole->id}", [
+            'permissions' => ['patients:read'],
+        ])->assertStatus(403);
+
+        $this->actingAs($this->admin)->patchJson("/api/settings/roles/{$superAdminRole->id}/permissions", [
+            'add' => ['billing:read'],
+        ])->assertStatus(403);
+
+        $this->actingAs($this->admin)->patchJson("/api/settings/roles/{$superAdminRole->id}/permissions", [
+            'remove' => ['settings:manage'],
+        ])->assertStatus(403);
+
+        $this->assertEquals($before, $superAdminRole->fresh()->permissions);
+    }
+
+    /** @test */
+    public function other_roles_permissions_can_still_be_changed(): void
+    {
+        $role = RolePermission::create(['name' => 'Dentist', 'permissions' => ['patients:read']]);
+
+        $this->actingAs($this->admin)->putJson("/api/settings/roles/{$role->id}", [
+            'permissions' => ['billing:read'],
+        ])->assertOk();
+
+        $this->assertEquals(['billing:read'], $role->fresh()->permissions);
+    }
+
+    /** @test */
     public function non_admins_cannot_change_roles(): void
     {
         $role = RolePermission::create(['name' => 'Dentist', 'permissions' => []]);

@@ -427,6 +427,7 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'patient_name' => 'nullable|string',
             'patient_id' => 'nullable|exists:patients,id',
+            'client_id' => 'nullable|exists:clients,id',
             'amount' => 'required|numeric',
             'issue_date' => 'required|date',
             'due_date' => 'required|date',
@@ -573,18 +574,18 @@ class InvoiceController extends Controller
 
             $clinicName = $settings->clinic_name ?? 'Our Clinic';
 
-            if ($sendSms && $invoice->patient->phone && $settings->deductSms()) {
+            if ($sendSms && $invoice->patient?->phone && $settings->deductSms()) {
                 $msg = "Dear {$invoice->patient->first_name}, your new invoice (#{$invoice->id}) for amount {$invoice->amount} from {$clinicName} is ready.";
                 \App\Services\NotificationService::sendSms($invoice->patient->phone, $msg);
             }
 
-            if ($sendWa && $invoice->patient->phone && $settings->isWhatsappActive()) {
+            if ($sendWa && $invoice->patient?->phone && $settings->isWhatsappActive()) {
                 $msg = "Dear {$invoice->patient->first_name}, your new invoice (#{$invoice->id}) for amount {$invoice->amount} from {$clinicName} is ready.";
                 \App\Services\NotificationService::sendWhatsApp($invoice->patient->phone, $msg);
             }
         }
 
-        $sendEmail = $settings->notifications['billing']['email'] ?? true;
+        $sendEmail = $settings?->notifications['billing']['email'] ?? true;
 
         if ($sendEmail && $invoice->patient && $invoice->patient->email) {
             try {
@@ -597,9 +598,9 @@ class InvoiceController extends Controller
                         'amount' => $invoice->amount,
                         'treatments' => $invoice->treatments->toArray(),
                         'otherCharges' => $invoice->otherCharges->toArray(),
-                        'clinicName' => $settings->clinic_name ?? 'Our Clinic',
+                        'clinicName' => $settings?->clinic_name ?? 'Our Clinic',
                     ],
-                    'New Invoice #' . $invoice->id . ' - ' . ($settings->clinic_name ?? 'Our Clinic')
+                    'New Invoice #' . $invoice->id . ' - ' . ($settings?->clinic_name ?? 'Our Clinic')
                 ));
             } catch (\Exception $e) {
                 logger()->error("Failed to send invoice creation email: " . $e->getMessage());

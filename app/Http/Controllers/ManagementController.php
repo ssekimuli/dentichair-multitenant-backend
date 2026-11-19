@@ -1172,6 +1172,12 @@ class ManagementController extends Controller
      */
     public function getFinancialSummary(Request $request)
     {
+        // A date range needs both ends. A single date would otherwise be ignored silently.
+        $request->validate([
+            'date_from' => 'nullable|date|required_with:date_to',
+            'date_to' => 'nullable|date|required_with:date_from|after_or_equal:date_from',
+        ]);
+
         // Self-heal: ensure any existing invoices tied to X-ray requests or with Radiology other charges are categorized as radiology-income
         try {
             DB::table('invoices')

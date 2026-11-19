@@ -80,6 +80,10 @@ Route::match(['put', 'post'], '/qr-code-info-data', [BranchSettingController::cl
 // Protected routes
 Route::middleware(['auth:sanctum', 'default_branch'])->group(function () {
 
+    // Dental diagnosis catalogue (search and filter)
+    Route::get('/diagnoses', [\App\Http\Controllers\DiagnosisController::class, 'index']);
+    Route::get('/diagnoses/categories', [\App\Http\Controllers\DiagnosisController::class, 'categories']);
+
     // Offline-First Synchronization Endpoints
     Route::post('/sync', [SyncController::class, 'sync']);
     Route::get('/sync/pull', [SyncController::class, 'pull']);

@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'sms' => [
+        'client_id' => env('SMS_CLIENT_ID'),
+    ],
+
 ];

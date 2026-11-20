@@ -16,7 +16,7 @@
             border-radius: 8px;
         }
         .header {
-            background-color: #2563eb;
+            background-color: {{ $tenantBranding['brand_color'] ?? '#2563eb' }};
             color: white;
             padding: 20px;
             border-radius: 8px 8px 0 0;
@@ -35,7 +35,7 @@
             margin-bottom: 25px;
         }
         .section h2 {
-            color: #2563eb;
+            color: {{ $tenantBranding['brand_color'] ?? '#2563eb' }};
             font-size: 16px;
             margin-bottom: 10px;
             border-bottom: 2px solid #e5e7eb;
@@ -64,7 +64,7 @@
             border-radius: 5px;
             text-align: center;
             margin: 15px 0;
-            border-left: 4px solid #2563eb;
+            border-left: 4px solid {{ $tenantBranding['brand_color'] ?? '#2563eb' }};
         }
         .token-label {
             color: #6b7280;
@@ -74,7 +74,7 @@
         .token-value {
             font-size: 24px;
             font-weight: bold;
-            color: #2563eb;
+            color: {{ $tenantBranding['brand_color'] ?? '#2563eb' }};
             font-family: monospace;
             margin-top: 5px;
         }
@@ -92,7 +92,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>New Appointment Booked</h1>
+            @if (!empty($tenantBranding['logo_url']))
+                <img src="{{ $tenantBranding['logo_url'] }}" alt="{{ $tenantBranding['display_name'] }}" style="max-height: 48px; max-width: 180px;">
+            @else
+                <h1>{{ $tenantBranding['display_name'] ?? 'Dental Clinic' }}</h1>
+            @endif
+            <h2>New Appointment Booked</h2>
         </div>
 
         <div class="content">
@@ -164,7 +169,13 @@
 
         <div class="footer">
             <p>This is an automated email notification. Please do not reply to this email.</p>
-            <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} {{ $tenantBranding['display_name'] ?? config('app.name') }}. All rights reserved.</p>
+            @if (!empty($tenantBranding['support_email']))
+                <p>Support: {{ $tenantBranding['support_email'] }}</p>
+            @endif
+            @if (!empty($tenantBranding['support_phone']))
+                <p>{{ $tenantBranding['support_phone'] }}</p>
+            @endif
         </div>
     </div>
 </body>

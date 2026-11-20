@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\TenantContext;
 
 class CentralMonitoringService
 {
@@ -14,7 +15,13 @@ class CentralMonitoringService
         // }
 
         try {
-            $clientId = env('SMS_CLIENT_ID');
+            $tenantContext = app(TenantContext::class);
+            $clientId = $tenantContext->clientId();
+
+            if (!$clientId) {
+                Log::warning('Cannot send tenant usage without an SMS client ID.');
+                return;
+            }
 
             $usage = [
                 'users' => \App\Models\User::count(),
@@ -58,7 +65,7 @@ class CentralMonitoringService
 
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => $tenantContext->applicationUrl(),
             ])->post('https://onboarddental.poslycloud.com/api/monitoring/usage', $usage);
 
         } catch (\Exception $e) {

@@ -15,20 +15,18 @@ class VerifyAppKey
      */
     public function handle(Request $request, Closure $next): Response
     {
-         $appKey = $request->input('app_key') ?? $request->header('X-App-key');
+        $appKey = $request->header('X-App-Key');
 
         if (!$appKey) {
-            return response()->json(['success' => false, 'message' => 'appKey is required'], 401);
+            return response()->json(['success' => false, 'message' => 'X-App-Key header is required'], 401);
         }
 
-        $envAppKey = env('SYSTEM_KEY');
+        $envAppKey = config('app.system_key');
 
-        if ($appKey !== $envAppKey) {
+        if (!is_string($envAppKey) || $envAppKey === '' || !hash_equals($envAppKey, $appKey)) {
             return response()->json(['success' => false, 'message' => 'Invalid appKey'], 401);
         }
 
-        // Optional: Attach client to request so it can be used in the controller if needed
-        $request->merge(['appkey' => $appKey]);
         return $next($request);
     }
 }

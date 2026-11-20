@@ -37,7 +37,7 @@ class ProcessImportJob implements ShouldQueue
 
     public function handle()
     {
-        $cacheKey = 'import_progress_' . $this->importId;
+        $cacheKey = app(\App\Services\TenantContext::class)->cacheKey('import_progress_' . $this->importId);
         
         try {
             if (!file_exists($this->filePath)) {

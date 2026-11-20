@@ -240,7 +240,7 @@ class BranchSettingController extends Controller
             $url = $r2Service->upload($file, 'logos');
         } catch (\Throwable $e) {
             Log::warning('R2 logo upload failed, falling back to local public storage: ' . $e->getMessage());
-            $path = $file->store('logos', 'public');
+            $path = $file->store(app(\App\Services\TenantContext::class)->storagePath('logos'), 'public');
             $url = asset('storage/' . $path);
         }
 
@@ -390,7 +390,7 @@ class BranchSettingController extends Controller
             $url = $r2Service->upload($file, 'logos/branches');
         } catch (\Throwable $e) {
             Log::warning('R2 branch logo upload failed, falling back to local public storage: ' . $e->getMessage());
-            $path = $file->store('logos/branches', 'public');
+            $path = $file->store(app(\App\Services\TenantContext::class)->storagePath('logos/branches'), 'public');
             $url = asset('storage/' . $path);
         }
 

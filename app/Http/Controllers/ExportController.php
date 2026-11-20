@@ -110,15 +110,17 @@ class ExportController extends Controller
      */
     protected function exportExcel(Request $request, string $type)
     {
-        $tempCsvName = 'exports/temp_' . Str::uuid() . '.csv';
-        $tempXlsxName = 'exports/' . "{$type}_export_" . date('Y-m-d_His') . '.xlsx';
+        $tenantContext = app(\App\Services\TenantContext::class);
+        $exportDirectory = $tenantContext->storagePath('exports');
+        $tempCsvName = $tenantContext->storagePath('exports/temp_' . Str::uuid() . '.csv');
+        $tempXlsxName = $tenantContext->storagePath('exports/' . "{$type}_export_" . date('Y-m-d_His') . '.xlsx');
 
         $fullCsvPath = Storage::disk('local')->path($tempCsvName);
         $fullXlsxPath = Storage::disk('local')->path($tempXlsxName);
 
         // Ensure exports directory exists
-        if (!Storage::disk('local')->exists('exports')) {
-            Storage::disk('local')->makeDirectory('exports');
+        if (!Storage::disk('local')->exists($exportDirectory)) {
+            Storage::disk('local')->makeDirectory($exportDirectory);
         }
 
         $handle = fopen($fullCsvPath, 'w');

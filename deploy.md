@@ -154,6 +154,36 @@ Exit back to the **`root`** shell and install a trusted Let's Encrypt SSL certif
 
 ---
 
+## Multi-tenant deployment
+
+The central tenant registry uses the `tenant_registry` connection. It defaults to the main database connection; set `TENANCY_REGISTRY_*` values in `.env` if the registry uses a separate database. Keep `APP_KEY` deployment-wide because tenant database passwords and SMS client IDs are encrypted with it.
+
+Each tenant's display name and application URL are applied as `app.name` and `app.url` while handling that tenant. The SMS client ID and email branding are also resolved from the tenant registry. Leave `SESSION_CONNECTION` unset when using database sessions so each tenant uses its own `sessions` table. Use a taggable cache store (such as the configured database, Redis, or Memcached store); Laravel's file cache does not support tenant cache tags.
+
+New file uploads for a tenant are stored under `tenants/<tenant-id>/` on local/public storage and in R2. Existing file URLs are not moved or rewritten.
+
+For an existing installation, first run the central registry migration and register its current database as a tenant:
+
+```bash
+php artisan migrate --database=tenant_registry --path=database/migrations/central --force
+php artisan tenants:add clinic.example.com "Clinic Display Name" --database=existing_tenant_db --host=127.0.0.1 --username=tenant_user
+php artisan tenants:migrate
+```
+
+`tenants:add` prompts for the tenant database password and SMS client ID without placing them in shell history. Provision the database and its user before registering the tenant. After the tenant migration succeeds, enable `TENANCY_ENABLED=true` and restart the web and queue workers.
+
+The central API can also register a tenant at `POST /api/admin/tenants`. Send the system key in the `X-App-Key` request header and call the endpoint on a configured central domain. Submit `domain`, `display_name`, `database`, and (for non-SQLite databases) `username`; optional fields include `host`, `port`, `password`, `sms_client_id`, `app_url`, and email branding. The shared `VerifyAppKey` middleware now requires this header for tenant registration and the other app-key-protected routes; sending `app_key` in the request body is not accepted. Password and SMS client ID are encrypted in the registry and are never returned by the endpoint. The API registers an already-provisioned database only; run `php artisan tenants:migrate` afterward to install its schema and activate it.
+
+For every future schema change, add one migration under `database/migrations` and run:
+
+```bash
+php artisan tenants:migrate
+```
+
+The tenancy migration command runs the same migration files against every registered tenant database. Each database keeps its own Laravel migration history. New tenant databases should be registered and migrated with the same command before being activated.
+
+---
+
 ## Verification
 
 Test the setup by sending a GET request to verify the service is running:

@@ -517,7 +517,7 @@ class AuthController extends Controller
 
         // Generate 6-digit OTP
         $otp = strval(rand(100000, 999999));
-        Cache::put('otp_' . $identifier, $otp, now()->addMinutes(15));
+        Cache::put(app(\App\Services\TenantContext::class)->cacheKey('otp_' . $identifier), $otp, now()->addMinutes(15));
 
         // Send OTP email
         try {
@@ -548,7 +548,7 @@ class AuthController extends Controller
             $identifier = $request->identifier;
             $otp = $request->otp;
 
-            $cachedOtp = Cache::get('otp_' . $identifier);
+            $cachedOtp = Cache::get(app(\App\Services\TenantContext::class)->cacheKey('otp_' . $identifier));
 
             if (!$cachedOtp || $cachedOtp !== $otp) {
                 return response()->json([
@@ -557,7 +557,7 @@ class AuthController extends Controller
             }
 
             // Mark as verified for password reset
-            Cache::put('verified_otp_' . $identifier, true, now()->addMinutes(15));
+            Cache::put(app(\App\Services\TenantContext::class)->cacheKey('verified_otp_' . $identifier), true, now()->addMinutes(15));
 
             return response()->json([
                 'message' => 'OTP verified successfully.'
@@ -583,7 +583,7 @@ class AuthController extends Controller
             $identifier = $request->identifier;
             $password = $request->password;
 
-            if (!Cache::has('verified_otp_' . $identifier)) {
+            if (!Cache::has(app(\App\Services\TenantContext::class)->cacheKey('verified_otp_' . $identifier))) {
                 return response()->json([
                     'message' => 'Please verify OTP first.'
                 ], 403);
@@ -600,8 +600,8 @@ class AuthController extends Controller
             $employee->password = Hash::make($password);
             $employee->save();
 
-            Cache::forget('verified_otp_' . $identifier);
-            Cache::forget('otp_' . $identifier);
+            Cache::forget(app(\App\Services\TenantContext::class)->cacheKey('verified_otp_' . $identifier));
+            Cache::forget(app(\App\Services\TenantContext::class)->cacheKey('otp_' . $identifier));
 
             return response()->json([
                 'message' => 'Password reset successfully.'

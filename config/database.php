@@ -113,6 +113,27 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'tenant_registry' => [
+            'driver' => env('TENANCY_REGISTRY_DRIVER', env('DB_CONNECTION', 'mysql')),
+            'url' => env('TENANCY_REGISTRY_URL', env('DB_URL')),
+            'host' => env('TENANCY_REGISTRY_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('TENANCY_REGISTRY_PORT', env('DB_PORT', '3306')),
+            'database' => env('TENANCY_REGISTRY_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('TENANCY_REGISTRY_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('TENANCY_REGISTRY_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('TENANCY_REGISTRY_SOCKET', env('DB_SOCKET', '')),
+            'charset' => env('TENANCY_REGISTRY_CHARSET', env('DB_CHARSET', 'utf8mb4')),
+            'collation' => env('TENANCY_REGISTRY_COLLATION', env('DB_COLLATION', 'utf8mb4_unicode_ci')),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
     ],
 
     /*

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\TenantContext;
 
 class NotificationService
 {
@@ -16,9 +17,21 @@ class NotificationService
      */
     public static function sendSms($phone, $message)
     {
-        $clientId = env('SMS_CLIENT_ID');
+        $tenantContext = app(TenantContext::class);
+        $tenant = $tenantContext->current();
+        $clientId = $tenantContext->clientId();
 
         if (!$clientId) {
+            if ($tenant) {
+                Log::warning('SMS was not sent because the tenant has no SMS client ID.', [
+                    'tenant_id' => $tenant->getTenantKey(),
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'SMS client ID is not configured for this tenant',
+                ];
+            }
 
             \App\Models\ActivityLog::log('send_sms', "Simulated sending SMS to {$phone}", ['phone' => $phone]);
             return [
@@ -31,7 +44,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => app(TenantContext::class)->applicationUrl(),
             ])->post('https://onboarddental.poslycloud.com/api/send-sms', [
                 'phone' => $phone,
                 'message' => $message,
@@ -62,9 +75,21 @@ class NotificationService
     }
     public static function topUpSms($phone, $amount, $category,$provider)
     {
-        $clientId = env('SMS_CLIENT_ID');
+        $tenantContext = app(TenantContext::class);
+        $tenant = $tenantContext->current();
+        $clientId = $tenantContext->clientId();
 
         if (!$clientId) {
+            if ($tenant) {
+                Log::warning('SMS top-up was not requested because the tenant has no SMS client ID.', [
+                    'tenant_id' => $tenant->getTenantKey(),
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'SMS client ID is not configured for this tenant',
+                ];
+            }
 
             \App\Models\ActivityLog::log('top_up_sms', "Fail Top Up SMS to {$phone} amount {$amount}", ['phone' => $phone]);
             return [
@@ -77,7 +102,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => app(TenantContext::class)->applicationUrl(),
             ])->post('https://onboarddental.poslycloud.com/api/top-up-sms', [
                 'phone' => $phone,
                 'amount' => $amount,
@@ -110,7 +135,7 @@ class NotificationService
     }
     public static function verifyWebhook($reference)
     {
-        $clientId = env('SMS_CLIENT_ID');
+        $clientId = app(TenantContext::class)->clientId();
 
         if (!$clientId) {
             \App\Models\ActivityLog::log('verify_payment', "Fail to verify {$reference}", ['reference' => $reference]);
@@ -124,7 +149,7 @@ class NotificationService
         try {
            $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => app(TenantContext::class)->applicationUrl(),
             ])->post('https://onboarddental.poslycloud.com/api/verify-transaction', [
                 'reference' => $reference
             ]);
@@ -200,7 +225,7 @@ class NotificationService
      */
     public static function sendWhatsApp($phone, $message)
     {
-        $clientId = env('SMS_CLIENT_ID');
+        $clientId = app(TenantContext::class)->clientId();
 
         if (!$clientId) {
             \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp to {$phone}", ['phone' => $phone]);
@@ -214,7 +239,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => app(TenantContext::class)->applicationUrl(),
             ])->post('https://onboarddental.poslycloud.com/api/send-whatsapp', [
                 'phone' => $phone,
                 'message' => $message,
@@ -254,7 +279,7 @@ class NotificationService
      */
     public static function sendMediaWhatsApp($phone, $mediaUrl, $fileName, $caption = '')
     {
-        $clientId = env('SMS_CLIENT_ID');
+        $clientId = app(TenantContext::class)->clientId();
 
         if (!$clientId) {
             \App\Models\ActivityLog::log('send_whatsapp', "Simulated sending WhatsApp media to {$phone}", ['phone' => $phone, 'media' => $fileName]);
@@ -268,7 +293,7 @@ class NotificationService
         try {
             $response = Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => app(TenantContext::class)->applicationUrl(),
             ])->post('https://onboarddental.poslycloud.com/api/send-whatsapp-media', [
                 'phone' => $phone,
                 'media_url' => $mediaUrl,
@@ -301,10 +326,11 @@ class NotificationService
 
     public static function getWelcomeMessage($businessName, $email, $password)
     {
-        $loginUrl = env('VITE_APP_URL');
+        $loginUrl = app(TenantContext::class)->applicationUrl();
+        $clinicName = app(TenantContext::class)->current()?->display_name ?: $businessName;
 
-        $message = "**Welcome to DentiChair! 🦷**\n\n";
-        $message .= "Dear **{$businessName}**,\n\n";
+        $message = "**Welcome to {$clinicName}! 🦷**\n\n";
+        $message .= "Dear **{$clinicName}**,\n\n";
         $message .= "Welcome to the DentiChair family! We're excited to have you onboard.\n\n";
         $message .= "DentiChair is designed to simplify the daily operations of your dental practice by helping you manage patients, appointments, treatment records, billing, and much more—all in one place.\n\n";
         $message .= "If you need any assistance getting started, our support team is always ready to help.\n\n";
@@ -313,13 +339,13 @@ class NotificationService
         $message .= "**Username:** {$email}\n";
         $message .= "**Temporary Password:** {$password}\n\n";
         $message .= "Best regards,\n";
-        $message .= "**The DentiChair Team**";
+        $message .= "**The {$clinicName} Team**";
 
         return $message;
     }
     public static function syncTopUpBalance(array $data)
     {
-        $clientId = env('SMS_CLIENT_ID');
+        $clientId = app(TenantContext::class)->clientId();
         if (!$clientId) {
             Log::warning("Cannot sync top up balance: SMS_CLIENT_ID is missing.");
             return;
@@ -328,7 +354,7 @@ class NotificationService
         try {
             Http::withHeaders([
                 'X-Client-Id' => $clientId,
-                'X-Client-domain' => env('APP_URL'),
+                'X-Client-domain' => app(TenantContext::class)->applicationUrl(),
             ])->timeout(5)->post('https://onboarddental.poslycloud.com/api/update-top-up-balance', $data);
         } catch (\Exception $e) {
             Log::error("Failed to send top up update to poslycloud: " . $e->getMessage());

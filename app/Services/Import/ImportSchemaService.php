@@ -108,7 +108,7 @@ class ImportSchemaService
     public function getImportableColumns(string $table): array
     {
         $table = $this->normalizeTableName($table);
-        $cacheKey = "universal_import_columns_{$table}";
+        $cacheKey = app(\App\Services\TenantContext::class)->cacheKey("universal_import_columns_{$table}");
 
         return Cache::remember($cacheKey, 3600, function () use ($table) {
             return $this->discoverColumns($table);
@@ -548,6 +548,6 @@ class ImportSchemaService
      */
     public function clearCache(string $table): void
     {
-        Cache::forget("universal_import_columns_{$table}");
+        Cache::forget(app(\App\Services\TenantContext::class)->cacheKey("universal_import_columns_{$table}"));
     }
 }

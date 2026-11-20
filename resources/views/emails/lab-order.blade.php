@@ -20,5 +20,5 @@ Please contact us if you need more details.
 @endif
 
 Thanks,<br>
-{{ config('app.name') }}
+{{ $tenantBranding['display_name'] ?? config('app.name') }}
 @endcomponent

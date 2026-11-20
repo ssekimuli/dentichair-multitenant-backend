@@ -396,7 +396,9 @@ class PatientReferralController extends Controller
                 )->withMime('application/pdf');
 
                 if ($channel === 'whatsapp') {
-                    $relPath = 'referrals/' . uniqid('ref_') . '_' . $fileName;
+                    $relPath = app(\App\Services\TenantContext::class)->storagePath(
+                        'referrals/' . uniqid('ref_') . '_' . $fileName
+                    );
                     Storage::disk('public')->put($relPath, $rawBytes);
                     $localTempPath = storage_path('app/public/' . $relPath);
                     $uploadedUrl = asset('storage/' . $relPath);

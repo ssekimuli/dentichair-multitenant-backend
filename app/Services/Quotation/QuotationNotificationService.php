@@ -106,7 +106,7 @@ class QuotationNotificationService
             if (in_array('whatsapp', $channels)) {
                 if (config('filesystems.disks.r2.url') && config('filesystems.disks.r2.key')) {
                     try {
-                        $r2Path = "quotations/{$pdfFileName}";
+                        $r2Path = app(\App\Services\TenantContext::class)->storagePath("quotations/{$pdfFileName}");
                         Storage::disk('r2')->put($r2Path, $pdfBinary, 'public');
                         $mediaUrl = rtrim(config('filesystems.disks.r2.url'), '/') . '/' . $r2Path;
                     } catch (\Throwable $e) {

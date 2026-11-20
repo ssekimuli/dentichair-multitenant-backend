@@ -14,10 +14,10 @@ We are excited to have you join our team. An account has been created for you in
 
 Please log in to change your temporary password and set up your profile.
 
-@component('mail::button', ['url' => env('APP_URL')])
+@component('mail::button', ['url' => $tenantBranding['app_url'] ?? config('app.url')])
 Log In to Your Account
 @endcomponent
 
 Thanks,<br>
-{{ config('app.name', 'Dental Management System') }}
+{{ $tenantBranding['display_name'] ?? config('app.name', 'Dental Management System') }}
 @endcomponent

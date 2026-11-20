@@ -40,7 +40,7 @@ class XrayRequestController extends Controller
         }
 
         if (!$url) {
-            $path = $file->store('xray-requests', 'public');
+            $path = $file->store(app(\App\Services\TenantContext::class)->storagePath('xray-requests'), 'public');
             $url = asset('storage/' . $path);
         }
 

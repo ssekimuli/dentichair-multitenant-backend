@@ -20,7 +20,7 @@ class CloudflareR2Service
     {
         $ext = $file->getClientOriginalExtension();
         $filename = $customFilename ?? Str::uuid();
-        $name = $folder . '/' . $filename . '.' . $ext;
+        $name = app(TenantContext::class)->storagePath($folder . '/' . $filename . '.' . $ext);
 
         Storage::disk('r2')->put($name, $file->getContent(), 'public');
 

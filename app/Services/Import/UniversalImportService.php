@@ -63,7 +63,7 @@ class UniversalImportService
 
         $tempDisk = Config::get('import.temp_disk', 'local');
         $tempDir = Config::get('import.temp_directory', 'imports');
-        $storedPath = $file->store($tempDir, $tempDisk);
+        $storedPath = $file->store(app(\App\Services\TenantContext::class)->storagePath($tempDir), $tempDisk);
         $fullPath = Storage::disk($tempDisk)->path($storedPath);
 
         // Inspect headers and sample rows
@@ -162,7 +162,7 @@ class UniversalImportService
             }
         } elseif ($file) {
             $tempDir = Config::get('import.temp_directory', 'imports');
-            $storedPath = $file->store($tempDir, $tempDisk);
+            $storedPath = $file->store(app(\App\Services\TenantContext::class)->storagePath($tempDir), $tempDisk);
             $fullPath = Storage::disk($tempDisk)->path($storedPath);
             $totalRows = $this->reader->countRows($fullPath, $params['sheet'] ?? null, $table);
 

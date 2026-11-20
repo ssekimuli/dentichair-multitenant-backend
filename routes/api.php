@@ -60,6 +60,9 @@ Route::middleware([\App\Http\Middleware\VerifyAppKey::class])->group(function ()
     
 });
 
+Route::middleware([\App\Http\Middleware\VerifyAppKey::class, 'throttle:10,1'])
+    ->post('/admin/tenants', [\App\Http\Controllers\Api\TenantController::class, 'store']);
+
 // Public template downloads & Public receipt settings & Logo uploads (browser, desktop & receipt access)
 Route::get('/import/templates/download/{filename}', [ImportController::class, 'downloadTemplate']);
 Route::get('/migrate/template/download', [MigrationController::class, 'downloadTemplate']);

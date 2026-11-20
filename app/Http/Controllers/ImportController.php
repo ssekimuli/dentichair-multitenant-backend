@@ -29,7 +29,7 @@ class ImportController extends Controller
      * @bodyParam type string required The import target type (patients, employees, treatments). Example: patients
      * 
      * @response 200 {
-     *   "file_path": "imports/tempfile.csv",
+     *   "file_path": "tenants/{tenant-id}/imports/tempfile.csv",
      *   "headers": ["First Name", "Last Name", "Email Address", "Phone Number"],
      *   "available_columns": ["first_name", "last_name", "email", "phone", "address", "gender", "date_of_birth", "branch_id", "status", "history"]
      * }
@@ -50,12 +50,12 @@ class ImportController extends Controller
             return response()->json(['error' => 'Only CSV, TXT, and XLSX (Excel) files are supported.'], 422);
         }
 
-        $path = $uploadedFile->store('imports');
+        $path = $uploadedFile->store(app(\App\Services\TenantContext::class)->storagePath('imports'));
         $fullPath = Storage::path($path);
 
         // If it is an Excel (xlsx) file, convert it to CSV via Python on the fly
         if ($extension === 'xlsx') {
-            $csvPath = 'imports/' . Str::uuid() . '.csv';
+            $csvPath = app(\App\Services\TenantContext::class)->storagePath('imports/' . Str::uuid() . '.csv');
             $fullCsvPath = Storage::path($csvPath);
             $pythonScript = base_path('app/Utils/excel_to_csv.py');
 
@@ -110,7 +110,7 @@ class ImportController extends Controller
      * 
      * @authenticated
      * 
-     * @bodyParam file_path string required The temporary file path returned by the parse endpoint. Example: imports/tempfile.csv
+     * @bodyParam file_path string required The temporary file path returned by the parse endpoint, including its tenant folder when tenant-scoped. Example: tenants/{tenant-id}/imports/tempfile.csv
      * @bodyParam type string required The import target type. Example: patients
      * @bodyParam mapping object required JSON mapping of database columns to CSV headers. Example: {"first_name": "First Name", "email": "Email Address"}
      * 
@@ -132,6 +132,20 @@ class ImportController extends Controller
         $type = $request->input('type');
         $mapping = $request->input('mapping');
 
+        $tenantContext = app(\App\Services\TenantContext::class);
+        $normalizedFilePath = str_replace('\\', '/', $filePath);
+        $tenantImportDirectory = $tenantContext->storagePath('imports/');
+
+        if (
+            $tenantContext->current()
+            && (
+                !str_starts_with($normalizedFilePath, $tenantImportDirectory)
+                || in_array('..', explode('/', $normalizedFilePath), true)
+            )
+        ) {
+            return response()->json(['error' => 'The uploaded file does not exist or has expired.'], 404);
+        }
+
         $fullPath = Storage::path($filePath);
 
         if (!Storage::exists($filePath)) {
@@ -152,7 +166,7 @@ class ImportController extends Controller
         $importId = (string) Str::uuid();
 
         // Initialize progress status in cache
-        Cache::put('import_progress_' . $importId, [
+        Cache::put(app(\App\Services\TenantContext::class)->cacheKey('import_progress_' . $importId), [
             'status' => 'queued',
             'total_rows' => 0,
             'processed_rows' => 0,
@@ -293,7 +307,7 @@ class ImportController extends Controller
      */
     public function getProgress($id)
     {
-        $progress = Cache::get('import_progress_' . $id);
+        $progress = Cache::get(app(\App\Services\TenantContext::class)->cacheKey('import_progress_' . $id));
 
         if (!$progress) {
             return response()->json(['error' => 'Import job not found or progress expired.'], 404);

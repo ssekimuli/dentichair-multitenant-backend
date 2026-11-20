@@ -80,7 +80,7 @@ use HasFactory;
 
     public function deductSms()
     {
-        $cost = (int) env('SMS_COST_PER_MESSAGE', 60);
+        $cost = (int) config('settings.sms_cost_per_message', 60);
         if ($this->sms_balance >= $cost) {
             $this->sms_balance -= $cost;
             $this->save();

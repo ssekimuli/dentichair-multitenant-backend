@@ -13,5 +13,5 @@ We have successfully registered your record in our system under the email **{{ $
 Our team looks forward to meeting you during your first visit! If you have any questions or would like to schedule an appointment, feel free to reply to this email or call our front desk.
 
 Thanks,<br>
-{{ config('app.name', 'Dental Management System') }}
+{{ $tenantBranding['display_name'] ?? config('app.name', 'Dental Management System') }}
 @endcomponent
